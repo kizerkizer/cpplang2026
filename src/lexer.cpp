@@ -37,10 +37,6 @@ void Lexer::advance(const int &steps = 1) {
     this->column += steps;
 }
 
-void Lexer::advanceLine() {
-    this->line++;
-}
-
 std::tuple<size_t, size_t, size_t> Lexer::getCounters() const {
     return {this->index, this->line, this->column};
 }
