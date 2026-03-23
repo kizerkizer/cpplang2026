@@ -53,7 +53,6 @@ BlockStatementNode* FunctionDeclarationNode::getBody() const {
     return this->bodyNode.get();
 };
 
-
 //BlockStatementNode
 ProgramNode* BlockStatementNode::getProgramNode() const {
     return this->programNode.get();
@@ -134,3 +133,24 @@ std::string StringLiteralNode::getValue() const {
     return this->stringLiteralToken->getSourceString();
 }
 
+//BinaryOperatorExpressionNode
+ExpressionNode* BinaryOperatorExpressionNode::getLeft() const {
+    return this->left.get();
+}
+
+ExpressionNode* BinaryOperatorExpressionNode::getRight() const {
+    return this->right.get();
+}
+
+Token* BinaryOperatorExpressionNode::getOperatorToken() const {
+    return this->operatorToken.get();
+}
+
+//UnaryOperatorExpressionNode
+PrimaryExpressionNode* UnaryOperatorExpressionNode::getOperand() const {
+    return this->operand.get();
+}
+
+Token* UnaryOperatorExpressionNode::getOperatorToken() const {
+    return this->operatorToken.get();
+}

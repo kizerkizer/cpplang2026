@@ -24,6 +24,8 @@ void printParseTree (const Node& node, int indentation) {
         case NodeType::VariableDeclaration: {
             const auto& nodeCast = static_cast<const VariableDeclarationNode&>(node);
             std::print("{}VariableDeclarationNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Identifier:\n", std::string(indentation * 2, ' '));
+            printParseTree(*nodeCast.getIdentifier(), indentation + 1);
             std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
             if (nodeCast.getAssignmentExpression()) {
                 printParseTree(*nodeCast.getAssignmentExpression()->getExpression(), indentation + 1);
@@ -150,9 +152,29 @@ void printParseTree (const Node& node, int indentation) {
             printParseTree(*nodeCast.getFunctionCallExpression(), indentation + 1);
             break;
         }
-        default:
-            std::print("{}Unknown node type\n", std::string(indentation * 2, ' '));
+        case NodeType::BinaryOperatorExpression: {
+            const auto& nodeCast = static_cast<const BinaryOperatorExpressionNode&>(node);
+            std::print("{}BinaryOperatorExpressionNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Operator:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast.getOperatorToken()->getSourceString());
+            std::print("{}* Left:\n", std::string(indentation * 2, ' '));
+            printParseTree(*nodeCast.getLeft(), indentation + 1);
+            std::print("{}* Right:\n", std::string(indentation * 2, ' '));
+            printParseTree(*nodeCast.getRight(), indentation + 1);
             break;
+        }
+        case NodeType::UnaryOperatorExpression: {
+            const auto& nodeCast = static_cast<const UnaryOperatorExpressionNode&>(node);
+            std::print("{}UnaryOperatorExpressionNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Operator:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast.getOperatorToken()->getSourceString());
+            std::print("{}* Expression:\n", std::string(indentation * 2, ' '));
+            printParseTree(*nodeCast.getOperand(), indentation + 1);
+            break;
+        }
+        /*default:
+            std::print("{}Unknown node type\n", std::string(indentation * 2, ' '));
+            break;*/
     }
 }
 
@@ -172,6 +194,8 @@ int main () {
     auto tokens = lexer.lex(sourceString, errorMessages);
     if (errorMessages.empty()) {
         std::print("No lex errors.\n");
+    } else {
+        std::print("⚠️ {} lex error(s) found.\n", errorMessages.size());
     }
     for (const auto& token : tokens) {
         std::print("{}\n", token.toString());
@@ -184,13 +208,15 @@ int main () {
     }
     std::vector<Token> nonTrivialTokens;
     std::copy_if(tokens.begin(), tokens.end(), std::back_inserter(nonTrivialTokens), [](const Token& token) {
-        std::print("Token: {}, Index: {}, Line: {}, Column: {}\n", token.toString(), token.getIndex(), token.getLine(), token.getColumn());
+        //std::print("Token: {}, Index: {}, Line: {}, Column: {}\n", token.toString(), token.getIndex(), token.getLine(), token.getColumn());
         return !IS_TOKENNAME_TRIVIA(token.getTokenName());
     });
     Parser parser(nonTrivialTokens, errorMessages);
     auto parsed = parser.parse();
     if (errorMessages.empty()) {
         std::print("No parse errors.\n");
+    } else {
+        std::print("⚠️ {} parse error(s) found.\n", errorMessages.size());
     }
     for (const auto& errorMessage : errorMessages) {
         std::print("{}\n", errorMessage);

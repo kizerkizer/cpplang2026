@@ -54,6 +54,13 @@ std::map<std::string, TokenName> keywords = {
 };
 
 std::map<std::string, TokenName> operators = {
+    {"==", TokenName::EqualEqual},
+    {"!=", TokenName::NotEqual},
+    {"<=", TokenName::LessThanEqual},
+    {">=", TokenName::GreaterThanEqual},
+    {"&&", TokenName::And},
+    {"||", TokenName::Or},
+    {"**", TokenName::AsteriskAsterisk},
     {"+", TokenName::Plus},
     {"-", TokenName::Minus},
     {"*", TokenName::Asterisk},
@@ -61,12 +68,6 @@ std::map<std::string, TokenName> operators = {
     {"=", TokenName::Equal},
     {"<", TokenName::LessThan},
     {">", TokenName::GreaterThan},
-    {"==", TokenName::EqualEqual},
-    {"!=", TokenName::NotEqual},
-    {"<=", TokenName::LessThanEqual},
-    {">=", TokenName::GreaterThanEqual},
-    {"&&", TokenName::And},
-    {"||", TokenName::Or},
     {"!", TokenName::Not},
 };
 

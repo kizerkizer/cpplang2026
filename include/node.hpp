@@ -26,12 +26,15 @@ AssignmentExpression ::= Identifier '=' Expression
 FunctionCallStatement ::= FunctionCallExpression ';'
 FunctionCallExpression ::= Identifier '(' ArgumentList? ')'
 ArgumentList ::= Expression (',' Expression)*
-Expression ::= Identifier | FunctionCallExpression | AssignmentExpression | NumberLiteral | StringLiteral
-    // -> | ObjectLiteral | ArrayLiteral
-    // -> | Expression BinaryOperator Expression | '(' Expression ')'
+Expression ::= PrimaryExpression | BinaryOperatorExpression
 BinaryOperator ::= '+' | '-' | '*' | '/' | '==' | '!='
+UnaryOperator ::= '-' | '!'
+BinaryOperatorExpression ::= Expression BinaryOperator Expression
+UnaryOperatorExpression ::= UnaryOperator Expression
 ObjectLiteral ::= '[' ':' | ((Identifier ':' Expression) (',' Identifier ':' Expression)*) ']'
 ArrayLiteral ::= '[' ',' | (Expression (',' Expression)*) ']'
+Literal ::= NumberLiteral | StringLiteral | ObjectLiteral | ArrayLiteral
+PrimaryExpression ::= Identifier | FunctionCallExpression | UnaryOperatorExpression | Literal | '(' Expression ')'
 */
 
 enum class NodeType {
@@ -56,7 +59,8 @@ enum class NodeType {
     //ArrayLiteral, // TODO later
     AssignmentExpression,
     FunctionCallExpression,
-    //SimpleExpression,
+    BinaryOperatorExpression,
+    UnaryOperatorExpression,
 };
 
 class Node {
@@ -89,9 +93,13 @@ public:
     ExpressionNode(NodeType type) : Node(type) {};
 };
 
-class IdentifierNode : public ExpressionNode {
+class PrimaryExpressionNode : public ExpressionNode {
+public:    PrimaryExpressionNode(NodeType type) : ExpressionNode(type) {};
+};
+
+class IdentifierNode : public PrimaryExpressionNode {
 public:
-    IdentifierNode(std::unique_ptr<Token> identifierToken) : ExpressionNode(NodeType::Identifier), identifierToken(std::move(identifierToken)) {};
+    IdentifierNode(std::unique_ptr<Token> identifierToken) : PrimaryExpressionNode(NodeType::Identifier), identifierToken(std::move(identifierToken)) {};
     std::string getName() const;
     Token* getIdentifierToken() const;
 private:
@@ -191,9 +199,9 @@ private:
     std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
 };
 
-class FunctionCallExpressionNode : public ExpressionNode {
+class FunctionCallExpressionNode : public PrimaryExpressionNode {
 public:
-    FunctionCallExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<ExpressionNode>> argumentNodes) : ExpressionNode(NodeType::FunctionCallExpression), identifier(std::move(identifier)), argumentNodes(std::move(argumentNodes)) {};
+    FunctionCallExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<ExpressionNode>> argumentNodes) : PrimaryExpressionNode(NodeType::FunctionCallExpression), identifier(std::move(identifier)), argumentNodes(std::move(argumentNodes)) {};
     IdentifierNode* getIdentifier() const;
     const std::vector<std::unique_ptr<ExpressionNode>>& getArgumentNodes() const;
 private:
@@ -209,20 +217,42 @@ private:
     std::unique_ptr<FunctionCallExpressionNode> functionCallExpression;
 };
 
-class StringLiteralNode : public ExpressionNode {
+class StringLiteralNode : public PrimaryExpressionNode {
 public:
-    StringLiteralNode(std::unique_ptr<Token> stringLiteralToken) : ExpressionNode(NodeType::StringLiteral), stringLiteralToken(std::move(stringLiteralToken)) {};
+    StringLiteralNode(std::unique_ptr<Token> stringLiteralToken) : PrimaryExpressionNode(NodeType::StringLiteral), stringLiteralToken(std::move(stringLiteralToken)) {};
     std::string getValue() const;
     Token* getStringLiteralToken() const;
 private:
     std::unique_ptr<Token> stringLiteralToken;
 };
 
-class NumberLiteralNode : public ExpressionNode {
+class NumberLiteralNode : public PrimaryExpressionNode {
 public:
-    NumberLiteralNode(std::unique_ptr<Token> numberLiteralToken) : ExpressionNode(NodeType::NumberLiteral), numberLiteralToken(std::move(numberLiteralToken)) {};
+    NumberLiteralNode(std::unique_ptr<Token> numberLiteralToken) : PrimaryExpressionNode(NodeType::NumberLiteral), numberLiteralToken(std::move(numberLiteralToken)) {};
     int getValue() const;
     Token* getNumberLiteralToken() const;
 private:
     std::unique_ptr<Token> numberLiteralToken;
+};
+
+class BinaryOperatorExpressionNode : public ExpressionNode {
+public:
+    BinaryOperatorExpressionNode(std::unique_ptr<ExpressionNode> left, std::unique_ptr<ExpressionNode> right, std::unique_ptr<Token> operatorToken) : ExpressionNode(NodeType::BinaryOperatorExpression), left(std::move(left)), right(std::move(right)), operatorToken(std::move(operatorToken)) {};
+    ExpressionNode* getLeft() const;
+    ExpressionNode* getRight() const;
+    Token* getOperatorToken() const;
+private:
+    std::unique_ptr<ExpressionNode> left;
+    std::unique_ptr<ExpressionNode> right;
+    std::unique_ptr<Token> operatorToken;
+};
+
+class UnaryOperatorExpressionNode : public PrimaryExpressionNode {
+public:
+    UnaryOperatorExpressionNode(std::unique_ptr<PrimaryExpressionNode> operand, std::unique_ptr<Token> operatorToken) : PrimaryExpressionNode(NodeType::UnaryOperatorExpression), operand(std::move(operand)), operatorToken(std::move(operatorToken)) {};
+    PrimaryExpressionNode* getOperand() const;
+    Token* getOperatorToken() const;
+private:
+    std::unique_ptr<PrimaryExpressionNode> operand;
+    std::unique_ptr<Token> operatorToken;
 };

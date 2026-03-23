@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <print>
 
 Token Parser::peek(int offset) const {
     if (this->index + offset >= this->tokens.size()) {
@@ -458,34 +459,22 @@ std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
     return assignmentExpression;
 }
 
-std::unique_ptr<ExpressionNode> Parser::parseExpression() {
+std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
     Token token = this->peek();
     switch (token.getTokenName()) {
-        case TokenName::Identifier:
+        case TokenName::Identifier: {
             if (this->peek(1) == TokenName::ParenthesisOpen) {
-                auto functionCallExpressionOpt = this->parseFunctionCallExpression();
-                if (!functionCallExpressionOpt) {
+                auto functionCallExpression = this->parseFunctionCallExpression();
+                if (!functionCallExpression) {
                     this->errorMessages.push_back("Failed to parse function call expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return nullptr;
                 }
-                return functionCallExpressionOpt;
+                return functionCallExpression;
             }
-            if (this->peek(1) == TokenName::Semicolon || this->peek(1) == TokenName::Comma || this->peek(1) == TokenName::ParenthesisClose) {
-                // single identifier expression
-                auto identifierTokenOpt = this->expectAndAdvance(TokenName::Identifier);
-                auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierTokenOpt.value()));
-                return identifierNode;
-            }
-            if (this->peek(1) == TokenName::Equal) {
-                auto assignmentExpressionOpt = this->parseAssignmentExpression();
-                return assignmentExpressionOpt;
-            }
-            if (this->peek(1) == TokenName::Plus || this->peek(1) == TokenName::Minus || this->peek(1) == TokenName::Asterisk || this->peek(1) == TokenName::Slash || this->peek(1) == TokenName::EqualEqual || this->peek(1) == TokenName::NotEqual) {
-                // TODO binary expressions
-                this->errorMessages.push_back("Binary expressions not implemented yet at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
-                return nullptr;
-            }
-            break;
+            this->expectAndAdvance(TokenName::Identifier);
+            auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
+            return identifierNode;
+        }
         case TokenName::IntegerLiteral: {
             auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::IntegerLiteral);
             if (!integerLiteralTokenOpt) {
@@ -506,11 +495,93 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
             std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::make_unique<Token>(stringLiteralTokenOpt.value()));
             return stringLiteralNode;
         }
+        case TokenName::Not: {
+            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Not);
+            if (!operatorTokenOpt) {
+                // unreachable
+                this->errorMessages.push_back("Expected '!' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            auto operandNode = this->parsePrimaryExpression();
+            if (!operandNode) {
+                this->errorMessages.push_back("Failed to parse operand of '!' operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
+            return unaryOperatorNode;
+        }
+        case TokenName::Minus: {
+            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Minus);
+            if (!operatorTokenOpt) {
+                // unreachable
+                this->errorMessages.push_back("Expected '-' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            auto operandNode = this->parsePrimaryExpression();
+            if (!operandNode) {
+                this->errorMessages.push_back("Failed to parse operand of '-' operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
+            return unaryOperatorNode;
+        }
         default:
             this->errorMessages.push_back("Unexpected token '" + token.getSourceString() + "' at line " + std::to_string(token.getLine()) + ", column " + std::to_string(token.getColumn()));
             return nullptr;
     }
-    // unreachable
-    this->errorMessages.push_back("Unexpected token '" + token.getSourceString() + "' at line " + std::to_string(token.getLine()) + ", column " + std::to_string(token.getColumn()));
-    return nullptr;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr<ExpressionNode> lhs, int minPrecedence = 0) {
+    auto lookahead = this->peek();
+    while (IS_TOKENNAME_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) >= minPrecedence) {
+        auto operatorTokenOpt = this->expectAndAdvance(lookahead.getTokenName());
+        if (!operatorTokenOpt) {
+            // unreachable
+            this->errorMessages.push_back("Expected operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+        std::unique_ptr<ExpressionNode> rhs = this->parsePrimaryExpression();
+        if (!rhs) {
+            this->errorMessages.push_back("Failed to parse right-hand side expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+        lookahead = this->peek();
+        while (
+            (IS_TOKENNAME_BINARY_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) > getPrecedence(operatorTokenOpt.value().getTokenName()))
+            ||
+            (IS_TOKENNAME_BINARY_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) == getPrecedence(operatorTokenOpt.value().getTokenName()) && getAssociativity(lookahead.getTokenName()) == RIGHT_ASSOCIATIVE)
+        ) {
+            auto nextPrecedenceAddition = getPrecedence(lookahead.getTokenName()) > getPrecedence(operatorTokenOpt.value().getTokenName()) ? 1 : 0;
+            rhs = this->parseExpressionClimbing(std::move(rhs), getPrecedence(operatorTokenOpt.value().getTokenName()) + nextPrecedenceAddition);
+            if (!rhs) {
+                this->errorMessages.push_back("Failed to parse right-hand side expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            lookahead = this->peek(1);
+        }
+        if (!IS_TOKENNAME_BINARY_OPERATOR(operatorTokenOpt.value().getTokenName())) {
+            this->errorMessages.push_back("Expected binary operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+        lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::make_unique<Token>(operatorTokenOpt.value()));
+    }
+    return lhs;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseExpression() {
+    auto token = this->peek();
+    if (this->peek(1).getTokenName() == TokenName::Equal) {
+        auto assignmentExpressionNode = this->parseAssignmentExpression();
+        if (!assignmentExpressionNode) {
+            this->errorMessages.push_back("Failed to parse assignment expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+        return assignmentExpressionNode;
+    }
+    auto primaryExpressionNode = this->parsePrimaryExpression();
+    if (!primaryExpressionNode) {
+        this->errorMessages.push_back("Failed to parse primary expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
+    return this->parseExpressionClimbing(std::move(primaryExpressionNode), 0);
 }

@@ -22,6 +22,7 @@ std::string tokenNameToString(const TokenName &name) {
         case Plus: return "Plus";
         case Minus: return "Minus";
         case Asterisk: return "Asterisk";
+        case AsteriskAsterisk: return "AsteriskAsterisk";
         case Slash: return "Slash";
         case Equal: return "Equal";
         case LessThan: return "LessThan";
@@ -42,6 +43,58 @@ std::string tokenNameToString(const TokenName &name) {
         case KeywordContinue: return "KeywordContinue";
         case KeywordBreak: return "KeywordBreak";
         case KeywordVar: return "KeywordVar";
+    }
+}
+
+int getPrecedence(const TokenName &tokenName) {
+    switch (tokenName) {
+        /*case TokenName::Not:
+            return 9;*/
+            // Unary operators are handled separately in the parser, so we don't assign them a precedence here
+        case TokenName::AsteriskAsterisk:
+            return 8;
+        case TokenName::Asterisk:
+        case TokenName::Slash:
+            return 7;
+        case TokenName::Plus:
+        case TokenName::Minus:
+            return 6;
+        case TokenName::Equal:
+            return 5;
+        case TokenName::LessThan:
+        case TokenName::GreaterThan:
+        case TokenName::LessThanEqual:
+        case TokenName::GreaterThanEqual:
+            return 4;
+        case TokenName::EqualEqual:
+        case TokenName::NotEqual:
+            return 3;
+        case TokenName::And:
+            return 2;
+        case TokenName::Or:
+            return 1;
+        default: return -1;
+    }
+}
+
+bool getAssociativity(const TokenName &tokenName) {
+    switch (tokenName) {
+        case TokenName::Not:
+        case TokenName::Equal:
+        case TokenName::AsteriskAsterisk:
+            return false; // right associative
+        case TokenName::Plus:
+        case TokenName::Minus:
+        case TokenName::Asterisk:
+        case TokenName::Slash:
+        case TokenName::EqualEqual:
+        case TokenName::NotEqual:
+        case TokenName::LessThan:
+        case TokenName::GreaterThan:
+        case TokenName::LessThanEqual:
+        case TokenName::GreaterThanEqual:
+            return true; // left associative
+        default: return true; // default to left associative
     }
 }
 
