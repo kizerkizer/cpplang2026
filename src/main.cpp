@@ -184,6 +184,7 @@ int main () {
     }
     std::vector<Token> nonTrivialTokens;
     std::copy_if(tokens.begin(), tokens.end(), std::back_inserter(nonTrivialTokens), [](const Token& token) {
+        std::print("Token: {}, Index: {}, Line: {}, Column: {}\n", token.toString(), token.getIndex(), token.getLine(), token.getColumn());
         return !IS_TOKENNAME_TRIVIA(token.getTokenName());
     });
     Parser parser(nonTrivialTokens, errorMessages);
