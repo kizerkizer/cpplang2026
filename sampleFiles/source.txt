@@ -6,3 +6,9 @@ function foo () {
     }
     return baz;
 }
+
+var lol = 12345;
+
+if (lol) {
+    return "bar";
+}

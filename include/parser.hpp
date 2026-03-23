@@ -33,13 +33,13 @@ private:
     std::optional<Token> matchAndAdvance(const TokenName& expectedTokenName);
     bool isPastTokensEnd() const;
     void skipTrivia();
-    std::unique_ptr<ProgramNode> parseProgram(bool insideBlock = false, bool insideWhile = false); // TODO add insideFunction
+    std::unique_ptr<ProgramNode> parseProgram(bool insideBlock = false, bool insideWhile = false, bool insideFunction = false); // TODO add insideFunction
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<FunctionDeclarationNode> parseFunctionDeclaration();
     std::unique_ptr<IfStatementNode> parseIfStatement();
     std::unique_ptr<WhileStatementNode> parseWhileStatement();
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
-    std::unique_ptr<BlockStatementNode> parseBlockStatement(bool insideWhile = false);
+    std::unique_ptr<BlockStatementNode> parseBlockStatement(bool insideWhile = false, bool insideFunction = false);
     std::unique_ptr<BreakStatementNode> parseBreakStatement();
     std::unique_ptr<ContinueStatementNode> parseContinueStatement();
     std::unique_ptr<FunctionCallStatementNode> parseFunctionCallStatement();
