@@ -3,8 +3,9 @@
 
 enum class TokenName {
     OutOfRange,
-    Whitespace,
-    Comment,
+    TriviaWhitespace,
+    TriviaCommentShort,
+    TriviaCommentLong,
     Identifier,
     IntegerLiteral,
     StringLiteral,
@@ -44,7 +45,7 @@ enum class TokenName {
 
 #define IS_TOKENNAME_LITERAL(tokenName) (tokenName == TokenName::IntegerLiteral || tokenName == TokenName::StringLiteral)
 #define IS_TOKENNAME_KEYWORD(tokenName) (tokenName == TokenName::KeywordIf || tokenName == TokenName::KeywordElse || tokenName == TokenName::KeywordClass || tokenName == TokenName::KeywordWhile || tokenName == TokenName::KeywordFunction || tokenName == TokenName::KeywordReturn || tokenName == TokenName::KeywordVar)
-#define IS_TOKENNAME_TRIVIA(tokenName) (tokenName == TokenName::Whitespace || tokenName == TokenName::Comment)
+#define IS_TOKENNAME_TRIVIA(tokenName) (tokenName == TokenName::TriviaWhitespace || tokenName == TokenName::TriviaCommentShort || tokenName == TokenName::TriviaCommentLong)
 
 std::string tokenNameToString (const TokenName &name);
 

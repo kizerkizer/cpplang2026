@@ -4,8 +4,9 @@ std::string tokenNameToString(const TokenName &name) {
     switch (name) {
         using enum TokenName;
         case OutOfRange: return "OutOfRange";
-        case Whitespace: return "Whitespace";
-        case Comment: return "Comment";
+        case TriviaWhitespace: return "Whitespace";
+        case TriviaCommentShort: return "CommentShort";
+        case TriviaCommentLong: return "CommentLong";
         case Identifier: return "Identifier";
         case IntegerLiteral: return "IntegerLiteral";
         case StringLiteral: return "StringLiteral";

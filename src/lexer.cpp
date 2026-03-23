@@ -105,7 +105,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         if (isNewline(this->getCharacter())) {
             this->advance();
             this->line++;
-            this->column = 1; // TODO change to resetColumn()
+            this->column = 1;
             continue;
         }
         if (isWhitespace(this->getCharacter())) {
@@ -113,9 +113,38 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::Whitespace);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaWhitespace);
             continue;
         }
+        // Single line comment
+        if (this->getCharacter() == '/' && this->getCharacter(1) == '/') {
+            auto [startIndex, startLine, startColumn] = this->getCounters();
+            while (!isNewline(this->getCharacter()) && !this->isPastSourceStringEnd()) {
+                this->advance();
+            }
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaCommentShort);
+            continue;
+        }
+        // Multi line comment
+        if (this->getCharacter() == '/' && this->getCharacter(1) == '*') {
+            auto [startIndex, startLine, startColumn] = this->getCounters();
+            this->advance(2);
+            while (!(this->getCharacter() == '*' && this->getCharacter(1) == '/') && !this->isPastSourceStringEnd()) {
+                if (isNewline(this->getCharacter())) {
+                    this->line++;
+                    this->column = 1;
+                }
+                this->advance();
+            }
+            if (this->isPastSourceStringEnd()) {
+                errorMessages_out.push_back(this->makeErrorMessage("Unterminated comment starting at line " + std::to_string(startLine) + ", column " + std::to_string(startColumn)));
+                return tokens;
+            }
+            this->advance(2);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaCommentLong);
+            continue;
+        }
+        // Keywords
         for (const auto& [keyword, tokenName] : keywords) {
             if (sourceString.compare(this->index, keyword.size(), keyword) == 0) {
                 tokens.emplace_back(keyword, this->index, this->line, this->column, tokenName);
@@ -123,6 +152,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 goto nextIteration;
             }
         }
+        // Identifier
         if (isIdentifierStart(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
@@ -132,6 +162,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::Identifier);
             continue;
         }
+        // String literal
         if (isDoubleQuote(c)) {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
@@ -159,6 +190,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::IntegerLiteral);
             continue;
         }
+        // Operators
         for (const auto& [op, tokenName] : operators) {
             if (sourceString.compare(this->index, op.size(), op) == 0) {
                 tokens.emplace_back(op, this->index, this->line, this->column, tokenName);
@@ -166,6 +198,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 goto nextIteration;
             }
         }
+        // Punctuators
         for (const auto& [punctuator, tokenName] : punctuators) {
             if (this->getCharacter() == punctuator[0]) {
                 tokens.emplace_back(punctuator, this->index, this->line, this->column, tokenName);

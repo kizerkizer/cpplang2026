@@ -8,9 +8,6 @@
 
 // TODO figure this out
 void Parser::skipTrivia() {
-    while (!this->isPastTokensEnd() && (this->peek() == TokenName::Whitespace || this->peek() == TokenName::Comment)) {
-        this->index++;
-    }
 }   
 
 Token Parser::peek(int offset) const {

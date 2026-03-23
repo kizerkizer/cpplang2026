@@ -1,8 +1,12 @@
 function foo () {
     var baz = "baz";
-    var qux = 1053;
+    var qux = 1053; // Some comment :-)
     while (5) {
         log("Foo bar!");
+        /*
+         * Another comment (-:
+         !
+         */
     }
     return baz;
 }

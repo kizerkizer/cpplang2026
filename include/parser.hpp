@@ -32,7 +32,6 @@ private:
      */
     std::optional<Token> matchAndAdvance(const TokenName& expectedTokenName);
     bool isPastTokensEnd() const;
-    void skipTrivia();
     std::unique_ptr<ProgramNode> parseProgram(bool insideBlock = false, bool insideWhile = false, bool insideFunction = false); // TODO add insideFunction
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<FunctionDeclarationNode> parseFunctionDeclaration();
