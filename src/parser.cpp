@@ -6,10 +6,6 @@
 #include <optional>
 #include <string>
 
-// TODO figure this out
-void Parser::skipTrivia() {
-}   
-
 Token Parser::peek(int offset) const {
     if (this->index + offset >= this->tokens.size()) {
         return Token("", -1, -1, -1, TokenName::OutOfRange);
