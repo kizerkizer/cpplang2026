@@ -39,7 +39,10 @@ void Lexer::advance(const int &steps = 1) {
 
 void Lexer::advanceLine() {
     this->line++;
-    this->column = 1;
+}
+
+std::tuple<size_t, size_t, size_t> Lexer::getCounters() const {
+    return {this->index, this->line, this->column};
 }
 
 std::map<std::string, TokenName> keywords = {
@@ -104,16 +107,17 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
     while (!this->isPastSourceStringEnd()) {
         char c = this->getCharacter();
         if (isNewline(this->getCharacter())) {
-            this->advanceLine();
             this->advance();
+            this->line++;
+            this->column = 1; // TODO change to resetColumn()
             continue;
         }
         if (isWhitespace(this->getCharacter())) {
-            size_t startIndex = this->index;
+            auto [startIndex, startLine, startColumn] = this->getCounters();
             while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), this->index, this->line, this->column, TokenName::Whitespace);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::Whitespace);
             continue;
         }
         for (const auto& [keyword, tokenName] : keywords) {
@@ -124,16 +128,16 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             }
         }
         if (isIdentifierStart(this->getCharacter())) {
-            size_t startIndex = this->index;
+            auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
             while (isIdentifierPart(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), this->index, this->line, this->column, TokenName::Identifier);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::Identifier);
             continue;
         }
         if (isDoubleQuote(c)) {
-            size_t startIndex = this->index;
+            auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
             while (!isDoubleQuote(this->getCharacter())) {
                 if (isNewline(this->getCharacter()) || this->isPastSourceStringEnd()) {
@@ -147,16 +151,16 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 this->advance();
             }
             this->advance();
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), this->index, this->line, this->column, TokenName::StringLiteral);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::StringLiteral);
             continue;
         }
         if (isIntegerLiteral(c)) {
-            size_t startIndex = this->index;
+            auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
             while (isIntegerLiteral(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), this->index, this->line, this->column, TokenName::IntegerLiteral);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::IntegerLiteral);
             continue;
         }
         for (const auto& [op, tokenName] : operators) {

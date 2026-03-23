@@ -14,7 +14,7 @@ private:
     int line = 1;
     int column = 1;
     void advance(const int &steps);
-    void advanceLine();
+    std::tuple<size_t, size_t, size_t> getCounters() const;
     char getCharacter (const int &offset) const;
     bool isPastSourceStringEnd () const;
     std::string makeErrorMessage(const std::string& message) const;
