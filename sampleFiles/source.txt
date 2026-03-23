@@ -21,4 +21,7 @@ var bar = 59 && 24 || 12 && 5;
 
 function bbb () {
     return "bar" + lol + bar;
+    while (35) {
+        return "bar" || qux;
+    }
 }

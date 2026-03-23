@@ -30,6 +30,36 @@ std::optional<Token> Parser::expectAndAdvance(const TokenName& expectedTokenName
     return token;
 }
 
+void Parser::enterLoop() {
+    this->insideLoop++;
+}
+
+void Parser::exitLoop() {
+    if (this->insideLoop > 0) {
+        this->insideLoop--;
+    }
+}
+
+void Parser::enterFunction() {
+    this->insideFunction++;
+}
+
+void Parser::exitFunction() {
+    if (this->insideFunction > 0) {
+        this->insideFunction--;
+    }
+}
+
+void Parser::enterBlock() {
+    this->insideBlock++;
+}
+
+void Parser::exitBlock() {
+    if (this->insideBlock > 0) {
+        this->insideBlock--;
+    }
+}
+
 std::unique_ptr<Node> Parser::parse() {
     auto programOpt = this->parseProgram();
     if (!programOpt) {
@@ -38,7 +68,7 @@ std::unique_ptr<Node> Parser::parse() {
     return programOpt;
 }
 
-std::unique_ptr<ProgramNode> Parser::parseProgram(bool insideBlock, bool insideWhile, bool insideFunction) {
+std::unique_ptr<ProgramNode> Parser::parseProgram() {
     std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>();
     while (!this->isPastTokensEnd()) {
         auto token = this->peek();
@@ -75,7 +105,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool insideBlock, bool insideW
                 break;
             }
             case TokenName::KeywordReturn: {
-                if (!insideFunction) {
+                if (!this->insideFunction) {
                     this->errorMessages.push_back("Unexpected 'return' statement outside of function at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
@@ -88,7 +118,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool insideBlock, bool insideW
                 break;
             }
             case TokenName::KeywordBreak: {
-                if (!insideWhile) {
+                if (!this->insideLoop) {
                     this->errorMessages.push_back("Unexpected 'break' statement outside of while loop at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
@@ -101,7 +131,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool insideBlock, bool insideW
                 break;
             }
             case TokenName::KeywordContinue: {
-                if (!insideWhile) {
+                if (!this->insideLoop) {
                     this->errorMessages.push_back("Unexpected 'continue' statement outside of while loop at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
@@ -158,7 +188,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool insideBlock, bool insideW
                 return program;
         }
     }
-    if (insideBlock) {
+    if (this->insideBlock) {
         this->errorMessages.push_back("Expected '}' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return program;
     }
@@ -200,7 +230,6 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
 std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
     auto functionToken = this->expectAndAdvance(TokenName::KeywordFunction);
     if (!functionToken) {
-
         this->errorMessages.push_back("Expected 'function' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
     }
@@ -233,7 +262,9 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         this->errorMessages.push_back("Expected ')' after parameter list at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
     }
-    auto bodyNode = this->parseBlockStatement(false, true);
+    this->enterFunction();
+    auto bodyNode = this->parseBlockStatement();
+    this->exitFunction();
     if (!bodyNode) {
         this->errorMessages.push_back("Failed to parse function body at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
@@ -304,7 +335,9 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
         this->errorMessages.push_back("Expected ')' after while statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
     }
-    auto bodyNode = this->parseBlockStatement(true);
+    this->enterLoop();
+    auto bodyNode = this->parseBlockStatement();
+    this->exitLoop();
     if (!bodyNode) {
         this->errorMessages.push_back("Failed to parse while statement body at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
@@ -328,9 +361,11 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     return returnStatement;
 }
 
-std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement(bool insideWhile, bool insideFunction) {
+std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
     this->expectAndAdvance(TokenName::BraceOpen);
-    auto programNode = Parser::parseProgram(true, insideWhile, insideFunction);
+    this->enterBlock();
+    auto programNode = Parser::parseProgram();
+    this->exitBlock();
     if (!programNode) {
         this->errorMessages.push_back("Failed to parse block statement program node at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
