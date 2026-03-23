@@ -1,0 +1,8 @@
+function foo () {
+    var baz = "baz";
+    var qux = 1053;
+    while (5) {
+        log("Foo bar!");
+    }
+    return baz;
+}
