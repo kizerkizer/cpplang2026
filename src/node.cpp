@@ -128,6 +128,15 @@ int NumberLiteralNode::getValue() const {
     return std::stoi(this->numberLiteralToken->getSourceString());
 }
 
+// BooleanLiteralNode
+Token* BooleanLiteralNode::getBooleanLiteralToken() const {
+    return this->booleanLiteralToken.get();
+}
+
+bool BooleanLiteralNode::getValue() const {
+    return this->booleanLiteralToken->getSourceString() == "true";
+}
+
 //StringLiteralNode
 std::string StringLiteralNode::getValue() const {
     return this->stringLiteralToken->getSourceString();

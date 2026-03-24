@@ -8,6 +8,7 @@ std::string tokenNameToString(const TokenName &name) {
         case TriviaCommentShort: return "CommentShort";
         case TriviaCommentLong: return "CommentLong";
         case Identifier: return "Identifier";
+        case BooleanLiteral: return "BooleanLiteral";
         case IntegerLiteral: return "IntegerLiteral";
         case StringLiteral: return "StringLiteral";
         case Dot: return "Dot";

@@ -172,6 +172,13 @@ void printParseTree (const Node& node, int indentation) {
             printParseTree(*nodeCast.getOperand(), indentation + 1);
             break;
         }
+        case NodeType::BooleanLiteral: {
+            const auto& nodeCast = static_cast<const BooleanLiteralNode&>(node);
+            std::print("{}BooleanLiteralNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Value:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast.getValue() ? "true" : "false");
+            break;
+        }
         /*default:
             std::print("{}Unknown node type\n", std::string(indentation * 2, ' '));
             break;*/

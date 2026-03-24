@@ -9,6 +9,7 @@ enum class TokenName {
     Identifier,
     IntegerLiteral,
     StringLiteral,
+    BooleanLiteral,
     Dot,
     Comma,
     Semicolon,
@@ -44,11 +45,10 @@ enum class TokenName {
     KeywordVar,
 };
 
-#define IS_TOKENNAME_LITERAL(tokenName) (tokenName == TokenName::IntegerLiteral || tokenName == TokenName::StringLiteral)
+#define IS_TOKENNAME_LITERAL(tokenName) (tokenName == TokenName::IntegerLiteral || tokenName == TokenName::StringLiteral || tokenName == TokenName::BooleanLiteral)
 #define IS_TOKENNAME_KEYWORD(tokenName) (tokenName == TokenName::KeywordIf || tokenName == TokenName::KeywordElse || tokenName == TokenName::KeywordClass || tokenName == TokenName::KeywordWhile || tokenName == TokenName::KeywordFunction || tokenName == TokenName::KeywordReturn || tokenName == TokenName::KeywordVar)
 #define IS_TOKENNAME_TRIVIA(tokenName) (tokenName == TokenName::TriviaWhitespace || tokenName == TokenName::TriviaCommentShort || tokenName == TokenName::TriviaCommentLong)
 #define IS_TOKENNAME_OPERATOR(tokenName) (tokenName == TokenName::Plus || tokenName == TokenName::Minus || tokenName == TokenName::Asterisk || tokenName == TokenName::Slash || tokenName == TokenName::Equal || tokenName == TokenName::LessThan || tokenName == TokenName::GreaterThan || tokenName == TokenName::EqualEqual || tokenName == TokenName::NotEqual || tokenName == TokenName::LessThanEqual || tokenName == TokenName::GreaterThanEqual || tokenName == TokenName::And || tokenName == TokenName::Or || tokenName == TokenName::Not || tokenName == TokenName::AsteriskAsterisk)
-//#define IS_TOKENNAME_UNARY_OPERATOR(tokenName) (tokenName == TokenName::Not || tokenName == TokenName::Minus)
 #define IS_TOKENNAME_BINARY_OPERATOR(tokenName) (tokenName == TokenName::Plus || tokenName == TokenName::Minus || tokenName == TokenName::Asterisk || tokenName == TokenName::Slash || tokenName == TokenName::Equal || tokenName == TokenName::LessThan || tokenName == TokenName::GreaterThan || tokenName == TokenName::EqualEqual || tokenName == TokenName::NotEqual || tokenName == TokenName::LessThanEqual || tokenName == TokenName::GreaterThanEqual || tokenName == TokenName::And || tokenName == TokenName::Or || tokenName == TokenName::AsteriskAsterisk)
 #define LEFT_ASSOCIATIVE true
 #define RIGHT_ASSOCIATIVE false

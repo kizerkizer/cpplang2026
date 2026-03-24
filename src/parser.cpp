@@ -510,6 +510,16 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
             return identifierNode;
         }
+        case TokenName::BooleanLiteral: {
+            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenName::BooleanLiteral);
+            if (!booleanLiteralTokenOpt) {
+                // unreachable
+                this->errorMessages.push_back("Expected boolean literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::make_unique<Token>(booleanLiteralTokenOpt.value()));
+            return booleanLiteralNode;
+        }
         case TokenName::IntegerLiteral: {
             auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::IntegerLiteral);
             if (!integerLiteralTokenOpt) {

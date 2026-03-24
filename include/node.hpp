@@ -55,6 +55,7 @@ enum class NodeType {
     Identifier,
     NumberLiteral,
     StringLiteral,
+    BooleanLiteral,
     //ObjectLiteral, // TODO later
     //ArrayLiteral, // TODO later
     AssignmentExpression,
@@ -224,6 +225,15 @@ public:
     Token* getStringLiteralToken() const;
 private:
     std::unique_ptr<Token> stringLiteralToken;
+};
+
+class BooleanLiteralNode : public PrimaryExpressionNode {
+public:
+    BooleanLiteralNode(std::unique_ptr<Token> booleanLiteralToken) : PrimaryExpressionNode(NodeType::BooleanLiteral), booleanLiteralToken(std::move(booleanLiteralToken)) {};
+    bool getValue() const;
+    Token* getBooleanLiteralToken() const;
+private:
+    std::unique_ptr<Token> booleanLiteralToken;
 };
 
 class NumberLiteralNode : public PrimaryExpressionNode {

@@ -53,6 +53,11 @@ std::map<std::string, TokenName> keywords = {
     {"var", TokenName::KeywordVar},
 };
 
+std::map<std::string, TokenName> specialValues = {
+    {"true", TokenName::BooleanLiteral},
+    {"false", TokenName::BooleanLiteral},
+};
+
 std::map<std::string, TokenName> operators = {
     {"==", TokenName::EqualEqual},
     {"!=", TokenName::NotEqual},
@@ -150,6 +155,14 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             if (sourceString.compare(this->index, keyword.size(), keyword) == 0) {
                 tokens.emplace_back(keyword, this->index, this->line, this->column, tokenName);
                 this->advance(keyword.size());
+                goto nextIteration;
+            }
+        }
+        // Special values
+        for (const auto& [value, tokenName] : specialValues) {
+            if (sourceString.compare(this->index, value.size(), value) == 0) {
+                tokens.emplace_back(value, this->index, this->line, this->column, tokenName);
+                this->advance(value.size());
                 goto nextIteration;
             }
         }
