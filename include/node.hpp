@@ -71,6 +71,7 @@ public:
     NodeType getNodeType() const;
     bool operator==(const NodeType& rhs) const;
     bool operator!=(const NodeType& rhs) const;
+    virtual const std::vector<const Node*> getChildren() const = 0;
 private:
     NodeType nodeType;
 };
@@ -78,15 +79,18 @@ private:
 class InvalidNode : public Node {
 public:
     InvalidNode() : Node(NodeType::Invalid) {};
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 };
 
 class ProgramNode : public Node {
 public:
     ProgramNode() : Node(NodeType::Program) {};
-    const std::vector<std::unique_ptr<Node>>& getChildren() const;
-    void addChild(std::unique_ptr<Node> child);
+    void addNode(std::unique_ptr<Node> child);
+    const std::vector<const Node*> getChildren() const override;
 private:
-    std::vector<std::unique_ptr<Node>> children;
+    std::vector<std::unique_ptr<Node>> nodes;
 };
 
 class ExpressionNode : public Node {
@@ -95,7 +99,8 @@ public:
 };
 
 class PrimaryExpressionNode : public ExpressionNode {
-public:    PrimaryExpressionNode(NodeType type) : ExpressionNode(type) {};
+public:
+    PrimaryExpressionNode(NodeType type) : ExpressionNode(type) {};
 };
 
 class IdentifierNode : public PrimaryExpressionNode {
@@ -103,16 +108,18 @@ public:
     IdentifierNode(std::unique_ptr<Token> identifierToken) : PrimaryExpressionNode(NodeType::Identifier), identifierToken(std::move(identifierToken)) {};
     std::string getName() const;
     Token* getIdentifierToken() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<Token> identifierToken;
 };
 
 class AssignmentExpressionNode : public ExpressionNode {
 public:
-    AssignmentExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<ExpressionNode> expression) : ExpressionNode(NodeType::AssignmentExpression), identifier(std::move(identifier)), expression(std::move(expression)) {};
+    AssignmentExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<ExpressionNode> expression);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
     ExpressionNode* getExpression() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<IdentifierNode> identifier;
     std::unique_ptr<ExpressionNode> expression;
@@ -120,10 +127,11 @@ private:
 
 class VariableDeclarationNode : public Node {
 public:
-    VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<AssignmentExpressionNode> assignmentExpression) : Node(NodeType::VariableDeclaration), identifier(std::move(identifier)), assignmentExpression(std::move(assignmentExpression)) {};
+    VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
     AssignmentExpressionNode* getAssignmentExpression() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<IdentifierNode> identifier;
     std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
@@ -131,19 +139,21 @@ private:
 
 class BlockStatementNode : public Node {
 public:
-    BlockStatementNode(std::unique_ptr<ProgramNode> programNode) : Node(NodeType::BlockStatement), programNode(std::move(programNode)) {};
+    BlockStatementNode(std::unique_ptr<ProgramNode> programNode);
     ProgramNode* getProgramNode() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<ProgramNode> programNode;
 };
 
 class FunctionDeclarationNode : public Node {
 public:
-    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode) : Node(NodeType::FunctionDeclaration), identifier(std::move(identifier)), parameters(std::move(parameters)), bodyNode(std::move(bodyNode)) {};
+    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
-    const std::vector<std::unique_ptr<IdentifierNode>>& getParameters() const;
+    const std::vector<const IdentifierNode*> getParameters() const;
     BlockStatementNode* getBody() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<IdentifierNode> identifier;
     std::vector<std::unique_ptr<IdentifierNode>> parameters;
@@ -154,8 +164,9 @@ class IfStatementNode : public Node {
 public:
     IfStatementNode(std::unique_ptr<ExpressionNode> condition, std::unique_ptr<Node> thenBranch, std::unique_ptr<Node> elseBranch) : Node(NodeType::IfStatement), condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {};
     ExpressionNode* getCondition() const;
-    Node* getThenBranch() const; // TODO maybe not 'Node'
+    Node* getThenBranch() const;
     Node* getElseBranch() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<ExpressionNode> condition;
     std::unique_ptr<Node> thenBranch;
@@ -167,6 +178,7 @@ public:
     WhileStatementNode(std::unique_ptr<ExpressionNode> condition, std::unique_ptr<BlockStatementNode> body) : Node(NodeType::WhileStatement), condition(std::move(condition)), body(std::move(body)) {};
     ExpressionNode* getCondition() const;
     BlockStatementNode* getBody() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<ExpressionNode> condition;
     std::unique_ptr<BlockStatementNode> body;
@@ -175,17 +187,24 @@ private:
 class BreakStatementNode : public Node {
 public:
     BreakStatementNode() : Node(NodeType::BreakStatement) {};
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 };
 
 class ContinueStatementNode : public Node {
 public:
     ContinueStatementNode() : Node(NodeType::ContinueStatement) {};
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 };
 
 class ReturnStatementNode : public Node {
 public:
     ReturnStatementNode(std::unique_ptr<ExpressionNode> expression) : Node(NodeType::ReturnStatement), expression(std::move(expression)) {};
     ExpressionNode* getExpression() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<ExpressionNode> expression;
 };
@@ -195,6 +214,7 @@ public:
     AssignmentStatementNode(std::unique_ptr<AssignmentExpressionNode> assignmentExpression) : Node(NodeType::AssignmentStatement), assignmentExpression(std::move(assignmentExpression)) {};
     IdentifierNode* getIdentifier() const;
     AssignmentExpressionNode* getAssignmentExpression() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<IdentifierNode> identifier;
     std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
@@ -204,7 +224,8 @@ class FunctionCallExpressionNode : public PrimaryExpressionNode {
 public:
     FunctionCallExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<ExpressionNode>> argumentNodes) : PrimaryExpressionNode(NodeType::FunctionCallExpression), identifier(std::move(identifier)), argumentNodes(std::move(argumentNodes)) {};
     IdentifierNode* getIdentifier() const;
-    const std::vector<std::unique_ptr<ExpressionNode>>& getArgumentNodes() const;
+    const std::vector<const ExpressionNode*> getArgumentNodes() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<IdentifierNode> identifier;
     std::vector<std::unique_ptr<ExpressionNode>> argumentNodes;
@@ -214,6 +235,7 @@ class FunctionCallStatementNode : public Node {
 public:
     FunctionCallStatementNode(std::unique_ptr<FunctionCallExpressionNode> functionCallExpression) : Node(NodeType::FunctionCallStatement), functionCallExpression(std::move(functionCallExpression)) {};
     FunctionCallExpressionNode* getFunctionCallExpression() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<FunctionCallExpressionNode> functionCallExpression;
 };
@@ -223,6 +245,9 @@ public:
     StringLiteralNode(std::unique_ptr<Token> stringLiteralToken) : PrimaryExpressionNode(NodeType::StringLiteral), stringLiteralToken(std::move(stringLiteralToken)) {};
     std::string getValue() const;
     Token* getStringLiteralToken() const;
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 private:
     std::unique_ptr<Token> stringLiteralToken;
 };
@@ -232,6 +257,9 @@ public:
     BooleanLiteralNode(std::unique_ptr<Token> booleanLiteralToken) : PrimaryExpressionNode(NodeType::BooleanLiteral), booleanLiteralToken(std::move(booleanLiteralToken)) {};
     bool getValue() const;
     Token* getBooleanLiteralToken() const;
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 private:
     std::unique_ptr<Token> booleanLiteralToken;
 };
@@ -241,6 +269,9 @@ public:
     NumberLiteralNode(std::unique_ptr<Token> numberLiteralToken) : PrimaryExpressionNode(NodeType::NumberLiteral), numberLiteralToken(std::move(numberLiteralToken)) {};
     int getValue() const;
     Token* getNumberLiteralToken() const;
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
 private:
     std::unique_ptr<Token> numberLiteralToken;
 };
@@ -251,6 +282,7 @@ public:
     ExpressionNode* getLeft() const;
     ExpressionNode* getRight() const;
     Token* getOperatorToken() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<ExpressionNode> left;
     std::unique_ptr<ExpressionNode> right;
@@ -262,6 +294,7 @@ public:
     UnaryOperatorExpressionNode(std::unique_ptr<PrimaryExpressionNode> operand, std::unique_ptr<Token> operatorToken) : PrimaryExpressionNode(NodeType::UnaryOperatorExpression), operand(std::move(operand)), operatorToken(std::move(operatorToken)) {};
     PrimaryExpressionNode* getOperand() const;
     Token* getOperatorToken() const;
+    const std::vector<const Node*> getChildren() const override;
 private:
     std::unique_ptr<PrimaryExpressionNode> operand;
     std::unique_ptr<Token> operatorToken;

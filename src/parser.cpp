@@ -83,7 +83,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse variable declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordFunction: {
@@ -92,7 +92,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse function declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordIf: {
@@ -101,7 +101,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse if statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordReturn: {
@@ -114,7 +114,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse return statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordBreak: {
@@ -127,7 +127,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse break statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordContinue: {
@@ -140,7 +140,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse continue statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::KeywordWhile: {
@@ -149,7 +149,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse while statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::BraceOpen: {
@@ -158,7 +158,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     this->errorMessages.push_back("Failed to parse block statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                     return program;
                 }
-                program->addChild(std::move(node));
+                program->addNode(std::move(node));
                 break;
             }
             case TokenName::Identifier: {
@@ -168,7 +168,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                         this->errorMessages.push_back("Failed to parse variable declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                         return program;
                     }
-                    program->addChild(std::move(node));
+                    program->addNode(std::move(node));
                     break;
                 } else if (this->peek(1) == TokenName::ParenthesisOpen) {
                     auto node = this->parseFunctionCallStatement();
@@ -176,7 +176,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                         this->errorMessages.push_back("Failed to parse function call statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
                         return program;
                     }
-                    program->addChild(std::move(node));
+                    program->addNode(std::move(node));
                     break;
                 } else {
                     this->errorMessages.push_back("Unexpected token '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
