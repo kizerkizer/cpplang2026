@@ -298,6 +298,10 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
         this->errorMessages.push_back("Expected ')' after if statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
         return nullptr;
     }
+    if (!this->expectAndAdvance(TokenName::KeywordThen)) {
+        this->errorMessages.push_back("Expected 'then' after if statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
     auto thenBranchNode = this->parseBlockStatement();
     if (!thenBranchNode) {
         this->errorMessages.push_back("Failed to parse if statement then branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
@@ -510,8 +514,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
             return identifierNode;
         }
-        case TokenName::BooleanLiteral: {
-            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenName::BooleanLiteral);
+        case TokenName::LiteralBoolean: {
+            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralBoolean);
             if (!booleanLiteralTokenOpt) {
                 // unreachable
                 this->errorMessages.push_back("Expected boolean literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
@@ -520,8 +524,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::make_unique<Token>(booleanLiteralTokenOpt.value()));
             return booleanLiteralNode;
         }
-        case TokenName::IntegerLiteral: {
-            auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::IntegerLiteral);
+        case TokenName::LiteralInteger: {
+            auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralInteger);
             if (!integerLiteralTokenOpt) {
                 // unreachable
                 this->errorMessages.push_back("Expected integer literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
@@ -530,8 +534,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::make_unique<Token>(integerLiteralTokenOpt.value()));
             return integerLiteralNode;
         }
-        case TokenName::StringLiteral: {
-            auto stringLiteralTokenOpt = this->expectAndAdvance(TokenName::StringLiteral);
+        case TokenName::LiteralString: {
+            auto stringLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralString);
             if (!stringLiteralTokenOpt) {
                 // unreachable
                 this->errorMessages.push_back("Expected string literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
@@ -539,6 +543,16 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             }
             std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::make_unique<Token>(stringLiteralTokenOpt.value()));
             return stringLiteralNode;
+        }
+        case TokenName::LiteralEmpty: {
+            auto emptyLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralEmpty);
+            if (!emptyLiteralTokenOpt) {
+                // unreachable
+                this->errorMessages.push_back("Expected 'empty' literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                return nullptr;
+            }
+            std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::make_unique<Token>(emptyLiteralTokenOpt.value()));
+            return emptyLiteralNode;
         }
         case TokenName::Not: {
             auto operatorTokenOpt = this->expectAndAdvance(TokenName::Not);
@@ -555,8 +569,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
             return unaryOperatorNode;
         }
-        case TokenName::Minus: {
-            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Minus);
+        case TokenName::Dash: {
+            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Dash);
             if (!operatorTokenOpt) {
                 // unreachable
                 this->errorMessages.push_back("Expected '-' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
@@ -613,6 +627,39 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
     return lhs;
 }
 
+std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
+    auto ifToken = this->expectAndAdvance(TokenName::KeywordIf);
+    if (!ifToken) {
+        this->errorMessages.push_back("Expected 'if' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
+    auto conditionNode = this->parseExpression();
+    if (!conditionNode) {
+        this->errorMessages.push_back("Failed to parse if expression condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
+    if (!this->expectAndAdvance(TokenName::KeywordThen)) {
+        this->errorMessages.push_back("Expected 'then' after if expression condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
+    auto thenBranchNode = this->parseExpression();
+    if (!thenBranchNode) {
+        this->errorMessages.push_back("Failed to parse if expression then branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        return nullptr;
+    }
+    std::unique_ptr<ExpressionNode> elseBranchNode = nullptr;
+    if (this->peek() == TokenName::KeywordElse) {
+        this->expectAndAdvance(TokenName::KeywordElse);
+        elseBranchNode = this->parseExpression();
+        if (!elseBranchNode) {
+            this->errorMessages.push_back("Failed to parse if expression else branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+    }
+    auto ifExpression = std::make_unique<IfExpressionNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode));
+    return ifExpression;
+}
+
 std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     auto token = this->peek();
     if (this->peek(1).getTokenName() == TokenName::Equal) {
@@ -622,6 +669,14 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
             return nullptr;
         }
         return assignmentExpressionNode;
+    }
+    if (token == TokenName::KeywordIf) {
+        auto ifExpressionNode = this->parseIfExpression();
+        if (!ifExpressionNode) {
+            this->errorMessages.push_back("Failed to parse if expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            return nullptr;
+        }
+        return ifExpressionNode;
     }
     auto primaryExpressionNode = this->parsePrimaryExpression();
     if (!primaryExpressionNode) {

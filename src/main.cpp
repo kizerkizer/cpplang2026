@@ -28,7 +28,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getIdentifier(), indentation + 1);
             std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
             if (nodeCast->getAssignmentExpression()) {
-                printParseTree(nodeCast->getAssignmentExpression()->getExpression(), indentation + 1);
+                printParseTree(nodeCast->getAssignmentExpression(), indentation + 1);
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
             }
@@ -117,6 +117,10 @@ void printParseTree (const Node* node, int indentation) {
         case NodeType::ContinueStatement:
             std::print("{}ContinueStatementNode\n", std::string(indentation * 2, ' '));
             break;
+        case NodeType::EmptyLiteral: {
+            std::print("{}EmptyLiteralNode\n", std::string(indentation * 2, ' '));
+            break;
+        }
         case NodeType::NumberLiteral: {
             const auto nodeCast = static_cast<const NumberLiteralNode*>(node);
             std::print("{}NumberLiteralNode\n", std::string(indentation * 2, ' '));
@@ -172,6 +176,17 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getOperand(), indentation + 1);
             break;
         }
+        case NodeType::IfExpression: {
+            const auto nodeCast = static_cast<const IfExpressionNode*>(node);
+            std::print("{}IfExpressionNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Condition:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getCondition(), indentation + 1);
+            std::print("{}* Then Branch:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getThenBranch(), indentation + 1);
+            std::print("{}* Else Branch:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getElseBranch(), indentation + 1);
+            break;
+        }
         case NodeType::BooleanLiteral: {
             const auto nodeCast = static_cast<const BooleanLiteralNode*>(node);
             std::print("{}BooleanLiteralNode\n", std::string(indentation * 2, ' '));
@@ -179,9 +194,6 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue() ? "true" : "false");
             break;
         }
-        /*default:
-            std::print("{}Unknown node type\n", std::string(indentation * 2, ' '));
-            break;*/
     }
 }
 
@@ -204,9 +216,9 @@ int main () {
     } else {
         std::print("⚠️ {} lex error(s) found.\n", errorMessages.size());
     }
-    for (const auto& token : tokens) {
+    /*for (const auto& token : tokens) {
         std::print("{}\n", token.toString());
-    }
+    }*/
     for (const auto& errorMessage : errorMessages) {
         std::print("{}\n", errorMessage);
     }
@@ -215,7 +227,6 @@ int main () {
     }
     std::vector<Token> nonTrivialTokens;
     std::copy_if(tokens.begin(), tokens.end(), std::back_inserter(nonTrivialTokens), [](const Token& token) {
-        //std::print("Token: {}, Index: {}, Line: {}, Column: {}\n", token.toString(), token.getIndex(), token.getLine(), token.getColumn());
         return !IS_TOKENNAME_TRIVIA(token.getTokenName());
     });
     Parser parser(nonTrivialTokens, errorMessages);

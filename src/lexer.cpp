@@ -14,16 +14,16 @@ bool isIdentifierPart (char c) {
     return std::isalnum(c) || c == '_';
 }
 
-bool isNewline (char c) {
-    return c == '\n' || c == '\r';
-}
-
 bool isIntegerLiteral (char c) {
     return std::isdigit(c);
 }
 
 bool isWhitespace (char c) {
     return std::isspace(c);
+}
+
+bool isNewline (char c) {
+    return c == '\n' || c == '\r';
 }
 
 bool isDoubleQuote (char c) {
@@ -43,6 +43,7 @@ std::tuple<size_t, size_t, size_t> Lexer::getCounters() const {
 
 std::map<std::string, TokenName> keywords = {
     {"if", TokenName::KeywordIf},
+    {"then", TokenName::KeywordThen},
     {"else", TokenName::KeywordElse},
     {"class", TokenName::KeywordClass},
     {"while", TokenName::KeywordWhile},
@@ -51,11 +52,14 @@ std::map<std::string, TokenName> keywords = {
     {"continue", TokenName::KeywordContinue},
     {"break", TokenName::KeywordBreak},
     {"var", TokenName::KeywordVar},
+    {"bind", TokenName::KeywordBind},
+    {"type", TokenName::KeywordType},
 };
 
 std::map<std::string, TokenName> specialValues = {
-    {"true", TokenName::BooleanLiteral},
-    {"false", TokenName::BooleanLiteral},
+    {"true", TokenName::LiteralBoolean},
+    {"false", TokenName::LiteralBoolean},
+    {"empty", TokenName::LiteralEmpty},
 };
 
 std::map<std::string, TokenName> operators = {
@@ -67,7 +71,7 @@ std::map<std::string, TokenName> operators = {
     {"||", TokenName::Or},
     {"**", TokenName::AsteriskAsterisk},
     {"+", TokenName::Plus},
-    {"-", TokenName::Minus},
+    {"-", TokenName::Dash},
     {"*", TokenName::Asterisk},
     {"/", TokenName::Slash},
     {"=", TokenName::Equal},
@@ -107,8 +111,15 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
     this->sourceString = sourceString;
     std::vector<Token> tokens;
     while (!this->isPastSourceStringEnd()) {
-        char c = this->getCharacter();
-        if (isNewline(this->getCharacter())) {
+        if (this->getCharacter() == '\r' && this->getCharacter(1) == '\n') {
+            // Windows-style newline
+            this->advance(2);
+            this->line++;
+            this->column = 1;
+            continue;
+        }
+        if (this->getCharacter() == '\n') {
+            // Unix-style newline
             this->advance();
             this->line++;
             this->column = 1;
@@ -131,7 +142,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaCommentShort);
             continue;
         }
-        // Multi line comment
+        // /*...*/ comment
         if (this->getCharacter() == '/' && this->getCharacter(1) == '*') {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance(2);
@@ -177,7 +188,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             continue;
         }
         // String literal
-        if (isDoubleQuote(c)) {
+        if (isDoubleQuote(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
             while (!isDoubleQuote(this->getCharacter())) {
@@ -192,16 +203,16 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 this->advance();
             }
             this->advance();
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::StringLiteral);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::LiteralString);
             continue;
         }
-        if (isIntegerLiteral(c)) {
+        if (isIntegerLiteral(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
             while (isIntegerLiteral(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::IntegerLiteral);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::LiteralInteger);
             continue;
         }
         // Operators

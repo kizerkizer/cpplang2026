@@ -8,8 +8,11 @@ function foo () {
          !
          */
     }
+    var qux = empty;
     return false;
 }
+
+var boo = if true then 100 else -5;
 
 var lol = 12345 - -23 * 53;
 

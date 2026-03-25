@@ -223,6 +223,11 @@ bool BooleanLiteralNode::getValue() const {
     return this->booleanLiteralToken->getSourceString() == "true";
 }
 
+//EmptyLiteralNode
+Token* EmptyLiteralNode::getEmptyLiteralToken() const {
+    return this->emptyLiteralToken.get();
+}
+
 //StringLiteralNode
 std::string StringLiteralNode::getValue() const {
     return this->stringLiteralToken->getSourceString();
@@ -256,4 +261,27 @@ Token* UnaryOperatorExpressionNode::getOperatorToken() const {
 
 const std::vector<const Node*> UnaryOperatorExpressionNode::getChildren() const {
     return { this->operand.get() };
+}
+
+//IfExpressionNode
+ExpressionNode* IfExpressionNode::getCondition() const {
+    return this->condition.get();
+}
+
+ExpressionNode* IfExpressionNode::getThenBranch() const {
+    return this->thenBranch.get();
+}
+
+ExpressionNode* IfExpressionNode::getElseBranch() const {
+    return this->elseBranch.get();
+}
+
+const std::vector<const Node*> IfExpressionNode::getChildren() const {
+    std::vector<const Node*> children;
+    children.push_back(this->condition.get());
+    children.push_back(this->thenBranch.get());
+    if (this->elseBranch) {
+        children.push_back(this->elseBranch.get());
+    }
+    return children;
 }

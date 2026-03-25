@@ -8,9 +8,10 @@ std::string tokenNameToString(const TokenName &name) {
         case TriviaCommentShort: return "CommentShort";
         case TriviaCommentLong: return "CommentLong";
         case Identifier: return "Identifier";
-        case BooleanLiteral: return "BooleanLiteral";
-        case IntegerLiteral: return "IntegerLiteral";
-        case StringLiteral: return "StringLiteral";
+        case LiteralBoolean: return "BooleanLiteral";
+        case LiteralInteger: return "IntegerLiteral";
+        case LiteralString: return "StringLiteral";
+        case LiteralEmpty: return "EmptyLiteral";
         case Dot: return "Dot";
         case Comma: return "Comma";
         case Semicolon: return "Semicolon";
@@ -21,7 +22,7 @@ std::string tokenNameToString(const TokenName &name) {
         case BracketOpen: return "BracketOpen";
         case BracketClose: return "BracketClose";
         case Plus: return "Plus";
-        case Minus: return "Minus";
+        case Dash: return "Dash";
         case Asterisk: return "Asterisk";
         case AsteriskAsterisk: return "AsteriskAsterisk";
         case Slash: return "Slash";
@@ -36,6 +37,7 @@ std::string tokenNameToString(const TokenName &name) {
         case Or: return "Or";
         case Not: return "Not";
         case KeywordIf: return "KeywordIf";
+        case KeywordThen: return "KeywordThen";
         case KeywordElse: return "KeywordElse";
         case KeywordClass: return "KeywordClass";
         case KeywordWhile: return "KeywordWhile";
@@ -44,6 +46,8 @@ std::string tokenNameToString(const TokenName &name) {
         case KeywordContinue: return "KeywordContinue";
         case KeywordBreak: return "KeywordBreak";
         case KeywordVar: return "KeywordVar";
+        case KeywordBind: return "KeywordBind";
+        case KeywordType: return "KeywordType";
     }
 }
 
@@ -58,7 +62,7 @@ int getPrecedence(const TokenName &tokenName) {
         case TokenName::Slash:
             return 7;
         case TokenName::Plus:
-        case TokenName::Minus:
+        case TokenName::Dash:
             return 6;
         case TokenName::Equal:
             return 5;
@@ -85,7 +89,7 @@ bool getAssociativity(const TokenName &tokenName) {
         case TokenName::AsteriskAsterisk:
             return false; // right associative
         case TokenName::Plus:
-        case TokenName::Minus:
+        case TokenName::Dash:
         case TokenName::Asterisk:
         case TokenName::Slash:
         case TokenName::EqualEqual:

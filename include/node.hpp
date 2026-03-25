@@ -16,7 +16,7 @@ FunctionDeclaration ::= 'function' Identifier '(' ParameterList? ')' BlockStatem
 ParameterList ::= Identifier (',' Identifier)*
 Statement ::= BlockStatement | IfStatement | WhileStatement | BreakStatement | ContinueStatement | ReturnStatement | AssignmentStatement | FunctionCallStatement
 BlockStatement ::= '{' Program '}'
-IfStatement ::= 'if' '(' Expression ')' Statement ('else' Statement)?
+IfStatement ::= 'if' Expression 'then' BlockStatement ('else' BlockStatement)?
 WhileStatement ::= 'while' '(' Expression ')' Statement
 BreakStatement ::= 'break' ';'
 ContinueStatement ::= 'continue' ';'
@@ -25,6 +25,7 @@ AssignmentStatement ::= AssignmentExpression ';'
 AssignmentExpression ::= Identifier '=' Expression
 FunctionCallStatement ::= FunctionCallExpression ';'
 FunctionCallExpression ::= Identifier '(' ArgumentList? ')'
+IfExpression ::= 'if' Expression 'then' Expression ('else' Expression)?
 ArgumentList ::= Expression (',' Expression)*
 Expression ::= PrimaryExpression | BinaryOperatorExpression
 BinaryOperator ::= '+' | '-' | '*' | '/' | '==' | '!='
@@ -33,8 +34,8 @@ BinaryOperatorExpression ::= Expression BinaryOperator Expression
 UnaryOperatorExpression ::= UnaryOperator Expression
 ObjectLiteral ::= '[' ':' | ((Identifier ':' Expression) (',' Identifier ':' Expression)*) ']'
 ArrayLiteral ::= '[' ',' | (Expression (',' Expression)*) ']'
-Literal ::= NumberLiteral | StringLiteral | ObjectLiteral | ArrayLiteral
-PrimaryExpression ::= Identifier | FunctionCallExpression | UnaryOperatorExpression | Literal | '(' Expression ')'
+Literal ::= NumberLiteral | StringLiteral | BooleanLiteral | EmptyLiteral | ObjectLiteral | ArrayLiteral
+PrimaryExpression ::= Identifier | FunctionCallExpression | IfExpression | UnaryOperatorExpression | Literal | '(' Expression ')'
 */
 
 enum class NodeType {
@@ -50,18 +51,18 @@ enum class NodeType {
     ReturnStatement,
     AssignmentStatement,
     FunctionCallStatement,
-    //ExpressionStatement,
-    //BinaryExpression,
     Identifier,
     NumberLiteral,
     StringLiteral,
     BooleanLiteral,
+    EmptyLiteral,
     //ObjectLiteral, // TODO later
     //ArrayLiteral, // TODO later
     AssignmentExpression,
     FunctionCallExpression,
     BinaryOperatorExpression,
     UnaryOperatorExpression,
+    IfExpression,
 };
 
 class Node {
@@ -264,6 +265,17 @@ private:
     std::unique_ptr<Token> booleanLiteralToken;
 };
 
+class EmptyLiteralNode : public PrimaryExpressionNode {
+public:
+    EmptyLiteralNode(std::unique_ptr<Token> emptyLiteralToken) : PrimaryExpressionNode(NodeType::EmptyLiteral), emptyLiteralToken(std::move(emptyLiteralToken)) {};
+    Token* getEmptyLiteralToken() const;
+    const std::vector<const Node*> getChildren() const override {
+        return {};
+    }
+private:
+    std::unique_ptr<Token> emptyLiteralToken;
+};
+
 class NumberLiteralNode : public PrimaryExpressionNode {
 public:
     NumberLiteralNode(std::unique_ptr<Token> numberLiteralToken) : PrimaryExpressionNode(NodeType::NumberLiteral), numberLiteralToken(std::move(numberLiteralToken)) {};
@@ -298,4 +310,17 @@ public:
 private:
     std::unique_ptr<PrimaryExpressionNode> operand;
     std::unique_ptr<Token> operatorToken;
+};
+
+class IfExpressionNode : public ExpressionNode {
+public:
+    IfExpressionNode(std::unique_ptr<ExpressionNode> condition, std::unique_ptr<ExpressionNode> thenBranch, std::unique_ptr<ExpressionNode> elseBranch) : ExpressionNode(NodeType::IfExpression), condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {};
+    ExpressionNode* getCondition() const;
+    ExpressionNode* getThenBranch() const;
+    ExpressionNode* getElseBranch() const;
+    const std::vector<const Node*> getChildren() const override;
+private:
+    std::unique_ptr<ExpressionNode> condition;
+    std::unique_ptr<ExpressionNode> thenBranch;
+    std::unique_ptr<ExpressionNode> elseBranch;
 };
