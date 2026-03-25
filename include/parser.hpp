@@ -41,6 +41,9 @@ private:
     void exitFunction();
     void enterBlock();
     void exitBlock();
+    void addErrorMessageParseFailure(const std::string& failedToParse);
+    void addErrorMessageExpected(const std::string& expected);
+    void addErrorMessageUnexpected(const std::string& unexpected);
     std::unique_ptr<ProgramNode> parseProgram();
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<FunctionDeclarationNode> parseFunctionDeclaration();

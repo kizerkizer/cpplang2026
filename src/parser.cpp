@@ -60,18 +60,29 @@ void Parser::exitBlock() {
     }
 }
 
+void Parser::addErrorMessageParseFailure(const std::string& failedToParse) {
+    this->errorMessages.push_back("Failed to parse " + failedToParse + " at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+}
+
+void Parser::addErrorMessageExpected(const std::string& expected) {
+    this->errorMessages.push_back("Expected '" + expected + "' but found '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+}
+
+void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
+    this->errorMessages.push_back("Unexpected '" + unexpected + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+}
+
 std::unique_ptr<Node> Parser::parse() {
-    auto programOpt = this->parseProgram();
-    if (!programOpt) {
+    auto program = this->parseProgram();
+    if (!program) {
         return std::make_unique<InvalidNode>();
     }
-    return programOpt;
+    return program;
 }
 
 std::unique_ptr<ProgramNode> Parser::parseProgram() {
     std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>();
     while (!this->isPastTokensEnd()) {
-        auto token = this->peek();
         if (insideBlock && this->peek() == TokenName::BraceClose) {
             this->expectAndAdvance(TokenName::BraceClose);
             return program;
@@ -80,7 +91,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             case TokenName::KeywordVar: {
                 auto node = this->parseVariableDeclaration();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse variable declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("variable declaration");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -89,7 +100,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             case TokenName::KeywordFunction: {
                 auto node = this->parseFunctionDeclaration();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse function declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("function declaration");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -98,7 +109,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             case TokenName::KeywordIf: {
                 auto node = this->parseIfStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse if statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("if statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -106,12 +117,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             }
             case TokenName::KeywordReturn: {
                 if (!this->insideFunction) {
-                    this->errorMessages.push_back("Unexpected 'return' statement outside of function at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageUnexpected("'return' statement outside of function");
                     return program;
                 }
                 auto node = this->parseReturnStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse return statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("return statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -119,12 +130,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             }
             case TokenName::KeywordBreak: {
                 if (!this->insideLoop) {
-                    this->errorMessages.push_back("Unexpected 'break' statement outside of while loop at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageUnexpected("'break' statement outside of while loop");
                     return program;
                 }
                 auto node = this->parseBreakStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse break statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("break statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -132,12 +143,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             }
             case TokenName::KeywordContinue: {
                 if (!this->insideLoop) {
-                    this->errorMessages.push_back("Unexpected 'continue' statement outside of while loop at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageUnexpected("'continue' statement outside of while loop");
                     return program;
                 }
                 auto node = this->parseContinueStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse continue statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("continue statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -146,7 +157,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             case TokenName::KeywordWhile: {
                 auto node = this->parseWhileStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse while statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("while statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -155,7 +166,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             case TokenName::BraceOpen: {
                 auto node = this->parseBlockStatement();
                 if (!node) {
-                    this->errorMessages.push_back("Failed to parse block statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("block statement");
                     return program;
                 }
                 program->addNode(std::move(node));
@@ -165,7 +176,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 if (this->peek(1) == TokenName::Equal) {
                     auto node = this->parseAssignmentStatement();
                     if (!node) {
-                        this->errorMessages.push_back("Failed to parse variable declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                        this->addErrorMessageParseFailure("assignment statement");
                         return program;
                     }
                     program->addNode(std::move(node));
@@ -173,23 +184,23 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 } else if (this->peek(1) == TokenName::ParenthesisOpen) {
                     auto node = this->parseFunctionCallStatement();
                     if (!node) {
-                        this->errorMessages.push_back("Failed to parse function call statement at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                        this->addErrorMessageParseFailure("function call statement");
                         return program;
                     }
                     program->addNode(std::move(node));
                     break;
                 } else {
-                    this->errorMessages.push_back("Unexpected token '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
                     return program;
                 }
             }
             default:
-                this->errorMessages.push_back("Unexpected token '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
                 return program;
         }
     }
     if (this->insideBlock) {
-        this->errorMessages.push_back("Expected '}' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'}'");
         return program;
     }
     return program;
@@ -198,12 +209,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto varToken = this->expectAndAdvance(TokenName::KeywordVar);
     if (!varToken) {
-        this->errorMessages.push_back("Expected 'var' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'var'");
         return nullptr;
     }
     auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
     if (!identifierToken) {
-        this->errorMessages.push_back("Expected identifier after 'var' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("identifier 'var'");
         return nullptr;
     }
     if (this->peek() == TokenName::Semicolon) {
@@ -217,7 +228,7 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         node = this->parseExpression();
     }
     if (!node) {
-        this->errorMessages.push_back("Expected expression after variable declaration at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("expression after variable declaration");
         return nullptr;
     }
     this->expectAndAdvance(TokenName::Semicolon);
@@ -230,16 +241,16 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
 std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
     auto functionToken = this->expectAndAdvance(TokenName::KeywordFunction);
     if (!functionToken) {
-        this->errorMessages.push_back("Expected 'function' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'function'");
         return nullptr;
     }
     auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
     if (!identifierToken) {
-        this->errorMessages.push_back("Expected identifier after 'function' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("identifier after 'function'");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
-        this->errorMessages.push_back("Expected '(' after function name at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected(" '(' after function name");
         return nullptr;
     }
     std::vector<std::unique_ptr<Token>> parameterTokens;
@@ -247,7 +258,7 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         while (true) {
             auto parameterToken = this->expectAndAdvance(TokenName::Identifier);
             if (!parameterToken) {
-                this->errorMessages.push_back("Expected identifier in parameter list at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("identifier in parameter list");
                 return nullptr;
             }
             parameterTokens.push_back(std::make_unique<Token>(parameterToken.value()));
@@ -259,14 +270,14 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         }
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
-        this->errorMessages.push_back("Expected ')' after parameter list at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("')' after parameter list");
         return nullptr;
     }
     this->enterFunction();
     auto bodyNode = this->parseBlockStatement();
     this->exitFunction();
     if (!bodyNode) {
-        this->errorMessages.push_back("Failed to parse function body at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("function body");
         return nullptr;
     }
     auto functionNameIdentifier = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
@@ -282,29 +293,29 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
 std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
     auto ifToken = this->expectAndAdvance(TokenName::KeywordIf);
     if (!ifToken) {
-        this->errorMessages.push_back("Expected 'if' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'if'");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
-        this->errorMessages.push_back("Expected '(' after 'if' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected(" '(' after 'if'");
         return nullptr;
     }
     auto conditionNode = this->parseExpression();
     if (!conditionNode) {
-        this->errorMessages.push_back("Failed to parse if statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("if statement condition");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
-        this->errorMessages.push_back("Expected ')' after if statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("')' after if statement condition");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::KeywordThen)) {
-        this->errorMessages.push_back("Expected 'then' after if statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'then' after if statement condition");
         return nullptr;
     }
     auto thenBranchNode = this->parseBlockStatement();
     if (!thenBranchNode) {
-        this->errorMessages.push_back("Failed to parse if statement then branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("if statement then branch");
         return nullptr;
     }
     std::unique_ptr<BlockStatementNode> elseBranchNode = nullptr;
@@ -312,7 +323,7 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
         this->expectAndAdvance(TokenName::KeywordElse);
         elseBranchNode = this->parseBlockStatement();
         if (!elseBranchNode) {
-            this->errorMessages.push_back("Failed to parse if statement else branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("if statement else branch");
             return nullptr;
         }
     }
@@ -323,27 +334,27 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
 std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     auto whileToken = this->expectAndAdvance(TokenName::KeywordWhile);
     if (!whileToken) {
-        this->errorMessages.push_back("Expected 'while' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'while'");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
-        this->errorMessages.push_back("Expected '(' after 'while' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected(" '(' after 'while'");
         return nullptr;
     }
     auto conditionNode = this->parseExpression();
     if (!conditionNode) {
-        this->errorMessages.push_back("Failed to parse while statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("while statement condition");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
-        this->errorMessages.push_back("Expected ')' after while statement condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("')' after while statement condition");
         return nullptr;
     }
     this->enterLoop();
     auto bodyNode = this->parseBlockStatement();
     this->exitLoop();
     if (!bodyNode) {
-        this->errorMessages.push_back("Failed to parse while statement body at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("while statement body");
         return nullptr;
     }
     auto whileStatement = std::make_unique<WhileStatementNode>(std::move(conditionNode), std::move(bodyNode));
@@ -356,7 +367,7 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     if (this->peek() != TokenName::Semicolon) {
         expressionNode = this->parseExpression();
         if (!expressionNode) {
-            this->errorMessages.push_back("Failed to parse return statement expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("return statement expression");
             return nullptr;
         }
     }
@@ -371,7 +382,7 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
     auto programNode = Parser::parseProgram();
     this->exitBlock();
     if (!programNode) {
-        this->errorMessages.push_back("Failed to parse block statement program node at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("block statement program node");
         return nullptr;
     }
     auto blockStatement = std::make_unique<BlockStatementNode>(std::move(programNode));
@@ -380,11 +391,11 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
 
 std::unique_ptr<BreakStatementNode> Parser::parseBreakStatement() {
     if (!this->expectAndAdvance(TokenName::KeywordBreak)) {
-        this->errorMessages.push_back("Expected 'break' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'break'");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Semicolon)) {
-        this->errorMessages.push_back("Expected ';' after 'break' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("';' after 'break'");
         return nullptr;
     }
     auto breakStatement = std::make_unique<BreakStatementNode>();
@@ -393,11 +404,11 @@ std::unique_ptr<BreakStatementNode> Parser::parseBreakStatement() {
 
 std::unique_ptr<ContinueStatementNode> Parser::parseContinueStatement() {
     if (!this->expectAndAdvance(TokenName::KeywordContinue)) {
-        this->errorMessages.push_back("Expected 'continue' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'continue'");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Semicolon)) {
-        this->errorMessages.push_back("Expected ';' after 'continue' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("';' after 'continue'");
         return nullptr;
     }
     auto continueStatement = std::make_unique<ContinueStatementNode>();
@@ -407,11 +418,11 @@ std::unique_ptr<ContinueStatementNode> Parser::parseContinueStatement() {
 std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression() {
     auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
     if (!identifierToken) {
-        this->errorMessages.push_back("Expected function name identifier at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("function name identifier");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
-        this->errorMessages.push_back("Expected '(' after function name at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("Expected '(' after function name");
         return nullptr;
     }
     std::vector<std::unique_ptr<ExpressionNode>> arguments;
@@ -419,7 +430,7 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
         while (true) {
             auto argumentNode = this->parseExpression();
             if (!argumentNode) {
-                this->errorMessages.push_back("Failed to parse function call argument at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageParseFailure("function call argument");
                 return nullptr;
             }
             arguments.push_back(std::move(argumentNode));
@@ -431,7 +442,7 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
         }
     }
     if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
-        this->errorMessages.push_back("Expected ')' after function call arguments at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("')' after function call arguments");
         return nullptr;
     }
     auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
@@ -442,11 +453,11 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
 std::unique_ptr<FunctionCallStatementNode> Parser::parseFunctionCallStatement() {
     auto functionCallExpressionNode = this->parseFunctionCallExpression();
     if (!functionCallExpressionNode) {
-        this->errorMessages.push_back("Failed to parse function call expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("function call expression");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Semicolon)) {
-        this->errorMessages.push_back("Expected ';' after function call expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("';' after function call expression");
         return nullptr;
     }
     auto functionCallStatement = std::make_unique<FunctionCallStatementNode>(std::move(functionCallExpressionNode));
@@ -456,20 +467,20 @@ std::unique_ptr<FunctionCallStatementNode> Parser::parseFunctionCallStatement() 
 std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
     auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
     if (!identifierToken) {
-        this->errorMessages.push_back("Expected identifier at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("identifier");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Equal)) {
-        this->errorMessages.push_back("Expected '=' after identifier at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("Expected '=' after identifier");
         return nullptr;
     }
     auto expressionNode = this->parseExpression();
     if (!expressionNode) {
-        this->errorMessages.push_back("Failed to parse assignment expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Semicolon)) {
-        this->errorMessages.push_back("Expected ';' after assignment expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("';' after assignment expression");
         return nullptr;
     }
     auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
@@ -481,16 +492,16 @@ std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
 std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
     auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
     if (!identifierToken) {
-        this->errorMessages.push_back("Expected identifier at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("identifier");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::Equal)) {
-        this->errorMessages.push_back("Expected '=' after identifier at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'=' after identifier");
         return nullptr;
     }
     auto expressionNode = this->parseExpression();
     if (!expressionNode) {
-        this->errorMessages.push_back("Failed to parse assignment expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
     auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
@@ -505,7 +516,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             if (this->peek(1) == TokenName::ParenthesisOpen) {
                 auto functionCallExpression = this->parseFunctionCallExpression();
                 if (!functionCallExpression) {
-                    this->errorMessages.push_back("Failed to parse function call expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                    this->addErrorMessageParseFailure("function call expression");
                     return nullptr;
                 }
                 return functionCallExpression;
@@ -518,7 +529,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralBoolean);
             if (!booleanLiteralTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected boolean literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("boolean literal");
                 return nullptr;
             }
             std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::make_unique<Token>(booleanLiteralTokenOpt.value()));
@@ -528,7 +539,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralInteger);
             if (!integerLiteralTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected integer literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("integer literal");
                 return nullptr;
             }
             std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::make_unique<Token>(integerLiteralTokenOpt.value()));
@@ -538,7 +549,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto stringLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralString);
             if (!stringLiteralTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected string literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("string literal");
                 return nullptr;
             }
             std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::make_unique<Token>(stringLiteralTokenOpt.value()));
@@ -548,7 +559,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto emptyLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralEmpty);
             if (!emptyLiteralTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected 'empty' literal at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("empty literal");
                 return nullptr;
             }
             std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::make_unique<Token>(emptyLiteralTokenOpt.value()));
@@ -558,12 +569,12 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto operatorTokenOpt = this->expectAndAdvance(TokenName::Not);
             if (!operatorTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected '!' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("'!' operator");
                 return nullptr;
             }
             auto operandNode = this->parsePrimaryExpression();
             if (!operandNode) {
-                this->errorMessages.push_back("Failed to parse operand of '!' operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageParseFailure("operand of '!' operator");
                 return nullptr;
             }
             auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
@@ -573,19 +584,19 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto operatorTokenOpt = this->expectAndAdvance(TokenName::Dash);
             if (!operatorTokenOpt) {
                 // unreachable
-                this->errorMessages.push_back("Expected '-' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageExpected("'-' operator");
                 return nullptr;
             }
             auto operandNode = this->parsePrimaryExpression();
             if (!operandNode) {
-                this->errorMessages.push_back("Failed to parse operand of '-' operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageParseFailure("operand of '-' operator");
                 return nullptr;
             }
             auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
             return unaryOperatorNode;
         }
         default:
-            this->errorMessages.push_back("Unexpected token '" + token.getSourceString() + "' at line " + std::to_string(token.getLine()) + ", column " + std::to_string(token.getColumn()));
+            this->addErrorMessageUnexpected("token '" + token.getSourceString() + "'");
             return nullptr;
     }
 }
@@ -596,12 +607,12 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
         auto operatorTokenOpt = this->expectAndAdvance(lookahead.getTokenName());
         if (!operatorTokenOpt) {
             // unreachable
-            this->errorMessages.push_back("Expected operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageExpected("operator");
             return nullptr;
         }
         std::unique_ptr<ExpressionNode> rhs = this->parsePrimaryExpression();
         if (!rhs) {
-            this->errorMessages.push_back("Failed to parse right-hand side expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("right-hand side expression");
             return nullptr;
         }
         lookahead = this->peek();
@@ -613,13 +624,13 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
             auto nextPrecedenceAddition = getPrecedence(lookahead.getTokenName()) > getPrecedence(operatorTokenOpt.value().getTokenName()) ? 1 : 0;
             rhs = this->parseExpressionClimbing(std::move(rhs), getPrecedence(operatorTokenOpt.value().getTokenName()) + nextPrecedenceAddition);
             if (!rhs) {
-                this->errorMessages.push_back("Failed to parse right-hand side expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+                this->addErrorMessageParseFailure("right-hand side expression");
                 return nullptr;
             }
             lookahead = this->peek(1);
         }
         if (!IS_TOKENNAME_BINARY_OPERATOR(operatorTokenOpt.value().getTokenName())) {
-            this->errorMessages.push_back("Expected binary operator at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageExpected("binary operator");
             return nullptr;
         }
         lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::make_unique<Token>(operatorTokenOpt.value()));
@@ -630,21 +641,21 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
 std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
     auto ifToken = this->expectAndAdvance(TokenName::KeywordIf);
     if (!ifToken) {
-        this->errorMessages.push_back("Expected 'if' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'if' keyword");
         return nullptr;
     }
     auto conditionNode = this->parseExpression();
     if (!conditionNode) {
-        this->errorMessages.push_back("Failed to parse if expression condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("if expression condition");
         return nullptr;
     }
     if (!this->expectAndAdvance(TokenName::KeywordThen)) {
-        this->errorMessages.push_back("Expected 'then' after if expression condition at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageExpected("'then' keyword");
         return nullptr;
     }
     auto thenBranchNode = this->parseExpression();
     if (!thenBranchNode) {
-        this->errorMessages.push_back("Failed to parse if expression then branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("if expression then branch");
         return nullptr;
     }
     std::unique_ptr<ExpressionNode> elseBranchNode = nullptr;
@@ -652,7 +663,7 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
         this->expectAndAdvance(TokenName::KeywordElse);
         elseBranchNode = this->parseExpression();
         if (!elseBranchNode) {
-            this->errorMessages.push_back("Failed to parse if expression else branch at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("if expression else branch");
             return nullptr;
         }
     }
@@ -665,7 +676,7 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     if (this->peek(1).getTokenName() == TokenName::Equal) {
         auto assignmentExpressionNode = this->parseAssignmentExpression();
         if (!assignmentExpressionNode) {
-            this->errorMessages.push_back("Failed to parse assignment expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("assignment expression");
             return nullptr;
         }
         return assignmentExpressionNode;
@@ -673,14 +684,14 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     if (token == TokenName::KeywordIf) {
         auto ifExpressionNode = this->parseIfExpression();
         if (!ifExpressionNode) {
-            this->errorMessages.push_back("Failed to parse if expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+            this->addErrorMessageParseFailure("if expression");
             return nullptr;
         }
         return ifExpressionNode;
     }
     auto primaryExpressionNode = this->parsePrimaryExpression();
     if (!primaryExpressionNode) {
-        this->errorMessages.push_back("Failed to parse primary expression at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+        this->addErrorMessageParseFailure("primary expression");
         return nullptr;
     }
     return this->parseExpressionClimbing(std::move(primaryExpressionNode), 0);
