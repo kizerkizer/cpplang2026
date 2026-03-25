@@ -7,12 +7,12 @@
 class Lexer {
 public:
     Lexer();
-    std::vector<Token> lex (const std::string& sourceString, std::vector<std::string>& errorMessages_out);
+    std::vector<Token> lex(const std::string& sourceString, std::vector<std::string>& errorMessages_out);
 private:
     std::string sourceString;
     size_t index = 0;
-    int line = 1;
-    int column = 1;
+    size_t line = 1;
+    size_t column = 1;
     void advance(const int &steps);
     std::tuple<size_t, size_t, size_t> getCounters() const;
     char getCharacter (const int &offset) const;

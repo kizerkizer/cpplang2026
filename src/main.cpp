@@ -5,14 +5,15 @@
 #include <algorithm>
 #include <iterator>
 
-#include "lexer.hpp"
-#include "node.hpp"
-#include "parser.hpp"
-#include "token.hpp"
+#include "lexer/lexer.hpp"
+#include "parser/node.hpp"
+#include "parser/parser.hpp"
+#include "lexer/token.hpp"
+#include "desugarer/desugarer.hpp"
 
 void printParseTree (const Node* node, int indentation) {
-    switch (node->getNodeType()) {
-        case NodeType::Program: {
+    switch (node->getNodeKind()) {
+        case NodeKind::Program: {
             const auto nodeCast = static_cast<const ProgramNode*>(node);
             std::print("{}ProgramNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Children:\n", std::string(indentation * 2, ' '));
@@ -21,11 +22,9 @@ void printParseTree (const Node* node, int indentation) {
             }
             break;
         }
-        case NodeType::VariableDeclaration: {
+        case NodeKind::VariableDeclaration: {
             const auto nodeCast = static_cast<const VariableDeclarationNode*>(node);
             std::print("{}VariableDeclarationNode\n", std::string(indentation * 2, ' '));
-            std::print("{}* Identifier:\n", std::string(indentation * 2, ' '));
-            printParseTree(nodeCast->getIdentifier(), indentation + 1);
             std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
             if (nodeCast->getAssignmentExpression()) {
                 printParseTree(nodeCast->getAssignmentExpression(), indentation + 1);
@@ -34,7 +33,7 @@ void printParseTree (const Node* node, int indentation) {
             }
             break;
         }
-        case NodeType::FunctionDeclaration: {
+        case NodeKind::FunctionDeclaration: {
             const auto nodeCast = static_cast<const FunctionDeclarationNode*>(node);
             std::print("{}FunctionDeclarationNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Identifier: {}\n", std::string(indentation * 2, ' '), nodeCast->getIdentifier()->getName());
@@ -46,7 +45,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getBody(), indentation + 1);
             break;
         }
-        case NodeType::AssignmentExpression: {
+        case NodeKind::AssignmentExpression: {
             const auto nodeCast = static_cast<const AssignmentExpressionNode*>(node);
             std::print("{}AssignmentExpressionNode:\n", std::string(indentation * 2, ' '));
             std::print("{}* Identifier:\n", std::string(indentation * 2, ' '));
@@ -55,7 +54,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getExpression(), indentation + 1);
             break;
         }
-        case NodeType::FunctionCallExpression: {
+        case NodeKind::FunctionCallExpression: {
             const auto nodeCast = static_cast<const FunctionCallExpressionNode*>(node);
             std::print("{}FunctionCallExpressionNode: {}\n", std::string(indentation * 2, ' '), nodeCast->getIdentifier()->getName());
             std::print("{}* Identifier:\n", std::string(indentation * 2, ' '));
@@ -66,17 +65,17 @@ void printParseTree (const Node* node, int indentation) {
             }
             break;
         }
-        case NodeType::Identifier: {
+        case NodeKind::Identifier: {
             const auto nodeCast = static_cast<const IdentifierNode*>(node);
             std::print("{}IdentifierNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Name:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getName());
             break;
         }
-        case NodeType::Invalid:
+        case NodeKind::Invalid:
             std::print("{}InvalidNode\n", std::string(indentation * 2, ' '));
             break;
-        case NodeType::IfStatement: {
+        case NodeKind::IfStatement: {
             const auto nodeCast = static_cast<const IfStatementNode*>(node);
             std::print("{}IfStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Condition:\n", std::string(indentation * 2, ' '));
@@ -91,7 +90,7 @@ void printParseTree (const Node* node, int indentation) {
             }
             break;
         }
-        case NodeType::WhileStatement: {
+        case NodeKind::WhileStatement: {
             const auto nodeCast = static_cast<const WhileStatementNode*>(node);
             std::print("{}WhileStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Condition:\n", std::string(indentation * 2, ' '));
@@ -100,7 +99,14 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getBody(), indentation + 1);
             break;
         }
-        case NodeType::ReturnStatement: {
+        case NodeKind::LoopStatement: {
+            const auto nodeCast = static_cast<const LoopStatementNode*>(node);
+            std::print("{}LoopStatementNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Body:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getBody(), indentation + 1);
+            break;
+        }
+        case NodeKind::ReturnStatement: {
             const auto nodeCast = static_cast<const ReturnStatementNode*>(node);
             std::print("{}ReturnStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Expression:\n", std::string(indentation * 2, ' '));
@@ -111,52 +117,52 @@ void printParseTree (const Node* node, int indentation) {
             }
             break;
         }
-        case NodeType::BreakStatement:
+        case NodeKind::BreakStatement:
             std::print("{}BreakStatementNode\n", std::string(indentation * 2, ' '));
             break;
-        case NodeType::ContinueStatement:
+        case NodeKind::ContinueStatement:
             std::print("{}ContinueStatementNode\n", std::string(indentation * 2, ' '));
             break;
-        case NodeType::EmptyLiteral: {
+        case NodeKind::EmptyLiteral: {
             std::print("{}EmptyLiteralNode\n", std::string(indentation * 2, ' '));
             break;
         }
-        case NodeType::NumberLiteral: {
+        case NodeKind::NumberLiteral: {
             const auto nodeCast = static_cast<const NumberLiteralNode*>(node);
             std::print("{}NumberLiteralNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Value:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue());
             break;
         }
-        case NodeType::StringLiteral: {
+        case NodeKind::StringLiteral: {
             const auto nodeCast = static_cast<const StringLiteralNode*>(node);
             std::print("{}StringLiteralNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Value:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue());
             break;
         }
-        case NodeType::BlockStatement: {
+        case NodeKind::BlockStatement: {
             const auto nodeCast = static_cast<const BlockStatementNode*>(node);
             std::print("{}BlockStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* ProgramNode:\n", std::string(indentation * 2, ' '));
             printParseTree(nodeCast->getProgramNode(), indentation + 1);
             break;
         }
-        case NodeType::AssignmentStatement: {
+        case NodeKind::AssignmentStatement: {
             const auto nodeCast = static_cast<const AssignmentStatementNode*>(node);
             std::print("{}AssignmentStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
             printParseTree(nodeCast->getAssignmentExpression(), indentation + 1);
             break;
         }
-        case NodeType::FunctionCallStatement: {
+        case NodeKind::FunctionCallStatement: {
             const auto nodeCast = static_cast<const FunctionCallStatementNode*>(node);
             std::print("{}FunctionCallStatementNode\n", std::string(indentation * 2, ' '));
             std::print("{}* FunctionCallExpression:\n", std::string(indentation * 2, ' '));
             printParseTree(nodeCast->getFunctionCallExpression(), indentation + 1);
             break;
         }
-        case NodeType::BinaryOperatorExpression: {
+        case NodeKind::BinaryOperatorExpression: {
             const auto nodeCast = static_cast<const BinaryOperatorExpressionNode*>(node);
             std::print("{}BinaryOperatorExpressionNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Operator:\n", std::string(indentation * 2, ' '));
@@ -167,7 +173,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getRight(), indentation + 1);
             break;
         }
-        case NodeType::UnaryOperatorExpression: {
+        case NodeKind::UnaryOperatorExpression: {
             const auto nodeCast = static_cast<const UnaryOperatorExpressionNode*>(node);
             std::print("{}UnaryOperatorExpressionNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Operator:\n", std::string(indentation * 2, ' '));
@@ -176,7 +182,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getOperand(), indentation + 1);
             break;
         }
-        case NodeType::IfExpression: {
+        case NodeKind::IfExpression: {
             const auto nodeCast = static_cast<const IfExpressionNode*>(node);
             std::print("{}IfExpressionNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Condition:\n", std::string(indentation * 2, ' '));
@@ -187,7 +193,7 @@ void printParseTree (const Node* node, int indentation) {
             printParseTree(nodeCast->getElseBranch(), indentation + 1);
             break;
         }
-        case NodeType::BooleanLiteral: {
+        case NodeKind::BooleanLiteral: {
             const auto nodeCast = static_cast<const BooleanLiteralNode*>(node);
             std::print("{}BooleanLiteralNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Value:\n", std::string(indentation * 2, ' '));
@@ -239,7 +245,9 @@ int main () {
     for (const auto& errorMessage : errorMessages) {
         std::print("{}\n", errorMessage);
     }
-    printParseTree(parsed.get(), 0);
+    auto desugared = Desugarer(std::move(parsed)).desugar();
+    std::print("Desugared parse tree:\n");
+    printParseTree(desugared.get(), 0);
     if (!errorMessages.empty()) {
         return 1;
     }

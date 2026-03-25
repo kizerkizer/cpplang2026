@@ -1,6 +1,6 @@
-#include "parser.hpp"
-#include "node.hpp"
-#include "token.hpp"
+#include "parser/parser.hpp"
+#include "parser/node.hpp"
+#include "lexer/token.hpp"
 
 #include <memory>
 #include <optional>
@@ -9,7 +9,7 @@
 
 Token Parser::peek(int offset) const {
     if (this->index + offset >= this->tokens.size()) {
-        return Token("", -1, -1, -1, TokenName::OutOfRange);
+        return Token("", 0, 0, 0, TokenKind::OutOfRange);
     }
     return (this->tokens)[this->index + offset];
 }
@@ -18,7 +18,7 @@ bool Parser::isPastTokensEnd() const {
     return this->index >= this->tokens.size();
 }
 
-std::optional<Token> Parser::expectAndAdvance(const TokenName& expectedTokenName) {
+std::optional<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenName) {
     if (this->isPastTokensEnd()) {
         return std::nullopt;
     }
@@ -83,12 +83,12 @@ std::unique_ptr<Node> Parser::parse() {
 std::unique_ptr<ProgramNode> Parser::parseProgram() {
     std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>();
     while (!this->isPastTokensEnd()) {
-        if (insideBlock && this->peek() == TokenName::BraceClose) {
-            this->expectAndAdvance(TokenName::BraceClose);
+        if (insideBlock && this->peek() == TokenKind::BraceClose) {
+            this->expectAndAdvance(TokenKind::BraceClose);
             return program;
         }
         switch (this->peek().getTokenName()) {
-            case TokenName::KeywordVar: {
+            case TokenKind::KeywordVar: {
                 auto node = this->parseVariableDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("variable declaration");
@@ -97,7 +97,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordFunction: {
+            case TokenKind::KeywordFunction: {
                 auto node = this->parseFunctionDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("function declaration");
@@ -106,7 +106,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordIf: {
+            case TokenKind::KeywordIf: {
                 auto node = this->parseIfStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("if statement");
@@ -115,7 +115,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordReturn: {
+            case TokenKind::KeywordReturn: {
                 if (!this->insideFunction) {
                     this->addErrorMessageUnexpected("'return' statement outside of function");
                     return program;
@@ -128,7 +128,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordBreak: {
+            case TokenKind::KeywordBreak: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'break' statement outside of while loop");
                     return program;
@@ -141,7 +141,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordContinue: {
+            case TokenKind::KeywordContinue: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'continue' statement outside of while loop");
                     return program;
@@ -154,7 +154,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::KeywordWhile: {
+            case TokenKind::KeywordWhile: {
                 auto node = this->parseWhileStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("while statement");
@@ -163,7 +163,16 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::BraceOpen: {
+            case TokenKind::KeywordLoop: {
+                auto node = this->parseLoopStatement();
+                if (!node) {
+                    this->addErrorMessageParseFailure("loop statement");
+                    return program;
+                }
+                program->addNode(std::move(node));
+                break;
+            }
+            case TokenKind::BraceOpen: {
                 auto node = this->parseBlockStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("block statement");
@@ -172,8 +181,8 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                 program->addNode(std::move(node));
                 break;
             }
-            case TokenName::Identifier: {
-                if (this->peek(1) == TokenName::Equal) {
+            case TokenKind::Identifier: {
+                if (this->peek(1) == TokenKind::Equal) {
                     auto node = this->parseAssignmentStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("assignment statement");
@@ -181,7 +190,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
                     }
                     program->addNode(std::move(node));
                     break;
-                } else if (this->peek(1) == TokenName::ParenthesisOpen) {
+                } else if (this->peek(1) == TokenKind::ParenthesisOpen) {
                     auto node = this->parseFunctionCallStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("function call statement");
@@ -207,69 +216,71 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
 };
 
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
-    auto varToken = this->expectAndAdvance(TokenName::KeywordVar);
+    auto varToken = this->expectAndAdvance(TokenKind::KeywordVar);
     if (!varToken) {
         this->addErrorMessageExpected("'var'");
         return nullptr;
     }
-    auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
         this->addErrorMessageExpected("identifier 'var'");
         return nullptr;
     }
-    if (this->peek() == TokenName::Semicolon) {
-        this->expectAndAdvance(TokenName::Semicolon);
+    if (this->peek() == TokenKind::Semicolon) {
+        // TODO !!!
+        // TODO NEED TO PARSE IDENTIFIER
+        this->expectAndAdvance(TokenKind::Semicolon);
         auto identiferNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
-        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identiferNode), nullptr);
+        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(nullptr);
         return variableDeclaration;
     }
     std::unique_ptr<ExpressionNode> node;
-    if (this->expectAndAdvance(TokenName::Equal)) {
+    if (this->expectAndAdvance(TokenKind::Equal)) {
         node = this->parseExpression();
     }
     if (!node) {
         this->addErrorMessageExpected("expression after variable declaration");
         return nullptr;
     }
-    this->expectAndAdvance(TokenName::Semicolon);
+    this->expectAndAdvance(TokenKind::Semicolon);
     auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
     auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(node));
-    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value())), std::move(assignmentExpression));
+    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(assignmentExpression));
     return variableDeclaration;
 }
 
 std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
-    auto functionToken = this->expectAndAdvance(TokenName::KeywordFunction);
+    auto functionToken = this->expectAndAdvance(TokenKind::KeywordFunction);
     if (!functionToken) {
         this->addErrorMessageExpected("'function'");
         return nullptr;
     }
-    auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
         this->addErrorMessageExpected("identifier after 'function'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisOpen)) {
         this->addErrorMessageExpected(" '(' after function name");
         return nullptr;
     }
     std::vector<std::unique_ptr<Token>> parameterTokens;
-    if (this->peek() != TokenName::ParenthesisClose) {
+    if (this->peek() != TokenKind::ParenthesisClose) {
         while (true) {
-            auto parameterToken = this->expectAndAdvance(TokenName::Identifier);
+            auto parameterToken = this->expectAndAdvance(TokenKind::Identifier);
             if (!parameterToken) {
                 this->addErrorMessageExpected("identifier in parameter list");
                 return nullptr;
             }
             parameterTokens.push_back(std::make_unique<Token>(parameterToken.value()));
-            if (this->peek() == TokenName::Comma) {
-                this->expectAndAdvance(TokenName::Comma);
+            if (this->peek() == TokenKind::Comma) {
+                this->expectAndAdvance(TokenKind::Comma);
             } else {
                 break;
             }
         }
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
         this->addErrorMessageExpected("')' after parameter list");
         return nullptr;
     }
@@ -291,12 +302,12 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
 }
 
 std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
-    auto ifToken = this->expectAndAdvance(TokenName::KeywordIf);
+    auto ifToken = this->expectAndAdvance(TokenKind::KeywordIf);
     if (!ifToken) {
         this->addErrorMessageExpected("'if'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisOpen)) {
         this->addErrorMessageExpected(" '(' after 'if'");
         return nullptr;
     }
@@ -305,11 +316,11 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
         this->addErrorMessageParseFailure("if statement condition");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
         this->addErrorMessageExpected("')' after if statement condition");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::KeywordThen)) {
+    if (!this->expectAndAdvance(TokenKind::KeywordThen)) {
         this->addErrorMessageExpected("'then' after if statement condition");
         return nullptr;
     }
@@ -319,8 +330,8 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
         return nullptr;
     }
     std::unique_ptr<BlockStatementNode> elseBranchNode = nullptr;
-    if (this->peek() == TokenName::KeywordElse) {
-        this->expectAndAdvance(TokenName::KeywordElse);
+    if (this->peek() == TokenKind::KeywordElse) {
+        this->expectAndAdvance(TokenKind::KeywordElse);
         elseBranchNode = this->parseBlockStatement();
         if (!elseBranchNode) {
             this->addErrorMessageParseFailure("if statement else branch");
@@ -332,12 +343,12 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
 }
 
 std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
-    auto whileToken = this->expectAndAdvance(TokenName::KeywordWhile);
+    auto whileToken = this->expectAndAdvance(TokenKind::KeywordWhile);
     if (!whileToken) {
         this->addErrorMessageExpected("'while'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisOpen)) {
         this->addErrorMessageExpected(" '(' after 'while'");
         return nullptr;
     }
@@ -346,7 +357,7 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
         this->addErrorMessageParseFailure("while statement condition");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
         this->addErrorMessageExpected("')' after while statement condition");
         return nullptr;
     }
@@ -361,23 +372,40 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     return whileStatement;
 }
 
+std::unique_ptr<LoopStatementNode> Parser::parseLoopStatement() {
+    auto loopToken = this->expectAndAdvance(TokenKind::KeywordLoop);
+    if (!loopToken) {
+        this->addErrorMessageExpected("'loop'");
+        return nullptr;
+    }
+    this->enterLoop();
+    auto bodyNode = this->parseBlockStatement();
+    this->exitLoop();
+    if (!bodyNode) {
+        this->addErrorMessageParseFailure("loop statement body");
+        return nullptr;
+    }
+    auto loopStatement = std::make_unique<LoopStatementNode>(std::move(bodyNode));
+    return loopStatement;
+}
+
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
-    this->expectAndAdvance(TokenName::KeywordReturn);
+    this->expectAndAdvance(TokenKind::KeywordReturn);
     std::unique_ptr<ExpressionNode> expressionNode = nullptr;
-    if (this->peek() != TokenName::Semicolon) {
+    if (this->peek() != TokenKind::Semicolon) {
         expressionNode = this->parseExpression();
         if (!expressionNode) {
             this->addErrorMessageParseFailure("return statement expression");
             return nullptr;
         }
     }
-    this->expectAndAdvance(TokenName::Semicolon);
+    this->expectAndAdvance(TokenKind::Semicolon);
     auto returnStatement = std::make_unique<ReturnStatementNode>(std::move(expressionNode));
     return returnStatement;
 }
 
 std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
-    this->expectAndAdvance(TokenName::BraceOpen);
+    this->expectAndAdvance(TokenKind::BraceOpen);
     this->enterBlock();
     auto programNode = Parser::parseProgram();
     this->exitBlock();
@@ -390,11 +418,11 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
 }
 
 std::unique_ptr<BreakStatementNode> Parser::parseBreakStatement() {
-    if (!this->expectAndAdvance(TokenName::KeywordBreak)) {
+    if (!this->expectAndAdvance(TokenKind::KeywordBreak)) {
         this->addErrorMessageExpected("'break'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Semicolon)) {
+    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
         this->addErrorMessageExpected("';' after 'break'");
         return nullptr;
     }
@@ -403,11 +431,11 @@ std::unique_ptr<BreakStatementNode> Parser::parseBreakStatement() {
 }
 
 std::unique_ptr<ContinueStatementNode> Parser::parseContinueStatement() {
-    if (!this->expectAndAdvance(TokenName::KeywordContinue)) {
+    if (!this->expectAndAdvance(TokenKind::KeywordContinue)) {
         this->addErrorMessageExpected("'continue'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Semicolon)) {
+    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
         this->addErrorMessageExpected("';' after 'continue'");
         return nullptr;
     }
@@ -416,17 +444,17 @@ std::unique_ptr<ContinueStatementNode> Parser::parseContinueStatement() {
 }
 
 std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression() {
-    auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
         this->addErrorMessageExpected("function name identifier");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisOpen)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisOpen)) {
         this->addErrorMessageExpected("Expected '(' after function name");
         return nullptr;
     }
     std::vector<std::unique_ptr<ExpressionNode>> arguments;
-    if (this->peek() != TokenName::ParenthesisClose) {
+    if (this->peek() != TokenKind::ParenthesisClose) {
         while (true) {
             auto argumentNode = this->parseExpression();
             if (!argumentNode) {
@@ -434,14 +462,14 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
                 return nullptr;
             }
             arguments.push_back(std::move(argumentNode));
-            if (this->peek() == TokenName::Comma) {
-                this->expectAndAdvance(TokenName::Comma);
+            if (this->peek() == TokenKind::Comma) {
+                this->expectAndAdvance(TokenKind::Comma);
             } else {
                 break;
             }
         }
     }
-    if (!this->expectAndAdvance(TokenName::ParenthesisClose)) {
+    if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
         this->addErrorMessageExpected("')' after function call arguments");
         return nullptr;
     }
@@ -456,7 +484,7 @@ std::unique_ptr<FunctionCallStatementNode> Parser::parseFunctionCallStatement() 
         this->addErrorMessageParseFailure("function call expression");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Semicolon)) {
+    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
         this->addErrorMessageExpected("';' after function call expression");
         return nullptr;
     }
@@ -465,12 +493,12 @@ std::unique_ptr<FunctionCallStatementNode> Parser::parseFunctionCallStatement() 
 }
 
 std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
-    auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
         this->addErrorMessageExpected("identifier");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Equal)) {
+    if (!this->expectAndAdvance(TokenKind::Equal)) {
         this->addErrorMessageExpected("Expected '=' after identifier");
         return nullptr;
     }
@@ -479,7 +507,7 @@ std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
         this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Semicolon)) {
+    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
         this->addErrorMessageExpected("';' after assignment expression");
         return nullptr;
     }
@@ -490,12 +518,12 @@ std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
 }
 
 std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
-    auto identifierToken = this->expectAndAdvance(TokenName::Identifier);
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
         this->addErrorMessageExpected("identifier");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::Equal)) {
+    if (!this->expectAndAdvance(TokenKind::Equal)) {
         this->addErrorMessageExpected("'=' after identifier");
         return nullptr;
     }
@@ -512,8 +540,8 @@ std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
 std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
     Token token = this->peek();
     switch (token.getTokenName()) {
-        case TokenName::Identifier: {
-            if (this->peek(1) == TokenName::ParenthesisOpen) {
+        case TokenKind::Identifier: {
+            if (this->peek(1) == TokenKind::ParenthesisOpen) {
                 auto functionCallExpression = this->parseFunctionCallExpression();
                 if (!functionCallExpression) {
                     this->addErrorMessageParseFailure("function call expression");
@@ -521,12 +549,12 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
                 }
                 return functionCallExpression;
             }
-            this->expectAndAdvance(TokenName::Identifier);
+            this->expectAndAdvance(TokenKind::Identifier);
             auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
             return identifierNode;
         }
-        case TokenName::LiteralBoolean: {
-            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralBoolean);
+        case TokenKind::LiteralBoolean: {
+            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralBoolean);
             if (!booleanLiteralTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("boolean literal");
@@ -535,8 +563,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::make_unique<Token>(booleanLiteralTokenOpt.value()));
             return booleanLiteralNode;
         }
-        case TokenName::LiteralInteger: {
-            auto integerLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralInteger);
+        case TokenKind::LiteralInteger: {
+            auto integerLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralInteger);
             if (!integerLiteralTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("integer literal");
@@ -545,8 +573,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::make_unique<Token>(integerLiteralTokenOpt.value()));
             return integerLiteralNode;
         }
-        case TokenName::LiteralString: {
-            auto stringLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralString);
+        case TokenKind::LiteralString: {
+            auto stringLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralString);
             if (!stringLiteralTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("string literal");
@@ -555,8 +583,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::make_unique<Token>(stringLiteralTokenOpt.value()));
             return stringLiteralNode;
         }
-        case TokenName::LiteralEmpty: {
-            auto emptyLiteralTokenOpt = this->expectAndAdvance(TokenName::LiteralEmpty);
+        case TokenKind::LiteralEmpty: {
+            auto emptyLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralEmpty);
             if (!emptyLiteralTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("empty literal");
@@ -565,8 +593,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::make_unique<Token>(emptyLiteralTokenOpt.value()));
             return emptyLiteralNode;
         }
-        case TokenName::Not: {
-            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Not);
+        case TokenKind::Not: {
+            auto operatorTokenOpt = this->expectAndAdvance(TokenKind::Not);
             if (!operatorTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("'!' operator");
@@ -580,8 +608,8 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
             return unaryOperatorNode;
         }
-        case TokenName::Dash: {
-            auto operatorTokenOpt = this->expectAndAdvance(TokenName::Dash);
+        case TokenKind::Dash: {
+            auto operatorTokenOpt = this->expectAndAdvance(TokenKind::Dash);
             if (!operatorTokenOpt) {
                 // unreachable
                 this->addErrorMessageExpected("'-' operator");
@@ -639,7 +667,7 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
 }
 
 std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
-    auto ifToken = this->expectAndAdvance(TokenName::KeywordIf);
+    auto ifToken = this->expectAndAdvance(TokenKind::KeywordIf);
     if (!ifToken) {
         this->addErrorMessageExpected("'if' keyword");
         return nullptr;
@@ -649,7 +677,7 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
         this->addErrorMessageParseFailure("if expression condition");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenName::KeywordThen)) {
+    if (!this->expectAndAdvance(TokenKind::KeywordThen)) {
         this->addErrorMessageExpected("'then' keyword");
         return nullptr;
     }
@@ -658,14 +686,14 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
         this->addErrorMessageParseFailure("if expression then branch");
         return nullptr;
     }
-    std::unique_ptr<ExpressionNode> elseBranchNode = nullptr;
-    if (this->peek() == TokenName::KeywordElse) {
-        this->expectAndAdvance(TokenName::KeywordElse);
-        elseBranchNode = this->parseExpression();
-        if (!elseBranchNode) {
-            this->addErrorMessageParseFailure("if expression else branch");
-            return nullptr;
-        }
+    if (!this->expectAndAdvance(TokenKind::KeywordElse)) {
+        this->addErrorMessageExpected("'else' branch, as required in if expressions");
+        return nullptr;
+    }
+    auto elseBranchNode = this->parseExpression();
+    if (!elseBranchNode) {
+        this->addErrorMessageParseFailure("if expression else branch");
+        return nullptr;
     }
     auto ifExpression = std::make_unique<IfExpressionNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode));
     return ifExpression;
@@ -673,7 +701,7 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
 
 std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     auto token = this->peek();
-    if (this->peek(1).getTokenName() == TokenName::Equal) {
+    if (this->peek(1).getTokenName() == TokenKind::Equal) {
         auto assignmentExpressionNode = this->parseAssignmentExpression();
         if (!assignmentExpressionNode) {
             this->addErrorMessageParseFailure("assignment expression");
@@ -681,7 +709,7 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
         }
         return assignmentExpressionNode;
     }
-    if (token == TokenName::KeywordIf) {
+    if (token == TokenKind::KeywordIf) {
         auto ifExpressionNode = this->parseIfExpression();
         if (!ifExpressionNode) {
             this->addErrorMessageParseFailure("if expression");

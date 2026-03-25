@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include "token.hpp"
+#include "lexer/token.hpp"
 #include "node.hpp"
 
 class Parser {
@@ -21,7 +21,7 @@ private:
      * @param expectedTokenName Name of the expected token
      * @return std::optional<Token> 
      */
-    std::optional<Token> expectAndAdvance(const TokenName& expectedTokenName);
+    std::optional<Token> expectAndAdvance(const TokenKind& expectedTokenName);
     Token peek(int offset = 0) const;
 
     /**
@@ -30,7 +30,7 @@ private:
      * @param expectedTokenName Name of the expected token
      * @return std::optional<Token> 
      */
-    std::optional<Token> matchAndAdvance(const TokenName& expectedTokenName);
+    std::optional<Token> matchAndAdvance(const TokenKind& expectedTokenName);
     bool isPastTokensEnd() const;
     int insideLoop = 0;
     int insideFunction = 0;
@@ -49,6 +49,7 @@ private:
     std::unique_ptr<FunctionDeclarationNode> parseFunctionDeclaration();
     std::unique_ptr<IfStatementNode> parseIfStatement();
     std::unique_ptr<WhileStatementNode> parseWhileStatement();
+    std::unique_ptr<LoopStatementNode> parseLoopStatement();
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
     std::unique_ptr<BlockStatementNode> parseBlockStatement();
     std::unique_ptr<BreakStatementNode> parseBreakStatement();

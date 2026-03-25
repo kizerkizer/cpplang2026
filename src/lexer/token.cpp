@@ -1,10 +1,11 @@
-#include "token.hpp"
+#include "lexer/token.hpp"
 
-std::string tokenNameToString(const TokenName &name) {
+std::string tokenNameToString(const TokenKind &name) {
     switch (name) {
-        using enum TokenName;
+        using enum TokenKind;
         case OutOfRange: return "OutOfRange";
         case TriviaWhitespace: return "Whitespace";
+        case TriviaNewline: return "Newline";
         case TriviaCommentShort: return "CommentShort";
         case TriviaCommentLong: return "CommentLong";
         case Identifier: return "Identifier";
@@ -41,6 +42,7 @@ std::string tokenNameToString(const TokenName &name) {
         case KeywordElse: return "KeywordElse";
         case KeywordClass: return "KeywordClass";
         case KeywordWhile: return "KeywordWhile";
+        case KeywordLoop: return "KeywordLoop";
         case KeywordFunction: return "KeywordFunction";
         case KeywordReturn: return "KeywordReturn";
         case KeywordContinue: return "KeywordContinue";
@@ -48,70 +50,72 @@ std::string tokenNameToString(const TokenName &name) {
         case KeywordVar: return "KeywordVar";
         case KeywordBind: return "KeywordBind";
         case KeywordType: return "KeywordType";
+        case KeywordExtensional: return "KeywordExtensional";
+        case KeywordIntensional: return "KeywordIntensional";
     }
 }
 
-int getPrecedence(const TokenName &tokenName) {
+int getPrecedence(const TokenKind &tokenName) {
     switch (tokenName) {
         /*case TokenName::Not:
             return 9;*/
             // Unary operators are handled separately in the parser, so we don't assign them a precedence here
-        case TokenName::AsteriskAsterisk:
+        case TokenKind::AsteriskAsterisk:
             return 8;
-        case TokenName::Asterisk:
-        case TokenName::Slash:
+        case TokenKind::Asterisk:
+        case TokenKind::Slash:
             return 7;
-        case TokenName::Plus:
-        case TokenName::Dash:
+        case TokenKind::Plus:
+        case TokenKind::Dash:
             return 6;
-        case TokenName::Equal:
+        case TokenKind::Equal:
             return 5;
-        case TokenName::LessThan:
-        case TokenName::GreaterThan:
-        case TokenName::LessThanEqual:
-        case TokenName::GreaterThanEqual:
+        case TokenKind::LessThan:
+        case TokenKind::GreaterThan:
+        case TokenKind::LessThanEqual:
+        case TokenKind::GreaterThanEqual:
             return 4;
-        case TokenName::EqualEqual:
-        case TokenName::NotEqual:
+        case TokenKind::EqualEqual:
+        case TokenKind::NotEqual:
             return 3;
-        case TokenName::And:
+        case TokenKind::And:
             return 2;
-        case TokenName::Or:
+        case TokenKind::Or:
             return 1;
         default: return -1;
     }
 }
 
-bool getAssociativity(const TokenName &tokenName) {
+bool getAssociativity(const TokenKind &tokenName) {
     switch (tokenName) {
-        case TokenName::Not:
-        case TokenName::Equal:
-        case TokenName::AsteriskAsterisk:
+        case TokenKind::Not:
+        case TokenKind::Equal:
+        case TokenKind::AsteriskAsterisk:
             return false; // right associative
-        case TokenName::Plus:
-        case TokenName::Dash:
-        case TokenName::Asterisk:
-        case TokenName::Slash:
-        case TokenName::EqualEqual:
-        case TokenName::NotEqual:
-        case TokenName::LessThan:
-        case TokenName::GreaterThan:
-        case TokenName::LessThanEqual:
-        case TokenName::GreaterThanEqual:
+        case TokenKind::Plus:
+        case TokenKind::Dash:
+        case TokenKind::Asterisk:
+        case TokenKind::Slash:
+        case TokenKind::EqualEqual:
+        case TokenKind::NotEqual:
+        case TokenKind::LessThan:
+        case TokenKind::GreaterThan:
+        case TokenKind::LessThanEqual:
+        case TokenKind::GreaterThanEqual:
             return true; // left associative
         default: return true; // default to left associative
     }
 }
 
-TokenName Token::getTokenName() const {
+TokenKind Token::getTokenName() const {
     return this->name;
 }
 
-bool Token::operator==(const TokenName& rhs) const {
+bool Token::operator==(const TokenKind& rhs) const {
     return this->name == rhs;
 }
 
-bool Token::operator!=(const TokenName& rhs) const {
+bool Token::operator!=(const TokenKind& rhs) const {
     return this->name != rhs;
 }
 
@@ -123,15 +127,15 @@ bool operator!=(const Token& lhs, const Token& rhs) {
     return !(lhs == rhs);
 }
 
-int Token::getIndex() const {
+size_t Token::getIndex() const {
     return this->index;
 }
 
-int Token::getLine() const {
+size_t Token::getLine() const {
     return this->line;
 }
 
-int Token::getColumn() const {
+size_t Token::getColumn() const {
     return this->column;
 }
 
@@ -141,4 +145,8 @@ std::string Token::getSourceString() const {
 
 std::string Token::toString() const {
     return "<" + tokenNameToString(this->name) + "> ('" + this->sourceString + "')";
+}
+
+bool Token::isCompilerCreated() const {
+    return this->compilerCreated;
 }

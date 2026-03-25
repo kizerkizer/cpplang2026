@@ -1,0 +1,13 @@
+function myFunction (foo: Integer, bar: String): Integer {
+    var myVariable = foo * 10;
+    if (bar == 'qux') then {
+        return myVariable;
+    }
+    return 0;
+}
+
+var myFoo = 5; // inferred type
+var result = myFunction(myFoo, 'qux'); // inferred type
+var final: Integer = result * myFoo;
+
+log(final);

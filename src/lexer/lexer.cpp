@@ -4,14 +4,14 @@
 #include <string>
 #include <print>
 
-#include "lexer.hpp"
+#include "lexer/lexer.hpp"
 
 bool isIdentifierStart (char c) {
     return std::isalpha(c) || c == '_';
 }
 
 bool isIdentifierPart (char c) {
-    return std::isalnum(c) || c == '_';
+    return std::isalnum(c) || c == '_' || c == '-';
 }
 
 bool isIntegerLiteral (char c) {
@@ -26,8 +26,8 @@ bool isNewline (char c) {
     return c == '\n' || c == '\r';
 }
 
-bool isDoubleQuote (char c) {
-    return c == '"';
+bool isStringLiteralQuote (char c) {
+    return c == '\'';
 }
 
 Lexer::Lexer() {}
@@ -41,55 +41,58 @@ std::tuple<size_t, size_t, size_t> Lexer::getCounters() const {
     return {this->index, this->line, this->column};
 }
 
-std::map<std::string, TokenName> keywords = {
-    {"if", TokenName::KeywordIf},
-    {"then", TokenName::KeywordThen},
-    {"else", TokenName::KeywordElse},
-    {"class", TokenName::KeywordClass},
-    {"while", TokenName::KeywordWhile},
-    {"function", TokenName::KeywordFunction},
-    {"return", TokenName::KeywordReturn},
-    {"continue", TokenName::KeywordContinue},
-    {"break", TokenName::KeywordBreak},
-    {"var", TokenName::KeywordVar},
-    {"bind", TokenName::KeywordBind},
-    {"type", TokenName::KeywordType},
+std::map<std::string, TokenKind> keywords = {
+    {"if", TokenKind::KeywordIf},
+    {"then", TokenKind::KeywordThen},
+    {"else", TokenKind::KeywordElse},
+    {"class", TokenKind::KeywordClass},
+    {"while", TokenKind::KeywordWhile},
+    {"loop", TokenKind::KeywordLoop},
+    {"function", TokenKind::KeywordFunction},
+    {"return", TokenKind::KeywordReturn},
+    {"continue", TokenKind::KeywordContinue},
+    {"break", TokenKind::KeywordBreak},
+    {"var", TokenKind::KeywordVar},
+    {"bind", TokenKind::KeywordBind},
+    {"type", TokenKind::KeywordType},
+    {"extensional", TokenKind::KeywordExtensional},
+    {"intensional", TokenKind::KeywordIntensional},
 };
 
-std::map<std::string, TokenName> specialValues = {
-    {"true", TokenName::LiteralBoolean},
-    {"false", TokenName::LiteralBoolean},
-    {"empty", TokenName::LiteralEmpty},
+std::map<std::string, TokenKind> specialValues = {
+    {"true", TokenKind::LiteralBoolean},
+    {"false", TokenKind::LiteralBoolean},
+    {"empty", TokenKind::LiteralEmpty},
 };
 
-std::map<std::string, TokenName> operators = {
-    {"==", TokenName::EqualEqual},
-    {"!=", TokenName::NotEqual},
-    {"<=", TokenName::LessThanEqual},
-    {">=", TokenName::GreaterThanEqual},
-    {"&&", TokenName::And},
-    {"||", TokenName::Or},
-    {"**", TokenName::AsteriskAsterisk},
-    {"+", TokenName::Plus},
-    {"-", TokenName::Dash},
-    {"*", TokenName::Asterisk},
-    {"/", TokenName::Slash},
-    {"=", TokenName::Equal},
-    {"<", TokenName::LessThan},
-    {">", TokenName::GreaterThan},
-    {"!", TokenName::Not},
+std::map<std::string, TokenKind> operators = {
+    {"==", TokenKind::EqualEqual},
+    {"!=", TokenKind::NotEqual},
+    {"<=", TokenKind::LessThanEqual},
+    {">=", TokenKind::GreaterThanEqual},
+    {"&&", TokenKind::And},
+    {"||", TokenKind::Or},
+    {"**", TokenKind::AsteriskAsterisk},
+    {"+", TokenKind::Plus},
+    {"-", TokenKind::Dash},
+    {"*", TokenKind::Asterisk},
+    {"/", TokenKind::Slash},
+    {"=", TokenKind::Equal},
+    {"<", TokenKind::LessThan},
+    {">", TokenKind::GreaterThan},
+    {"!", TokenKind::Not},
 };
 
-std::map<std::string, TokenName> punctuators = {
-    {".", TokenName::Dot},
-    {",", TokenName::Comma},
-    {";", TokenName::Semicolon},
-    {"(", TokenName::ParenthesisOpen},
-    {")", TokenName::ParenthesisClose},
-    {"{", TokenName::BraceOpen},
-    {"}", TokenName::BraceClose},
-    {"[", TokenName::BracketOpen},
-    {"]", TokenName::BracketClose},
+std::map<std::string, TokenKind> punctuators = {
+    {".", TokenKind::Dot},
+    {",", TokenKind::Comma},
+    {";", TokenKind::Semicolon},
+    {"(", TokenKind::ParenthesisOpen},
+    {")", TokenKind::ParenthesisClose},
+    {"{", TokenKind::BraceOpen},
+    {"}", TokenKind::BraceClose},
+    {"[", TokenKind::BracketOpen},
+    {"]", TokenKind::BracketClose},
 };
 
 std::string Lexer::makeErrorMessage(const std::string& message) const {
@@ -113,6 +116,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
     while (!this->isPastSourceStringEnd()) {
         if (this->getCharacter() == '\r' && this->getCharacter(1) == '\n') {
             // Windows-style newline
+            tokens.emplace_back(sourceString.substr(this->index, 2), this->index, this->line, this->column, TokenKind::TriviaNewline);
             this->advance(2);
             this->line++;
             this->column = 1;
@@ -120,6 +124,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         if (this->getCharacter() == '\n') {
             // Unix-style newline
+            tokens.emplace_back(sourceString.substr(this->index, 1), this->index, this->line, this->column, TokenKind::TriviaNewline);
             this->advance();
             this->line++;
             this->column = 1;
@@ -130,7 +135,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaWhitespace);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaWhitespace);
             continue;
         }
         // Single line comment
@@ -139,7 +144,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (!isNewline(this->getCharacter()) && !this->isPastSourceStringEnd()) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaCommentShort);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentShort);
             continue;
         }
         // /*...*/ comment
@@ -158,7 +163,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 return tokens;
             }
             this->advance(2);
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::TriviaCommentLong);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentLong);
             continue;
         }
         // Keywords
@@ -184,26 +189,26 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isIdentifierPart(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::Identifier);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::Identifier);
             continue;
         }
         // String literal
-        if (isDoubleQuote(this->getCharacter())) {
+        if (isStringLiteralQuote(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCounters();
             this->advance();
-            while (!isDoubleQuote(this->getCharacter())) {
+            while (!isStringLiteralQuote(this->getCharacter())) {
                 if (isNewline(this->getCharacter()) || this->isPastSourceStringEnd()) {
                     errorMessages_out.push_back(this->makeErrorMessage("Unterminated string literal"));
                     return tokens;
                 } 
-                if (this->getCharacter() == '\\' && this->getCharacter(1) == '"') {
+                if (this->getCharacter() == '\\' && isStringLiteralQuote(this->getCharacter(1))) {
                     this->advance(2);
                     continue;
                 }
                 this->advance();
             }
             this->advance();
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::LiteralString);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralString);
             continue;
         }
         if (isIntegerLiteral(this->getCharacter())) {
@@ -212,7 +217,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isIntegerLiteral(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenName::LiteralInteger);
+            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralInteger);
             continue;
         }
         // Operators

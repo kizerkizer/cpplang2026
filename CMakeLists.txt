@@ -8,10 +8,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(cpplang2026
     src/main.cpp
-    src/token.cpp
-    src/lexer.cpp
-    src/parser.cpp
-    src/node.cpp
+    src/lexer/token.cpp
+    src/lexer/lexer.cpp
+    src/parser/parser.cpp
+    src/parser/node.cpp
+    src/desugarer/desugarer.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)

@@ -1,12 +1,17 @@
 function foo () {
-    var baz = "baz";
+    var baz = 'baz';
     var qux = 1053; // Some comment :-)
     while (true && !false) {
-        log("Foo bar!");
+        log('Foo bar!');
         /*
          * Another comment (-:
          !
          */
+    }
+    loop {
+        if (foo) then {
+            break;
+        }
     }
     var qux = empty;
     return false;
@@ -24,9 +29,15 @@ var bar = 59 && 24 || 12 && 5;
 
 var qqq = false;
 
+/*
+// Type declaration:
+type MyType<T> = T | String;
+
+*/
+
 function bbb () {
-    return "bar" + lol + bar;
+    return 'bar' + lol + bar;
     while (35) {
-        return "bar" || qux;
+        return 'bar"' || qux;
     }
 }
