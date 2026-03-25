@@ -1,7 +1,6 @@
 #include "desugarer/desugarer.hpp"
 #include "parser/node.hpp"
 #include <memory>
-#include <print>
 
 template <typename To, typename From>
 std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
@@ -9,7 +8,6 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
 }
 
 std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
-    std::print("Desugaring node of kind: {}\n", nodeKindToString(node->getNodeKind()));
     switch (node->getNodeKind()) {
         case NodeKind::WhileStatement: {
             auto* whileStatementNode = static_cast<WhileStatementNode*>(node.get());
@@ -48,14 +46,12 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
                 newChildren.push_back(_desugar(std::move(child)));
             }
             programNode->setChildren(std::move(newChildren));
-            std::print("Finished desugaring ProgramNode\n");
             //return std::unique_ptr<ProgramNode>(static_cast<ProgramNode*>(node.release()));
             return unique_ptr_static_cast<ProgramNode>(std::move(node));
         }
         case NodeKind::VariableDeclaration: {
             auto* variableDeclarationNode = static_cast<VariableDeclarationNode*>(node.get());
             variableDeclarationNode->setAssignmentExpression(unique_ptr_static_cast<AssignmentExpressionNode>(_desugar(variableDeclarationNode->takeAssignmentExpression())));
-            std::print("Finished desugaring VariableDeclarationNode\n");
             //return std::unique_ptr<VariableDeclarationNode>(variableDeclarationNode);
             return unique_ptr_static_cast<VariableDeclarationNode>(std::move(node));
         }
@@ -63,21 +59,14 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             auto* assignmentExpressionNode = static_cast<AssignmentExpressionNode*>(node.get());
             std::unique_ptr<IdentifierNode> identifierNode = unique_ptr_static_cast<IdentifierNode>(_desugar(assignmentExpressionNode->takeIdentifier()));
             std::unique_ptr<ExpressionNode> expressionNode = unique_ptr_static_cast<ExpressionNode>(_desugar(assignmentExpressionNode->takeExpression()));
-            std::print("AssignmentExpressionNode\n");
-            std::print("* Identifier:\n");
-            std::print("  * Name: {}\n", identifierNode->getName());
-            std::print("* Expression:\n");
-            std::print("  * Node kind: {}\n", nodeKindToString(expressionNode->getNodeKind()));
             assignmentExpressionNode->setIdentifier(std::move(identifierNode));
             assignmentExpressionNode->setExpression(std::move(expressionNode));
-            std::print("Finished desugaring AssignmentExpressionNode\n");
             //return std::unique_ptr<AssignmentExpressionNode>(assignmentExpressionNode);
             return unique_ptr_static_cast<AssignmentExpressionNode>(std::move(node));
         }
         case NodeKind::BlockStatement: {
             auto* blockStatementNode = static_cast<BlockStatementNode*>(node.get());
             blockStatementNode->setProgramNode(unique_ptr_static_cast<ProgramNode>(_desugar(blockStatementNode->takeProgramNode())));
-            std::print("Finished desugaring BlockStatementNode\n");
             return unique_ptr_static_cast<BlockStatementNode>(std::move(node));
         }
         case NodeKind::FunctionDeclaration: {
@@ -89,7 +78,6 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             }
             functionDeclarationNode->setParameters(std::move(newParameters));
             functionDeclarationNode->setBodyNode(unique_ptr_static_cast<BlockStatementNode>(_desugar(functionDeclarationNode->takeBodyNode())));
-            std::print("Finished desugaring FunctionDeclarationNode\n");
             return unique_ptr_static_cast<FunctionDeclarationNode>(std::move(node));
         }
         case NodeKind::IfStatement: {
