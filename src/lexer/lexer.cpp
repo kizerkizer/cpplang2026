@@ -5,6 +5,7 @@
 #include <print>
 
 #include "lexer/lexer.hpp"
+#include "common/sourcecodelocation.hpp"
 
 bool isIdentifierStart (char c) {
     return std::isalpha(c) || c == '_';
@@ -37,7 +38,7 @@ void Lexer::advance(const int &steps = 1) {
     this->column += steps;
 }
 
-std::tuple<size_t, size_t, size_t> Lexer::getCurrentSourceCodeLocation() const {
+std::tuple<int, int, int> Lexer::getCurrentSourceCodeLocation() const {
     return {this->index, this->line, this->column};
 }
 
@@ -116,7 +117,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
     while (!this->isPastSourceStringEnd()) {
         if (this->getCharacter() == '\r' && this->getCharacter(1) == '\n') {
             // Windows-style newline
-            tokens.emplace_back(sourceString.substr(this->index, 2), this->index, this->line, this->column, TokenKind::TriviaNewline);
+            auto token = Token(sourceString.substr(this->index, 2), this->index, this->line, this->column, TokenKind::TriviaNewline);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index + 1, this->line, this->column + 1));
+            tokens.push_back(token);
             this->advance(2);
             this->line++;
             this->column = 1;
@@ -124,7 +127,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         if (this->getCharacter() == '\n') {
             // Unix-style newline
-            tokens.emplace_back(sourceString.substr(this->index, 1), this->index, this->line, this->column, TokenKind::TriviaNewline);
+            auto token = Token(sourceString.substr(this->index, 1), this->index, this->line, this->column, TokenKind::TriviaNewline);
+            // LastSourceLocation automatically set to first in constructor
+            tokens.push_back(token);
             this->advance();
             this->line++;
             this->column = 1;
@@ -135,7 +140,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaWhitespace);
+            auto token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaWhitespace);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+            tokens.push_back(token);
             continue;
         }
         // Single line comment
@@ -144,7 +151,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (!isNewline(this->getCharacter()) && !this->isPastSourceStringEnd()) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentShort);
+            auto token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentShort);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+            tokens.push_back(token);
             continue;
         }
         // /*...*/ comment
@@ -163,13 +172,17 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 return tokens;
             }
             this->advance(2);
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentLong);
+            auto token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentLong);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+            tokens.push_back(token);
             continue;
         }
         // Keywords
         for (const auto& [keyword, tokenName] : keywords) {
             if (sourceString.compare(this->index, keyword.size(), keyword) == 0) {
-                tokens.emplace_back(keyword, this->index, this->line, this->column, tokenName);
+                auto token = Token(keyword, this->index, this->line, this->column, tokenName);
+                token.setLastSourceCodeLocation(SourceCodeLocation(this->index + keyword.size() - 1, this->line, this->column));
+                tokens.push_back(token);
                 this->advance(keyword.size());
                 goto nextIteration;
             }
@@ -177,7 +190,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         // Special values
         for (const auto& [value, tokenName] : specialValues) {
             if (sourceString.compare(this->index, value.size(), value) == 0) {
-                tokens.emplace_back(value, this->index, this->line, this->column, tokenName);
+                auto token = Token(value, this->index, this->line, this->column, tokenName);
+                token.setLastSourceCodeLocation(SourceCodeLocation(this->index + value.size() - 1, this->line, this->column));
+                tokens.push_back(token);
                 this->advance(value.size());
                 goto nextIteration;
             }
@@ -189,10 +204,12 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             while (isIdentifierPart(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::Identifier);
+            Token token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::Identifier);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column-1));
+            tokens.push_back(token);
             continue;
         }
-        // String literal
+        // String literal (Only on one line for now)
         if (isStringLiteralQuote(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance();
@@ -208,22 +225,29 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
                 this->advance();
             }
             this->advance();
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralString);
+            auto token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralString);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+            tokens.push_back(token);
             continue;
         }
+        // Integer literal
         if (isIntegerLiteral(this->getCharacter())) {
             auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance();
             while (isIntegerLiteral(this->getCharacter())) {
                 this->advance();
             }
-            tokens.emplace_back(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralInteger);
+            auto token = Token(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralInteger);
+            token.setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+            tokens.push_back(token);
             continue;
         }
         // Operators
         for (const auto& [op, tokenName] : operators) {
             if (sourceString.compare(this->index, op.size(), op) == 0) {
-                tokens.emplace_back(op, this->index, this->line, this->column, tokenName);
+                auto token = Token(op, this->index, this->line, this->column, tokenName);
+                token.setLastSourceCodeLocation(SourceCodeLocation(this->index + op.size() - 1, this->line, this->column));
+                tokens.push_back(token);
                 this->advance(op.size());
                 goto nextIteration;
             }
@@ -231,7 +255,9 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         // Punctuators
         for (const auto& [punctuator, tokenName] : punctuators) {
             if (this->getCharacter() == punctuator[0]) {
-                tokens.emplace_back(punctuator, this->index, this->line, this->column, tokenName);
+                auto token = Token(punctuator, this->index, this->line, this->column, tokenName);
+                token.setLastSourceCodeLocation(SourceCodeLocation(this->index + punctuator.size() - 1, this->line, this->column));
+                tokens.push_back(token);
                 this->advance(1);
                 goto nextIteration;
             }

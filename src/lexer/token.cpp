@@ -1,4 +1,5 @@
 #include "lexer/token.hpp"
+#include "common/sourcecodelocation.hpp"
 
 std::string tokenNameToString(const TokenKind &name) {
     switch (name) {
@@ -120,23 +121,52 @@ bool Token::operator!=(const TokenKind& rhs) const {
 }
 
 bool operator==(const Token& lhs, const Token& rhs) {
-    return lhs.name == rhs.name && lhs.sourceString == rhs.sourceString && lhs.index == rhs.index && lhs.line == rhs.line && lhs.column == rhs.column;
+    return lhs.name == rhs.name && lhs.sourceString == rhs.sourceString && lhs.firstIndex == rhs.firstIndex && lhs.firstLine == rhs.firstLine && lhs.firstColumn == rhs.firstColumn;
 }
 
 bool operator!=(const Token& lhs, const Token& rhs) {
     return !(lhs == rhs);
 }
 
-size_t Token::getIndex() const {
-    return this->index;
+int Token::getFirstIndex() const {
+    return this->firstIndex;
 }
 
-size_t Token::getLine() const {
-    return this->line;
+int Token::getFirstLine() const {
+    return this->firstLine;
 }
 
-size_t Token::getColumn() const {
-    return this->column;
+int Token::getFirstColumn() const {
+    return this->firstColumn;
+}
+
+int Token::getLastIndex() const {
+    return this->lastIndex;
+}
+
+int Token::getLastLine() const {
+    return this->lastLine;
+}
+
+int Token::getLastColumn() const {
+    return this->lastColumn;
+}
+
+void Token::setFirstSourceCodeLocation(SourceCodeLocation location) {
+    std::tie(this->firstIndex, this->firstLine, this->firstColumn) = location;
+}
+
+void Token::setLastSourceCodeLocation(SourceCodeLocation location) {
+    std::tie(this->lastIndex, this->lastLine, this->lastColumn) = location;
+}
+
+SourceCodeLocation Token::getFirstSourceCodeLocation() const {
+    return {this->firstIndex, this->firstLine, this->firstColumn};
+}
+
+SourceCodeLocation Token::getLastSourceCodeLocation() const {
+    // TODO set line and column appropriately for multi-line tokens
+    return {this->firstIndex + this->getSourceString().size(), this->firstLine, this->firstColumn + this->getSourceString().size()};
 }
 
 std::string Token::getSourceString() const {

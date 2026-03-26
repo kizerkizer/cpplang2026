@@ -61,15 +61,15 @@ void Parser::exitBlock() {
 }
 
 void Parser::addErrorMessageParseFailure(const std::string& failedToParse) {
-    this->errorMessages.push_back("Failed to parse " + failedToParse + " at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+    this->errorMessages.push_back("Failed to parse " + failedToParse + " at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
 }
 
 void Parser::addErrorMessageExpected(const std::string& expected) {
-    this->errorMessages.push_back("Expected '" + expected + "' but found '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+    this->errorMessages.push_back("Expected '" + expected + "' but found '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
 }
 
 void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
-    this->errorMessages.push_back("Unexpected '" + unexpected + "' at line " + std::to_string(this->peek().getLine()) + ", column " + std::to_string(this->peek().getColumn()));
+    this->errorMessages.push_back("Unexpected '" + unexpected + "' at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
 }
 
 std::unique_ptr<Node> Parser::parse() {
@@ -223,15 +223,17 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     }
     auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
     if (!identifierToken) {
-        this->addErrorMessageExpected("identifier 'var'");
+        this->addErrorMessageExpected("identifier after 'var'");
         return nullptr;
     }
     if (this->peek() == TokenKind::Semicolon) {
-        // TODO !!!
-        // TODO NEED TO PARSE IDENTIFIER
-        this->expectAndAdvance(TokenKind::Semicolon);
+        auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
         auto identiferNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
-        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(nullptr);
+        auto assignmentExpressionNode = std::make_unique<AssignmentExpressionNode>(std::move(identiferNode), nullptr);
+        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(assignmentExpressionNode));
+        variableDeclaration->addToken(std::make_unique<Token>(varToken.value()));
+        variableDeclaration->addToken(std::make_unique<Token>(identifierToken.value()));
+        variableDeclaration->addToken(std::make_unique<Token>(semicolonToken.value()));
         return variableDeclaration;
     }
     std::unique_ptr<ExpressionNode> node;

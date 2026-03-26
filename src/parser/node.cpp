@@ -3,6 +3,7 @@
 
 #include "parser/node.hpp"
 #include "binder/name.hpp"
+#include "common/sourcecodelocation.hpp"
 
 std::string nodeKindToString(NodeKind nodeKind) {
     switch (nodeKind) {
@@ -70,6 +71,32 @@ bool Node::operator!=(const NodeKind& rhs) const {
 
 bool Node::isCompilerCreated() const {
     return this->compilerCreated;
+}
+
+void Node::addToken(std::unique_ptr<Token> token) {
+    this->tokens.push_back(std::move(token));
+}
+
+std::vector<Token*> Node::getTokens() {
+    auto returnTokens = std::vector<Token*>();
+    for (auto& token : this->tokens) {
+        returnTokens.push_back(token.get());
+    }
+    return returnTokens;
+}
+
+SourceCodeLocation Node::getFirstSourceCodeLocation() {
+    if (!this->tokens.size()) {
+        return {-1, -1, -1};
+    }
+    return this->tokens.front()->getFirstSourceCodeLocation();
+}
+
+SourceCodeLocation Node::getLastSourceCodeLocation() {
+    if (!this->tokens.size()) {
+        return {-1, -1, -1};
+    }
+    return this->tokens.back()->getLastSourceCodeLocation();
 }
 
 // ProgramNode

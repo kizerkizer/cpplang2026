@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "common/sourcecodelocation.hpp"
 #include "lexer/token.hpp"
 
 
@@ -80,9 +81,14 @@ public:
     bool operator!=(const NodeKind& rhs) const;
     virtual const std::vector<Node*> getChildren() const = 0;
     bool isCompilerCreated() const;
+    void addToken(std::unique_ptr<Token> token);
+    std::vector<Token*> getTokens();
+    SourceCodeLocation getFirstSourceCodeLocation();
+    SourceCodeLocation getLastSourceCodeLocation();
 private:
     NodeKind nodeKind;
     bool compilerCreated;
+    std::vector<std::unique_ptr<Token>> tokens;
 };
 
 class InvalidNode : public Node {
