@@ -539,7 +539,7 @@ std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
     return assignmentExpression;
 }
 
-std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
+std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
     Token token = this->peek();
     switch (token.getTokenName()) {
         case TokenKind::Identifier: {
@@ -554,6 +554,12 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
             this->expectAndAdvance(TokenKind::Identifier);
             auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
             return identifierNode;
+        }
+        case TokenKind::ParenthesisOpen: {
+            this->expectAndAdvance(TokenKind::ParenthesisOpen);
+            auto expression = this->parseExpression();
+            this->expectAndAdvance(TokenKind::ParenthesisClose);
+            return expression;
         }
         case TokenKind::LiteralBoolean: {
             auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralBoolean);
@@ -602,7 +608,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("'!' operator");
                 return nullptr;
             }
-            auto operandNode = this->parsePrimaryExpression();
+            auto operandNode = this->parseExpression();
             if (!operandNode) {
                 this->addErrorMessageParseFailure("operand of '!' operator");
                 return nullptr;
@@ -617,7 +623,7 @@ std::unique_ptr<PrimaryExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("'-' operator");
                 return nullptr;
             }
-            auto operandNode = this->parsePrimaryExpression();
+            auto operandNode = this->parseExpression();
             if (!operandNode) {
                 this->addErrorMessageParseFailure("operand of '-' operator");
                 return nullptr;
@@ -703,7 +709,7 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
 
 std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     auto token = this->peek();
-    if (this->peek(1).getTokenName() == TokenKind::Equal) {
+    if (this->peek() == TokenKind::Identifier && this->peek(1).getTokenName() == TokenKind::Equal) {
         auto assignmentExpressionNode = this->parseAssignmentExpression();
         if (!assignmentExpressionNode) {
             this->addErrorMessageParseFailure("assignment expression");

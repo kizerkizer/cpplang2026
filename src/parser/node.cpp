@@ -310,6 +310,24 @@ void LoopStatementNode::setBody(std::unique_ptr<BlockStatementNode> body) {
     this->body = std::move(body);
 }
 
+//BreakStatementNode
+Name* BreakStatementNode::getLoopNameReference() const {
+    return this->loopName;
+}
+
+void BreakStatementNode::setLoopNameReference(Name* name) {
+    this->loopName = name;
+}
+
+//ContinueStatementNode
+Name* ContinueStatementNode::getLoopNameReference() const {
+    return this->loopName;
+}
+
+void ContinueStatementNode::setLoopNameReference(Name* name) {
+    this->loopName = name;
+}
+
 //ReturnStatementNode
 ExpressionNode* ReturnStatementNode::getExpression() const {
     return this->expression.get();
@@ -328,6 +346,14 @@ std::unique_ptr<ExpressionNode> ReturnStatementNode::takeExpression() {
 
 void ReturnStatementNode::setExpression(std::unique_ptr<ExpressionNode> expression) {
     this->expression = std::move(expression);
+}
+
+Name* ReturnStatementNode::getFunctionNameReference() {
+    return this->functionName;
+}
+
+void ReturnStatementNode::setFunctionNameReference(Name* name) {
+    this->functionName = name;
 }
 
 //AssignmentExpressionNode

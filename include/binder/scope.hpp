@@ -11,6 +11,7 @@ class Name; // In name.hpp
 enum class ScopeKind {
     Root,
     Function,
+    Loop,
     Block,
     Class,
     Interface,
@@ -30,8 +31,14 @@ public:
     void setNode(Node* node);
     std::vector<Scope*> getChildren() const;
     void addChild(Scope* child);
+    Name* getMyNameReference() const;
+    void setMyNameReference(Name* name);
     bool hasName(const std::string& nameString) const;
     Name* getName(const std::string& nameString) const;
+    Name* getNameShallow(const std::string& nameString) const;
+    bool hasNameShallow(const std::string& nameString) const;
+    Scope* getFirstFunctionContainingScope();
+    Scope* getFirstLoopContainingScope();
     std::map<std::string, Name*> getNames() const;
     bool setName(Name* name);
     Scope* getThisKeywordScope() const;
@@ -39,8 +46,9 @@ public:
 private:
     Node* node;
     ScopeKind kind;
+    Name* myName = nullptr; // Set during binding
     Scope* parent;
     std::map<std::string, Name*> names;
     std::vector<Scope*> children;
-    Scope* thisKeywordScope = nullptr;
+    Scope* thisKeywordScope = nullptr; // TODO Set during binding
 };

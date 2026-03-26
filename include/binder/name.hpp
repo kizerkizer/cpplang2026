@@ -8,6 +8,7 @@ enum class NameKind {
     Variable,
     Function,
     Parameter,
+    Loop,
     Type,
     TypeParameter,
     Class,

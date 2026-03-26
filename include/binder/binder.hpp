@@ -25,5 +25,5 @@ private:
     Scope* createAndEnterScope(ScopeKind kind);
     void exitScope();
     void addErrorMessage(const std::string& message);
-    void bindRecursive(Node* node);
+    void bindRecursive(Node* node, bool doNotCreateScope = false);
 };

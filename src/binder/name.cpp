@@ -6,6 +6,8 @@ std::string nameKindToString(NameKind nameKind) {
             return "Variable";
         case NameKind::Function:
             return "Function";
+        case NameKind::Loop:
+            return "Loop";
         case NameKind::Parameter:
             return "Parameter";
         case NameKind::Type:

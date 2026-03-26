@@ -1,7 +1,7 @@
 function foo (myParam) {
     var baz = 'baz';
     var qux = 1053; // Some comment :-)
-    while (true && !false) {
+    while (true && !(12 == qux)) {
         var b = 'Foo bar!';
         /*
          * Another comment (-:
@@ -22,6 +22,67 @@ function foo (myParam) {
     //var qux = empty; // Error: redeclaration!
     return baz;
 }
+
+/*
+
+extensional type Color = {
+    Red,
+    Green,
+    Blue,
+}
+
+type Color = extensional {
+    Red,
+    Green,
+    Blue,
+}
+
+class Box {
+    public x: Number;
+    public y: Number;
+    public width: Number;
+    public height: Number;
+
+    [:operator_from] (value: Top) {
+        if (value is MapSyntax) {
+            this.x = value.x;
+            this.y = value.y;
+            this.width = value.width;
+            this.height = value.height;
+        }
+    }
+}
+
+abstract class Shape {
+    var x: Float;
+    var y: Float;
+    var w: Float;
+    var h: Float;
+
+    init (x: Float, y: Float, w: Float, h: Float) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+    }
+
+    getBoundingBox (): Box {
+        return Box from [
+            x -> this.x,
+            y -> this.y,
+            width -> this.w,
+            height -> this.h,
+        ];
+    }
+
+    abstract getArea(): Float;
+}
+
+class Circle : Shape {
+    var radius: Float;
+}
+
+*/
 
 var boo = if true then 100 else -5;
 

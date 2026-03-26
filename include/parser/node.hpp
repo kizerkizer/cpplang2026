@@ -30,7 +30,7 @@ FunctionCallExpression ::= Identifier '(' ArgumentList? ')'
 IfExpression ::= 'if' Expression 'then' Expression ('else' Expression)?
 ArgumentList ::= Expression (',' Expression)*
 Expression ::= PrimaryExpression | BinaryOperatorExpression
-BinaryOperator ::= '+' | '-' | '*' | '/' | '==' | '!='
+BinaryOperator ::= '+' | '-' | '*' | '/' | '==' | '!=' | '&&' | '||'
 UnaryOperator ::= '-' | '!'
 BinaryOperatorExpression ::= Expression BinaryOperator Expression
 UnaryOperatorExpression ::= UnaryOperator Expression
@@ -71,6 +71,8 @@ enum class NodeKind {
 };
 
 std::string nodeKindToString(NodeKind nodeKind);
+
+#define IS_NODEKIND_LITERAL(nodeKind) (nodeKind == NodeKind::NumberLiteral || nodeKind == NodeKind::StringLiteral || nodeKind == NodeKind::BooleanLiteral || nodeKind == NodeKind::EmptyLiteral)
 
 class Node {
 public:
@@ -238,17 +240,25 @@ private:
 class BreakStatementNode : public Node {
 public:
     BreakStatementNode() : Node(NodeKind::BreakStatement) {};
+    Name* getLoopNameReference() const;
+    void setLoopNameReference(Name* name);
     const std::vector<Node*> getChildren() const override {
         return {};
     }
+private:
+    Name* loopName; // set during binding
 };
 
 class ContinueStatementNode : public Node {
 public:
     ContinueStatementNode() : Node(NodeKind::ContinueStatement) {};
+    Name* getLoopNameReference() const;
+    void setLoopNameReference(Name* name);
     const std::vector<Node*> getChildren() const override {
         return {};
     }
+private:
+    Name* loopName; // set during binding
 };
 
 class ReturnStatementNode : public Node {
@@ -258,8 +268,11 @@ public:
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<ExpressionNode> takeExpression();
     void setExpression(std::unique_ptr<ExpressionNode> expression);
+    Name *getFunctionNameReference();
+    void setFunctionNameReference(Name *functionName);
 private:
     std::unique_ptr<ExpressionNode> expression;
+    Name *functionName = nullptr; // Set during binding
 };
 
 class AssignmentStatementNode : public Node {

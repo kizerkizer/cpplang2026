@@ -42,7 +42,16 @@ std::tuple<int, int, int> Lexer::getCurrentSourceCodeLocation() const {
     return {this->index, this->line, this->column};
 }
 
-std::map<std::string, TokenKind> keywords = {
+struct LongestToShortestComparer {
+    bool operator()(const std::string& left, const std::string& right) const {
+        if (left.length() != right.length()) {
+            return left.length() > right.length();
+        }
+        return left < right;
+    }
+};
+
+std::map<std::string, TokenKind, LongestToShortestComparer> keywords = {
     {"if", TokenKind::KeywordIf},
     {"then", TokenKind::KeywordThen},
     {"else", TokenKind::KeywordElse},
@@ -60,13 +69,13 @@ std::map<std::string, TokenKind> keywords = {
     {"intensional", TokenKind::KeywordIntensional},
 };
 
-std::map<std::string, TokenKind> specialValues = {
+std::map<std::string, TokenKind, LongestToShortestComparer> specialValues = {
     {"true", TokenKind::LiteralBoolean},
     {"false", TokenKind::LiteralBoolean},
     {"empty", TokenKind::LiteralEmpty},
 };
 
-std::map<std::string, TokenKind> operators = {
+std::map<std::string, TokenKind, LongestToShortestComparer> operators = {
     {"==", TokenKind::EqualEqual},
     {"!=", TokenKind::NotEqual},
     {"<=", TokenKind::LessThanEqual},
@@ -84,7 +93,7 @@ std::map<std::string, TokenKind> operators = {
     {"!", TokenKind::Not},
 };
 
-std::map<std::string, TokenKind> punctuators = {
+std::map<std::string, TokenKind, LongestToShortestComparer> punctuators = {
     {".", TokenKind::Dot},
     {",", TokenKind::Comma},
     {";", TokenKind::Semicolon},

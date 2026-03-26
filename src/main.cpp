@@ -249,9 +249,9 @@ int main () {
     } else {
         std::print("⚠️ {} lex error(s) found.\n", errorMessages.size());
     }
-    /*for (const auto& token : tokens) {
+    for (const auto& token : tokens) {
         std::print("{}\n", token.toString());
-    }*/
+    }
     for (const auto& errorMessage : errorMessages) {
         std::print("{}\n", errorMessage);
     }

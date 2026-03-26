@@ -57,7 +57,7 @@ private:
     std::unique_ptr<FunctionCallStatementNode> parseFunctionCallStatement();
     std::unique_ptr<AssignmentStatementNode> parseAssignmentStatement();
     std::unique_ptr<ExpressionNode> parseExpression();
-    std::unique_ptr<PrimaryExpressionNode> parsePrimaryExpression();
+    std::unique_ptr<ExpressionNode> parsePrimaryExpression();
     std::unique_ptr<AssignmentExpressionNode> parseAssignmentExpression();
     std::unique_ptr<FunctionCallExpressionNode> parseFunctionCallExpression();
     std::unique_ptr<IfExpressionNode> parseIfExpression();

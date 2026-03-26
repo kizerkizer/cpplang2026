@@ -1,5 +1,6 @@
 #include "binder/scope.hpp"
 #include "binder/name.hpp"
+#include <sys/syslimits.h>
 #include <vector>
 
 std::string scopeKindToString(ScopeKind scopeKind) {
@@ -8,6 +9,8 @@ std::string scopeKindToString(ScopeKind scopeKind) {
             return "Root";
         case ScopeKind::Function:
             return "Function";
+        case ScopeKind::Loop:
+            return "Loop";
         case ScopeKind::Block:
             return "Block";
         case ScopeKind::Class:
@@ -51,28 +54,67 @@ ScopeKind Scope::getKind() const {
     return this->kind;
 }
 
+Name* Scope::getMyNameReference() const {
+    return this->myName;
+}
+
+void Scope::setMyNameReference(Name* name) {
+    this->myName = name;
+}
+
 bool Scope::hasName(const std::string& nameString) const {
-    return this->names.find(nameString) != this->names.end() || (this->parent != nullptr && this->parent->hasName(nameString));
+    return this->getName(nameString) != nullptr;
 }
 
 Name* Scope::getName(const std::string& nameString) const {
-    auto it = this->names.find(nameString);
-    if (it != this->names.end()) {
-        return it->second;
-    }
-    if (this->parent != nullptr) {
+    auto name = this->getNameShallow(nameString);
+    if (name) {
+        return name;
+    } else if (this->parent != nullptr) {
         return this->parent->getName(nameString);
     }
     return nullptr;
 }
 
+Name* Scope::getNameShallow(const std::string& nameString) const {
+    auto it = this->names.find(nameString);
+    if (it != this->names.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+bool Scope::hasNameShallow (const std::string& nameString) const {
+    return this->getNameShallow(nameString) != nullptr;
+}
+
 bool Scope::setName(Name* name) {
     auto nameString = name->getNameString();
-    if (hasName(nameString)) {
+    if (this->hasNameShallow(nameString)) {
         return false;
     }
     this->names[nameString] = name;
     return true;
+}
+
+Scope* Scope::getFirstFunctionContainingScope() {
+    if (this->kind == ScopeKind::Function) {
+        return this;
+    }
+    if (this->parent) {
+        return this->parent->getFirstFunctionContainingScope();
+    }
+    return nullptr;
+}
+
+Scope* Scope::getFirstLoopContainingScope() {
+    if (this->kind == ScopeKind::Loop) {
+        return this;
+    }
+    if (this->parent) {
+        return this->parent->getFirstLoopContainingScope();
+    }
+    return nullptr;
 }
 
 Scope* Scope::getThisKeywordScope() const {
