@@ -13,6 +13,9 @@ add_executable(cpplang2026
     src/parser/parser.cpp
     src/parser/node.cpp
     src/desugarer/desugarer.cpp
+    src/binder/binder.cpp
+    src/binder/name.cpp
+    src/binder/scope.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)

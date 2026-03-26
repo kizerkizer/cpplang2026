@@ -10,6 +10,8 @@
 #include "parser/parser.hpp"
 #include "lexer/token.hpp"
 #include "desugarer/desugarer.hpp"
+#include "binder/binder.hpp"
+#include "binder/name.hpp"
 
 void printParseTree (const Node* node, int indentation) {
     switch (node->getNodeKind()) {
@@ -70,6 +72,11 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}IdentifierNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Name:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getName());
+            if (nodeCast->getNameReference()) {
+                std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
+                auto name = nodeCast->getNameReference();
+                std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
+            }
             break;
         }
         case NodeKind::Invalid:
@@ -203,6 +210,26 @@ void printParseTree (const Node* node, int indentation) {
     }
 }
 
+void printScope (Scope* scope, int indentation) {
+    std::print("{}Scope ({})\n", std::string(indentation * 2, ' '), scopeKindToString(scope->getKind()));
+    std::print("{}* Names:\n", std::string(indentation * 2, ' '));
+    for (const auto [nameString, name] : scope->getNames()) {
+        std::print("{}- {} ({})\n", std::string((indentation + 1) * 2, ' '), nameString, nameKindToString(name->getKind()));
+    }
+    std::print("{}* Child Scopes:\n", std::string(indentation * 2, ' '));
+    for (const auto childScope : scope->getChildren()) {
+        printScope(childScope, indentation + 1);
+    }
+}
+
+void printBinderResult (std::unique_ptr<BinderResult> binderResult) {
+    std::print("BinderResult:\n");
+    auto rootNode = binderResult->getNode();
+    auto rootScope = binderResult->getRootScope();
+    printScope(rootScope, 0);
+    printParseTree(rootNode, 0);
+}
+
 int main () {
     std::print("Lexing...\n");
     auto filename = "/Users/alex/Documents/Projects/cpp-lang/sampleFiles/source.txt";
@@ -245,11 +272,25 @@ int main () {
     for (const auto& errorMessage : errorMessages) {
         std::print("{}\n", errorMessage);
     }
-    auto desugared = Desugarer(std::move(parsed)).desugar();
-    std::print("Desugared parse tree:\n");
-    printParseTree(desugared.get(), 0);
     if (!errorMessages.empty()) {
         return 1;
     }
+    auto desugared = Desugarer(std::move(parsed)).desugar();
+    //std::print("Desugared parse tree:\n");
+    //printParseTree(desugared.get(), 0);
+    Binder binder(errorMessages);
+    auto binderResult = binder.bind(std::move(desugared));
+    if (errorMessages.empty()) {
+        std::print("No binder errors.\n");
+    } else {
+        std::print("⚠️ {} binder error(s) found.\n", errorMessages.size());
+    }
+    for (const auto& errorMessage : errorMessages) {
+        std::print("{}\n", errorMessage);
+    }
+    if (!errorMessages.empty()) {
+        return 1;
+    }
+    printBinderResult(std::move(binderResult));
     return 0;
 }

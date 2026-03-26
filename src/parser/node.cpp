@@ -1,6 +1,8 @@
-#include "parser/node.hpp"
 #include <memory>
 #include <vector>
+
+#include "parser/node.hpp"
+#include "binder/name.hpp"
 
 std::string nodeKindToString(NodeKind nodeKind) {
     switch (nodeKind) {
@@ -121,8 +123,8 @@ std::string FunctionDeclarationNode::getIdentifierName() const {
     return this->getIdentifier()->getName();
 }
 
-const std::vector<const IdentifierNode*> FunctionDeclarationNode::getParameters() const {
-    std::vector<const IdentifierNode*> parameterPointers;
+const std::vector<IdentifierNode*> FunctionDeclarationNode::getParameters() const {
+    std::vector<IdentifierNode*> parameterPointers;
     for (const auto& parameter : this->parameters) {
         parameterPointers.push_back(parameter.get());
     }
@@ -368,6 +370,18 @@ std::string IdentifierNode::getName() const {
 
 const std::vector<Node*> IdentifierNode::getChildren() const {
     return {};
+}
+
+Token* IdentifierNode::getIdentifierToken() const {
+    return this->identifierToken.get();
+}
+
+Name* IdentifierNode::getNameReference() const {
+    return this->name;
+}
+
+void IdentifierNode::setNameReference(Name* name) {
+    this->name = name;
 }
 
 //FunctionCallExpressionNode

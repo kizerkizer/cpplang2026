@@ -37,7 +37,7 @@ void Lexer::advance(const int &steps = 1) {
     this->column += steps;
 }
 
-std::tuple<size_t, size_t, size_t> Lexer::getCounters() const {
+std::tuple<size_t, size_t, size_t> Lexer::getCurrentSourceCodeLocation() const {
     return {this->index, this->line, this->column};
 }
 
@@ -131,7 +131,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             continue;
         }
         if (isWhitespace(this->getCharacter())) {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
                 this->advance();
             }
@@ -140,7 +140,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         // Single line comment
         if (this->getCharacter() == '/' && this->getCharacter(1) == '/') {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             while (!isNewline(this->getCharacter()) && !this->isPastSourceStringEnd()) {
                 this->advance();
             }
@@ -149,7 +149,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         // /*...*/ comment
         if (this->getCharacter() == '/' && this->getCharacter(1) == '*') {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance(2);
             while (!(this->getCharacter() == '*' && this->getCharacter(1) == '/') && !this->isPastSourceStringEnd()) {
                 if (isNewline(this->getCharacter())) {
@@ -184,7 +184,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         // Identifier
         if (isIdentifierStart(this->getCharacter())) {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance();
             while (isIdentifierPart(this->getCharacter())) {
                 this->advance();
@@ -194,7 +194,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
         }
         // String literal
         if (isStringLiteralQuote(this->getCharacter())) {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance();
             while (!isStringLiteralQuote(this->getCharacter())) {
                 if (isNewline(this->getCharacter()) || this->isPastSourceStringEnd()) {
@@ -212,7 +212,7 @@ std::vector<Token> Lexer::lex(const std::string& sourceString, std::vector<std::
             continue;
         }
         if (isIntegerLiteral(this->getCharacter())) {
-            auto [startIndex, startLine, startColumn] = this->getCounters();
+            auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
             this->advance();
             while (isIntegerLiteral(this->getCharacter())) {
                 this->advance();

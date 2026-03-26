@@ -39,6 +39,8 @@ Literal ::= NumberLiteral | StringLiteral | BooleanLiteral | EmptyLiteral | Obje
 PrimaryExpression ::= Identifier | FunctionCallExpression | IfExpression | UnaryOperatorExpression | Literal | '(' Expression ')'
 */
 
+class Name; // in binder/name.hpp
+
 enum class NodeKind {
     Program,
     Invalid,
@@ -118,8 +120,11 @@ public:
     std::string getName() const;
     Token* getIdentifierToken() const;
     const std::vector<Node*> getChildren() const override;
+    Name* getNameReference() const;
+    void setNameReference(Name* name);
 private:
     std::unique_ptr<Token> identifierToken;
+    Name* name = nullptr; // Set during binding
 };
 
 class AssignmentExpressionNode : public ExpressionNode {
@@ -165,7 +170,7 @@ public:
     FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
-    const std::vector<const IdentifierNode*> getParameters() const;
+    const std::vector<IdentifierNode*> getParameters() const;
     BlockStatementNode* getBody() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<IdentifierNode> takeIdentifier();

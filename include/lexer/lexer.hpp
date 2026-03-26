@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "common/sourcecodelocation.hpp"
 #include "token.hpp"
 
 class Lexer {
@@ -14,7 +15,7 @@ private:
     size_t line = 1;
     size_t column = 1;
     void advance(const int &steps);
-    std::tuple<size_t, size_t, size_t> getCounters() const;
+    SourceCodeLocation getCurrentSourceCodeLocation() const;
     char getCharacter (const int &offset) const;
     bool isPastSourceStringEnd () const;
     std::string makeErrorMessage(const std::string& message) const;

@@ -1,20 +1,26 @@
-function foo () {
+function foo (myParam) {
     var baz = 'baz';
     var qux = 1053; // Some comment :-)
     while (true && !false) {
-        log('Foo bar!');
+        var b = 'Foo bar!';
         /*
          * Another comment (-:
          !
          */
+    }
+    qux = 25;
+    if (myParam > 5) then {
+        baz = 'bar';
+    } else {
+        baz = 'foo';
     }
     loop {
         if (foo) then {
             break;
         }
     }
-    var qux = empty;
-    return false;
+    //var qux = empty; // Error: redeclaration!
+    return baz;
 }
 
 var boo = if true then 100 else -5;
