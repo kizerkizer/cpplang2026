@@ -5,7 +5,7 @@
 #include "binder/name.hpp"
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
-#include "flower/flownode.hpp"
+#include "flowbuilder/flownode.hpp"
 
 std::string nodeKindToString(NodeKind nodeKind) {
     switch (nodeKind) {

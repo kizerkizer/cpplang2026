@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "flower/flowgraph.hpp"
-#include "flower/flownode.hpp"
+#include "flowbuilder/flowgraph.hpp"
+#include "flowbuilder/flownode.hpp"
 
 FlowGraph::FlowGraph () {
     this->entry = std::make_unique<FlowNode>(FlowNodeKind::Entry);

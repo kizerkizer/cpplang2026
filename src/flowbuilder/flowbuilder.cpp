@@ -1,5 +1,5 @@
-#include "flower/flowbuilder.hpp"
-#include "flower/flownode.hpp"
+#include "flowbuilder/flowbuilder.hpp"
+#include "flowbuilder/flownode.hpp"
 #include "parser/node.hpp"
 
 FlowBuilder::FlowBuilder() {
