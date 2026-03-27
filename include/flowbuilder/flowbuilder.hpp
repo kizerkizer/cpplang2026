@@ -1,7 +1,7 @@
 #pragma once
 
 #include "binder/scope.hpp"
-#include "flower/flowgraph.hpp"
+#include "flowbuilder/flowgraph.hpp"
 
 class FlowBuilder {
 public:

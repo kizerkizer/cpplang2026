@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "flower/flownode.hpp"
+#include "flowbuilder/flownode.hpp"
 
 class FlowGraph {
 private:
