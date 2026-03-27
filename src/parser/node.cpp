@@ -3,7 +3,9 @@
 
 #include "parser/node.hpp"
 #include "binder/name.hpp"
+#include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
+#include "flower/flownode.hpp"
 
 std::string nodeKindToString(NodeKind nodeKind) {
     switch (nodeKind) {
@@ -53,6 +55,10 @@ std::string nodeKindToString(NodeKind nodeKind) {
             return "EmptyLiteral";
         case NodeKind::IfExpression:
             return "IfExpression";
+        case NodeKind::TypeExpression:
+            return "TypeExpression";
+        case NodeKind::IdentifierWithPossibleAnnotation:
+            return "IdentifierWithPossibleAnnotation";
     }
 }
 
@@ -71,6 +77,14 @@ bool Node::operator!=(const NodeKind& rhs) const {
 
 bool Node::isCompilerCreated() const {
     return this->compilerCreated;
+}
+
+FlowNode* Node::getFlowNode() {
+    return this->flowNode;
+}
+
+void Node::setFlowNode(FlowNode* flowNode) {
+    this->flowNode = flowNode;
 }
 
 void Node::addToken(std::unique_ptr<Token> token) {
@@ -121,14 +135,18 @@ void ProgramNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
 }
 
 //VariableDeclarationNode
-VariableDeclarationNode::VariableDeclarationNode(std::unique_ptr<AssignmentExpressionNode> assignmentExpression) : Node(NodeKind::VariableDeclaration), assignmentExpression(std::move(assignmentExpression)) { };
+VariableDeclarationNode::VariableDeclarationNode(std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<AssignmentExpressionNode> assignmentExpression) : Node(NodeKind::VariableDeclaration), typeExpression(std::move(typeExpression)), assignmentExpression(std::move(assignmentExpression)) { };
+
+TypeExpressionNode* VariableDeclarationNode::getTypeExpression() const {
+    return this->typeExpression.get();
+}
 
 AssignmentExpressionNode* VariableDeclarationNode::getAssignmentExpression() const {
     return this->assignmentExpression.get();
 }
 
 const std::vector<Node*> VariableDeclarationNode::getChildren() const {
-    return {this->assignmentExpression.get() };
+    return {this->typeExpression.get(), this->assignmentExpression.get() };
 }
 
 std::unique_ptr<AssignmentExpressionNode> VariableDeclarationNode::takeAssignmentExpression() {
@@ -140,18 +158,22 @@ void VariableDeclarationNode::setAssignmentExpression(std::unique_ptr<Assignment
 }
 
 //FunctionDeclarationNode
-FunctionDeclarationNode::FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode) : Node(NodeKind::FunctionDeclaration), identifier(std::move(identifier)), parameters(std::move(parameters)), bodyNode(std::move(bodyNode)) {};
+FunctionDeclarationNode::FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression) : Node(NodeKind::FunctionDeclaration), identifier(std::move(identifier)), parameters(std::move(parameters)), returnTypeExpression(std::move(returnTypeExpression)), bodyNode(std::move(bodyNode)) {};
 
 IdentifierNode* FunctionDeclarationNode::getIdentifier() const {
     return this->identifier.get();
 };
 
+TypeExpressionNode* FunctionDeclarationNode::getReturnTypeExpression() const {
+    return this->returnTypeExpression.get();
+}
+
 std::string FunctionDeclarationNode::getIdentifierName() const {
     return this->getIdentifier()->getName();
 }
 
-const std::vector<IdentifierNode*> FunctionDeclarationNode::getParameters() const {
-    std::vector<IdentifierNode*> parameterPointers;
+const std::vector<IdentifierWithPossibleAnnotationNode*> FunctionDeclarationNode::getParameters() const {
+    std::vector<IdentifierWithPossibleAnnotationNode*> parameterPointers;
     for (const auto& parameter : this->parameters) {
         parameterPointers.push_back(parameter.get());
     }
@@ -176,7 +198,11 @@ std::unique_ptr<IdentifierNode> FunctionDeclarationNode::takeIdentifier() {
     return std::move(this->identifier);
 }
 
-std::vector<std::unique_ptr<IdentifierNode>> FunctionDeclarationNode::takeParameters() {
+std::unique_ptr<TypeExpressionNode> FunctionDeclarationNode::takeReturnTypeExpression() {
+    return std::move(this->returnTypeExpression);
+}
+
+std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> FunctionDeclarationNode::takeParameters() {
     return std::move(this->parameters);
 }
 
@@ -188,12 +214,29 @@ void FunctionDeclarationNode::setIdentifier(std::unique_ptr<IdentifierNode> iden
     this->identifier = std::move(identifier);
 }
 
-void FunctionDeclarationNode::setParameters(std::vector<std::unique_ptr<IdentifierNode>> parameters) {
+void FunctionDeclarationNode::setReturnTypeExpression(std::unique_ptr<TypeExpressionNode> returnTypeExpression) {
+    this->returnTypeExpression = std::move(returnTypeExpression);
+}
+
+void FunctionDeclarationNode::setParameters(std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters) {
     this->parameters = std::move(parameters);
 }
 
 void FunctionDeclarationNode::setBodyNode(std::unique_ptr<BlockStatementNode> bodyNode) {
     this->bodyNode = std::move(bodyNode);
+}
+
+//IdentifierWithPossibleAnnotationNode
+TypeExpressionNode* IdentifierWithPossibleAnnotationNode::getAnnotation() const {
+    return this->annotation.get();
+}
+
+std::unique_ptr<TypeExpressionNode> IdentifierWithPossibleAnnotationNode::takeAnnotation() {
+    return std::move(this->annotation);
+}
+
+void IdentifierWithPossibleAnnotationNode::setAnnotation(std::unique_ptr<TypeExpressionNode> annotation) {
+    this->annotation = std::move(annotation);
 }
 
 //BlockStatementNode
@@ -615,4 +658,24 @@ void IfExpressionNode::setThenBranch(std::unique_ptr<ExpressionNode> thenBranch)
 
 void IfExpressionNode::setElseBranch(std::unique_ptr<ExpressionNode> elseBranch) {
     this->elseBranch = std::move(elseBranch);
+}
+
+//TypeExpressionNode
+PrimitiveTypeKind TypeExpressionNode::getPrimitiveType() const {
+    switch (this->token->getTokenKind()) {
+        case TokenKind::TypePrimitiveBoolean:
+            return PrimitiveTypeKind::Boolean;
+        case TokenKind::TypePrimitiveEmpty:
+            return PrimitiveTypeKind::Empty;
+        case TokenKind::TypePrimitiveFloat:
+            return PrimitiveTypeKind::Float;
+        case TokenKind::TypePrimitiveNumber:
+            return PrimitiveTypeKind::Number;
+        case TokenKind::TypePrimitiveInteger:
+            return PrimitiveTypeKind::Integer;
+        case TokenKind::TypePrimitiveString:
+            return PrimitiveTypeKind::String;
+        default:
+            return PrimitiveTypeKind::Invalid;
+    }
 }

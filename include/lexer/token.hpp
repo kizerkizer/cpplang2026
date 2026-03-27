@@ -15,6 +15,7 @@ enum class TokenKind {
     LiteralEmpty,
     Dot,
     Comma,
+    Colon,
     Semicolon,
     ParenthesisOpen,
     ParenthesisClose,
@@ -34,6 +35,8 @@ enum class TokenKind {
     NotEqual,
     LessThanEqual,
     GreaterThanEqual,
+    RightArrow,
+    LeftArrow,
     And,
     Or,
     Not,
@@ -52,13 +55,19 @@ enum class TokenKind {
     KeywordType,
     KeywordExtensional,
     KeywordIntensional,
+    TypePrimitiveBoolean,
+    TypePrimitiveNumber,
+    TypePrimitiveInteger,
+    TypePrimitiveFloat,
+    TypePrimitiveString,
+    TypePrimitiveEmpty,
 };
 
-#define IS_TOKENNAME_LITERAL(tokenName) (tokenName == TokenKind::IntegerLiteral || tokenName == TokenKind::StringLiteral || tokenName == TokenKind::BooleanLiteral)
-#define IS_TOKENNAME_KEYWORD(tokenName) (tokenName == TokenKind::KeywordIf || tokenName == TokenKind::KeywordThen || tokenName == TokenKind::KeywordElse || tokenName == TokenKind::KeywordClass || tokenName == TokenKind::KeywordWhile || tokenName == TokenKind::KeywordLoop || tokenName == TokenKind::KeywordFunction || tokenName == TokenKind::KeywordReturn || tokenName == TokenKind::KeywordVar || tokenName == TokenKind::KeywordType)
-#define IS_TOKENNAME_TRIVIA(tokenName) (tokenName == TokenKind::TriviaWhitespace || tokenName == TokenKind::TriviaCommentShort || tokenName == TokenKind::TriviaCommentLong || tokenName == TokenKind::TriviaNewline)
-#define IS_TOKENNAME_OPERATOR(tokenName) (tokenName == TokenKind::Plus || tokenName == TokenKind::Dash || tokenName == TokenKind::Asterisk || tokenName == TokenKind::Slash || tokenName == TokenKind::Equal || tokenName == TokenKind::LessThan || tokenName == TokenKind::GreaterThan || tokenName == TokenKind::EqualEqual || tokenName == TokenKind::NotEqual || tokenName == TokenKind::LessThanEqual || tokenName == TokenKind::GreaterThanEqual || tokenName == TokenKind::And || tokenName == TokenKind::Or || tokenName == TokenKind::Not || tokenName == TokenKind::AsteriskAsterisk)
-#define IS_TOKENNAME_BINARY_OPERATOR(tokenName) (tokenName == TokenKind::Plus || tokenName == TokenKind::Dash || tokenName == TokenKind::Asterisk || tokenName == TokenKind::Slash || tokenName == TokenKind::Equal || tokenName == TokenKind::LessThan || tokenName == TokenKind::GreaterThan || tokenName == TokenKind::EqualEqual || tokenName == TokenKind::NotEqual || tokenName == TokenKind::LessThanEqual || tokenName == TokenKind::GreaterThanEqual || tokenName == TokenKind::And || tokenName == TokenKind::Or || tokenName == TokenKind::AsteriskAsterisk)
+#define IS_TOKENKIND_LITERAL(tokenKind) (tokenKind == TokenKind::IntegerLiteral || tokenKind == TokenKind::StringLiteral || tokenKind == TokenKind::BooleanLiteral)
+#define IS_TOKENKIND_KEYWORD(tokenKind) (tokenKind == TokenKind::KeywordIf || tokenKind == TokenKind::KeywordThen || tokenKind == TokenKind::KeywordElse || tokenKind == TokenKind::KeywordClass || tokenKind == TokenKind::KeywordWhile || tokenKind == TokenKind::KeywordLoop || tokenKind == TokenKind::KeywordFunction || tokenKind == TokenKind::KeywordReturn || tokenKind == TokenKind::KeywordVar || tokenKind == TokenKind::KeywordType)
+#define IS_TOKENKIND_TRIVIA(tokenKind) (tokenKind == TokenKind::TriviaWhitespace || tokenKind == TokenKind::TriviaCommentShort || tokenKind == TokenKind::TriviaCommentLong || tokenKind == TokenKind::TriviaNewline)
+#define IS_TOKENKIND_OPERATOR(tokenKind) (tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::And || tokenKind == TokenKind::Or || tokenKind == TokenKind::Not || tokenKind == TokenKind::AsteriskAsterisk)
+#define IS_TOKENKIND_BINARY_OPERATOR(tokenKind) (tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::And || tokenKind == TokenKind::Or || tokenKind == TokenKind::AsteriskAsterisk)
 #define LEFT_ASSOCIATIVE true
 #define RIGHT_ASSOCIATIVE false
 
@@ -72,7 +81,7 @@ class Token {
 public:
     Token(const std::string &sourceString, size_t index, size_t line, size_t column, TokenKind name, bool compilerCreated = false)
         : name(name), sourceString(sourceString), firstIndex(index), firstLine(line), firstColumn(column), lastIndex(index), lastLine(line), lastColumn(column), compilerCreated(compilerCreated) {};
-    TokenKind getTokenName() const;
+    TokenKind getTokenKind() const;
     int getFirstIndex() const;
     int getFirstLine() const;
     int getFirstColumn() const;

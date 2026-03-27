@@ -4,8 +4,7 @@
 #include <string>
 #include <map>
 
-#include "parser/node.hpp"
-
+class Node; // In parser/parser.hpp
 class Name; // In name.hpp
 
 enum class ScopeKind {

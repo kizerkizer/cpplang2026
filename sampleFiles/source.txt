@@ -1,7 +1,8 @@
-function foo (myParam) {
+function foo (myParam: Integer): String {
     var baz = 'baz';
     var qux = 1053; // Some comment :-)
-    while (true && !(12 == qux)) {
+    while (true && !(12 == qux)) { // Should all typecheck OK to Boolean
+        // Maybe this will be eventually detected as an unreachable area
         var b = 'Foo bar!';
         /*
          * Another comment (-:
@@ -15,7 +16,7 @@ function foo (myParam) {
         baz = 'foo';
     }
     loop {
-        if (foo) then {
+        if (foo) then { // Error: type error, `foo` is not assignable to `Boolean`
             break;
         }
     }
@@ -23,88 +24,7 @@ function foo (myParam) {
     return baz;
 }
 
-/*
-
-extensional type Color = {
-    Red,
-    Green,
-    Blue,
-}
-
-type Color = extensional {
-    Red,
-    Green,
-    Blue,
-}
-
-class Box {
-    public x: Number;
-    public y: Number;
-    public width: Number;
-    public height: Number;
-
-    [:operator_from] (value: Top) {
-        if (value is MapSyntax) {
-            this.x = value.x;
-            this.y = value.y;
-            this.width = value.width;
-            this.height = value.height;
-        }
-    }
-}
-
-abstract class Shape {
-    var x: Float;
-    var y: Float;
-    var w: Float;
-    var h: Float;
-
-    init (x: Float, y: Float, w: Float, h: Float) {
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-    }
-
-    getBoundingBox (): Box {
-        return Box from [
-            x -> this.x,
-            y -> this.y,
-            width -> this.w,
-            height -> this.h,
-        ];
-    }
-
-    abstract getArea(): Float;
-}
-
-class Circle : Shape {
-    var radius: Float;
-}
-
-*/
-
-var boo = if true then 100 else -5;
-
-var lol = 12345 - -23 * 53;
-
-var ccc = 5 + 10 + 12 + 3;
-
-var qux = !80085 + 5 * !!!6;
-
-var bar = 59 && 24 || 12 && 5;
-
-var qqq = false;
-
-/*
-// Type declaration:
-type MyType<T> = T | String;
-
-*/
-
-function bbb () {
-    return 'bar' + lol + bar;
-    while (35) {
-        return 'bar"' || qux;
-    }
+function main () {
+    var someVariable = if true then 45 else 40; // Should eventually optimize to just 45
+    var result: String = foo(45);
 }

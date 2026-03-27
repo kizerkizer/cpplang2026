@@ -2,6 +2,7 @@
 
 #include "binder/scope.hpp"
 #include "parser/node.hpp"
+#include <memory>
 #include <string>
 
 enum class NameKind {
@@ -43,10 +44,13 @@ public:
     NameKind getKind() const;
     const Node* getNode() const;
     NameModifierFlags getModifierFlags() const;
+    Type* getType();
+    void setType(std::unique_ptr<Type> type);
 private:
     std::string nameString;
     Scope* scope;
     Node* node;
     NameKind kind;
     NameModifierFlags modifierFlags;
+    std::unique_ptr<Type> type = nullptr; // set in type checking
 };

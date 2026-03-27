@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
+#include "flower/flownode.hpp"
 #include "lexer/token.hpp"
 
 
@@ -12,8 +14,10 @@
 Rough Grammar:
 Program ::= (Declaration | Statement)*
 Declaration ::= VariableDeclaration | FunctionDeclaration
-VariableDeclaration ::= 'var' Identifier AssignmentExpression? ';'
-FunctionDeclaration ::= 'function' Identifier '(' ParameterList? ')' BlockStatement
+VariableDeclaration ::= 'var' Identifier (':' TypeExpression)? AssignmentExpression? ';'
+FunctionDeclaration ::= 'function' Identifier '(' ParameterList? ')' (':' TypeExpression)? BlockStatement
+TypeExpression = PrimitiveType//PrimaryTypeExpression | BinaryOperatorTypeExpression
+//UnionTypeExpression = TypeExpression '|' TypeExpression
 ParameterList ::= Identifier (',' Identifier)*
 Statement ::= BlockStatement | IfStatement | WhileStatement | LoopStatement | BreakStatement | ContinueStatement | ReturnStatement | AssignmentStatement | FunctionCallStatement
 BlockStatement ::= '{' Program '}'
@@ -68,6 +72,8 @@ enum class NodeKind {
     BinaryOperatorExpression,
     UnaryOperatorExpression,
     IfExpression,
+    TypeExpression,
+    IdentifierWithPossibleAnnotation,
 };
 
 std::string nodeKindToString(NodeKind nodeKind);
@@ -87,9 +93,12 @@ public:
     std::vector<Token*> getTokens();
     SourceCodeLocation getFirstSourceCodeLocation();
     SourceCodeLocation getLastSourceCodeLocation();
+    FlowNode* getFlowNode();
+    void setFlowNode(FlowNode* flowNode);
 private:
     NodeKind nodeKind;
     bool compilerCreated;
+    FlowNode* flowNode; // set by flow builder
     std::vector<std::unique_ptr<Token>> tokens;
 };
 
@@ -99,6 +108,17 @@ public:
     const std::vector<Node*> getChildren() const override {
         return {};
     }
+};
+
+class TypeExpressionNode : public Node {
+public:
+    TypeExpressionNode(std::unique_ptr<Token> token) : Node(NodeKind::TypeExpression), token(std::move(token)) {};
+    const std::vector<Node*> getChildren() const override {
+        return {};
+    }
+    PrimitiveTypeKind getPrimitiveType() const; // TODO eventually move to TypePrimitiveNode
+private:
+    std::unique_ptr<Token> token;
 };
 
 class ProgramNode : public Node {
@@ -124,7 +144,7 @@ public:
 
 class IdentifierNode : public PrimaryExpressionNode {
 public:
-    IdentifierNode(std::unique_ptr<Token> identifierToken) : PrimaryExpressionNode(NodeKind::Identifier), identifierToken(std::move(identifierToken)) {};
+    IdentifierNode(std::unique_ptr<Token> identifierToken, NodeKind kind = NodeKind::Identifier) : PrimaryExpressionNode(kind), identifierToken(std::move(identifierToken)) {};
     std::string getName() const;
     Token* getIdentifierToken() const;
     const std::vector<Node*> getChildren() const override;
@@ -153,12 +173,14 @@ private:
 
 class VariableDeclarationNode : public Node {
 public:
-    VariableDeclarationNode(std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
+    VariableDeclarationNode(std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
+    TypeExpressionNode* getTypeExpression() const;
     AssignmentExpressionNode* getAssignmentExpression() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<AssignmentExpressionNode> takeAssignmentExpression();
     void setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
 private:
+    std::unique_ptr<TypeExpressionNode> typeExpression;
     std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
 };
 
@@ -173,23 +195,37 @@ private:
     std::unique_ptr<ProgramNode> programNode;
 };
 
+class IdentifierWithPossibleAnnotationNode : public IdentifierNode {
+public:
+    IdentifierWithPossibleAnnotationNode(std::unique_ptr<Token> token, std::unique_ptr<TypeExpressionNode> annotation) : IdentifierNode(std::move(token), NodeKind::IdentifierWithPossibleAnnotation), annotation(std::move(annotation)) {};
+    TypeExpressionNode* getAnnotation() const;
+    std::unique_ptr<TypeExpressionNode> takeAnnotation();
+    void setAnnotation(std::unique_ptr<TypeExpressionNode> annotation);
+private:
+    std::unique_ptr<TypeExpressionNode> annotation;
+};
+
 class FunctionDeclarationNode : public Node {
 public:
-    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode);
+    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
-    const std::vector<IdentifierNode*> getParameters() const;
+    TypeExpressionNode* getReturnTypeExpression() const;
+    const std::vector<IdentifierWithPossibleAnnotationNode*> getParameters() const;
     BlockStatementNode* getBody() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<IdentifierNode> takeIdentifier();
-    std::vector<std::unique_ptr<IdentifierNode>> takeParameters();
+    std::unique_ptr<TypeExpressionNode> takeReturnTypeExpression();
+    std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> takeParameters();
     std::unique_ptr<BlockStatementNode> takeBodyNode();
     void setIdentifier(std::unique_ptr<IdentifierNode> identifier);
-    void setParameters(std::vector<std::unique_ptr<IdentifierNode>> parameters);
+    void setReturnTypeExpression(std::unique_ptr<TypeExpressionNode> returnTypeExpression);
+    void setParameters(std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters);
     void setBodyNode(std::unique_ptr<BlockStatementNode> bodyNode);
 private:
     std::unique_ptr<IdentifierNode> identifier;
-    std::vector<std::unique_ptr<IdentifierNode>> parameters;
+    std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters;
+    std::unique_ptr<TypeExpressionNode> returnTypeExpression;
     std::unique_ptr<BlockStatementNode> bodyNode;
 };
 

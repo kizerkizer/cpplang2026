@@ -3,31 +3,47 @@
 #include "lexer/token.hpp"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <print>
 
-Token Parser::peek(int offset) const {
-    if (this->index + offset >= this->tokens.size()) {
+Token Parser::peek(size_t offset) {
+    if (this->isPastTokensEnd()) {
         return Token("", 0, 0, 0, TokenKind::OutOfRange);
     }
-    return (this->tokens)[this->index + offset];
+    int needed = offset - this->tokenBuffer.size();
+    while (needed >= 0) {
+        this->tokenBuffer.push_back(this->lexer->getNextNonTrivialToken());
+        needed--;
+    }
+    return *this->tokenBuffer[offset]; // offset guaranteed to be < tokenBuffer.size()
 }
 
 bool Parser::isPastTokensEnd() const {
-    return this->index >= this->tokens.size();
+    return this->lexer->isDone();
 }
 
-std::optional<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenName) {
-    if (this->isPastTokensEnd()) {
-        return std::nullopt;
+std::unique_ptr<Token> Parser::consumeCurrentToken() {
+    if (!this->tokenBuffer.empty()) {
+        std::unique_ptr<Token> token = std::move(this->tokenBuffer.front());
+        this->tokenBuffer.pop_front();
+        this->index++;
+        return token;
     }
-    Token token = this->peek();
-    if (token != expectedTokenName) {
-        return std::nullopt;
-    }
+    std::unique_ptr<Token> token = this->lexer->getNextNonTrivialToken();
     this->index++;
     return token;
+}
+
+std::unique_ptr<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenName) {
+    if (this->isPastTokensEnd()) {
+        return nullptr;
+    }
+    auto token = this->peek();
+    if (token != expectedTokenName) {
+        return nullptr;
+    }
+    auto returnToken = this->consumeCurrentToken();
+    return returnToken;
 }
 
 void Parser::enterLoop() {
@@ -87,7 +103,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
             this->expectAndAdvance(TokenKind::BraceClose);
             return program;
         }
-        switch (this->peek().getTokenName()) {
+        switch (this->peek().getTokenKind()) {
             case TokenKind::KeywordVar: {
                 auto node = this->parseVariableDeclaration();
                 if (!node) {
@@ -226,14 +242,24 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         this->addErrorMessageExpected("identifier after 'var'");
         return nullptr;
     }
+    std::unique_ptr<TypeExpressionNode> typeExpression = nullptr;
+    if (this->peek() == TokenKind::Colon) {
+        // parse type annotation
+        auto colonToken = this->expectAndAdvance(TokenKind::Colon);
+        typeExpression = this->parseTypeExpression();
+        if (!typeExpression) {
+            this->addErrorMessageParseFailure("type annotation");
+            return nullptr;
+        }
+    }
     if (this->peek() == TokenKind::Semicolon) {
         auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
-        auto identiferNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
+        auto identiferNode = std::make_unique<IdentifierNode>(std::move(semicolonToken));
         auto assignmentExpressionNode = std::make_unique<AssignmentExpressionNode>(std::move(identiferNode), nullptr);
-        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(assignmentExpressionNode));
-        variableDeclaration->addToken(std::make_unique<Token>(varToken.value()));
-        variableDeclaration->addToken(std::make_unique<Token>(identifierToken.value()));
-        variableDeclaration->addToken(std::make_unique<Token>(semicolonToken.value()));
+        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(typeExpression), std::move(assignmentExpressionNode));
+        /*variableDeclaration->addToken(std::move(semicolonToken));
+        variableDeclaration->addToken(std::move(identifierToken));
+        variableDeclaration->addToken(std::move(semicolonToken));*/
         return variableDeclaration;
     }
     std::unique_ptr<ExpressionNode> node;
@@ -245,10 +271,25 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         return nullptr;
     }
     this->expectAndAdvance(TokenKind::Semicolon);
-    auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
     auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(node));
-    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(assignmentExpression));
+    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(typeExpression), std::move(assignmentExpression));
     return variableDeclaration;
+}
+
+std::unique_ptr<IdentifierWithPossibleAnnotationNode> Parser::parseIdentifierWithPossibleAnnotation() {
+    auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
+    if (!identifierToken) {
+        this->addErrorMessageExpected("identifier");
+        return nullptr;
+    }
+    std::unique_ptr<TypeExpressionNode> annotation = nullptr;
+    if (this->peek() == TokenKind::Colon) {
+        this->expectAndAdvance(TokenKind::Colon);
+        annotation = this->parseTypeExpression();
+    }
+    auto identifier = std::make_unique<IdentifierWithPossibleAnnotationNode>(std::move(identifierToken), std::move(annotation));
+    return identifier;
 }
 
 std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
@@ -266,25 +307,31 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         this->addErrorMessageExpected(" '(' after function name");
         return nullptr;
     }
-    std::vector<std::unique_ptr<Token>> parameterTokens;
-    if (this->peek() != TokenKind::ParenthesisClose) {
-        while (true) {
-            auto parameterToken = this->expectAndAdvance(TokenKind::Identifier);
-            if (!parameterToken) {
-                this->addErrorMessageExpected("identifier in parameter list");
-                return nullptr;
-            }
-            parameterTokens.push_back(std::make_unique<Token>(parameterToken.value()));
-            if (this->peek() == TokenKind::Comma) {
-                this->expectAndAdvance(TokenKind::Comma);
-            } else {
-                break;
-            }
+    std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters;
+    while (this->peek() != TokenKind::ParenthesisClose) {
+        std::unique_ptr<IdentifierWithPossibleAnnotationNode> identifier = this->parseIdentifierWithPossibleAnnotation();
+        if (!identifier) {
+            this->addErrorMessageParseFailure("function parameter");
+            return nullptr;
+        }
+        parameters.push_back(std::move(identifier));
+        if (this->peek() == TokenKind::Comma) {
+            this->expectAndAdvance(TokenKind::Comma);
+        } else {
+            break;
         }
     }
     if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
         this->addErrorMessageExpected("')' after parameter list");
         return nullptr;
+    }
+    std::unique_ptr<TypeExpressionNode> returnTypeExpression = nullptr;
+    if (this->peek() == TokenKind::Colon) {
+        this->expectAndAdvance(TokenKind::Colon);
+        returnTypeExpression = this->parseTypeExpression();
+        if (!returnTypeExpression) {
+            this->addErrorMessageParseFailure("function return type annotation");
+        }
     }
     this->enterFunction();
     auto bodyNode = this->parseBlockStatement();
@@ -293,13 +340,8 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         this->addErrorMessageParseFailure("function body");
         return nullptr;
     }
-    auto functionNameIdentifier = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
-    std::vector<std::unique_ptr<IdentifierNode>> parameters;
-    for (const auto& paramToken : parameterTokens) {
-        auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(*paramToken));
-        parameters.push_back(std::move(identifierNode));
-    }
-    auto functionDeclaration = std::make_unique<FunctionDeclarationNode>(std::move(functionNameIdentifier), std::move(parameters), std::move(bodyNode));
+    auto functionNameIdentifier = std::make_unique<IdentifierNode>(std::move(identifierToken));
+    auto functionDeclaration = std::make_unique<FunctionDeclarationNode>(std::move(functionNameIdentifier), std::move(parameters), std::move(bodyNode), std::move(returnTypeExpression));
     return functionDeclaration;
 }
 
@@ -475,7 +517,7 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
         this->addErrorMessageExpected("')' after function call arguments");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
     auto functionCallExpression = std::make_unique<FunctionCallExpressionNode>(std::move(identifierNode), std::move(arguments));
     return functionCallExpression;
 }
@@ -513,7 +555,7 @@ std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
         this->addErrorMessageExpected("';' after assignment expression");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
     auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode));
     auto assignmentStatement = std::make_unique<AssignmentStatementNode>(std::move(assignmentExpression));
     return assignmentStatement;
@@ -534,14 +576,14 @@ std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
         this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(identifierToken.value()));
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
     auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode));
     return assignmentExpression;
 }
 
 std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
     Token token = this->peek();
-    switch (token.getTokenName()) {
+    switch (token.getTokenKind()) {
         case TokenKind::Identifier: {
             if (this->peek(1) == TokenKind::ParenthesisOpen) {
                 auto functionCallExpression = this->parseFunctionCallExpression();
@@ -562,48 +604,48 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
             return expression;
         }
         case TokenKind::LiteralBoolean: {
-            auto booleanLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralBoolean);
-            if (!booleanLiteralTokenOpt) {
+            auto booleanLiteralToken = this->expectAndAdvance(TokenKind::LiteralBoolean);
+            if (!booleanLiteralToken) {
                 // unreachable
                 this->addErrorMessageExpected("boolean literal");
                 return nullptr;
             }
-            std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::make_unique<Token>(booleanLiteralTokenOpt.value()));
+            std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::move(booleanLiteralToken));
             return booleanLiteralNode;
         }
         case TokenKind::LiteralInteger: {
-            auto integerLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralInteger);
-            if (!integerLiteralTokenOpt) {
+            auto integerLiteralToken = this->expectAndAdvance(TokenKind::LiteralInteger);
+            if (!integerLiteralToken) {
                 // unreachable
                 this->addErrorMessageExpected("integer literal");
                 return nullptr;
             }
-            std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::make_unique<Token>(integerLiteralTokenOpt.value()));
+            std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::move(integerLiteralToken));
             return integerLiteralNode;
         }
         case TokenKind::LiteralString: {
-            auto stringLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralString);
-            if (!stringLiteralTokenOpt) {
+            auto stringLiteralToken = this->expectAndAdvance(TokenKind::LiteralString);
+            if (!stringLiteralToken) {
                 // unreachable
                 this->addErrorMessageExpected("string literal");
                 return nullptr;
             }
-            std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::make_unique<Token>(stringLiteralTokenOpt.value()));
+            std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::move(stringLiteralToken));
             return stringLiteralNode;
         }
         case TokenKind::LiteralEmpty: {
-            auto emptyLiteralTokenOpt = this->expectAndAdvance(TokenKind::LiteralEmpty);
-            if (!emptyLiteralTokenOpt) {
+            auto emptyLiteralToken = this->expectAndAdvance(TokenKind::LiteralEmpty);
+            if (!emptyLiteralToken) {
                 // unreachable
                 this->addErrorMessageExpected("empty literal");
                 return nullptr;
             }
-            std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::make_unique<Token>(emptyLiteralTokenOpt.value()));
+            std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::move(emptyLiteralToken));
             return emptyLiteralNode;
         }
         case TokenKind::Not: {
-            auto operatorTokenOpt = this->expectAndAdvance(TokenKind::Not);
-            if (!operatorTokenOpt) {
+            auto operatorToken = this->expectAndAdvance(TokenKind::Not);
+            if (!operatorToken) {
                 // unreachable
                 this->addErrorMessageExpected("'!' operator");
                 return nullptr;
@@ -613,12 +655,12 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageParseFailure("operand of '!' operator");
                 return nullptr;
             }
-            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken));
             return unaryOperatorNode;
         }
         case TokenKind::Dash: {
-            auto operatorTokenOpt = this->expectAndAdvance(TokenKind::Dash);
-            if (!operatorTokenOpt) {
+            auto operatorToken = this->expectAndAdvance(TokenKind::Dash);
+            if (!operatorToken) {
                 // unreachable
                 this->addErrorMessageExpected("'-' operator");
                 return nullptr;
@@ -628,7 +670,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageParseFailure("operand of '-' operator");
                 return nullptr;
             }
-            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::make_unique<Token>(operatorTokenOpt.value()));
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken));
             return unaryOperatorNode;
         }
         default:
@@ -639,9 +681,9 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
 
 std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr<ExpressionNode> lhs, int minPrecedence = 0) {
     auto lookahead = this->peek();
-    while (IS_TOKENNAME_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) >= minPrecedence) {
-        auto operatorTokenOpt = this->expectAndAdvance(lookahead.getTokenName());
-        if (!operatorTokenOpt) {
+    while (IS_TOKENKIND_OPERATOR(lookahead.getTokenKind()) && getPrecedence(lookahead.getTokenKind()) >= minPrecedence) {
+        auto operatorToken = this->expectAndAdvance(lookahead.getTokenKind());
+        if (!operatorToken) {
             // unreachable
             this->addErrorMessageExpected("operator");
             return nullptr;
@@ -653,23 +695,23 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
         }
         lookahead = this->peek();
         while (
-            (IS_TOKENNAME_BINARY_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) > getPrecedence(operatorTokenOpt.value().getTokenName()))
+            (IS_TOKENKIND_BINARY_OPERATOR(lookahead.getTokenKind()) && getPrecedence(lookahead.getTokenKind()) > getPrecedence(operatorToken->getTokenKind()))
             ||
-            (IS_TOKENNAME_BINARY_OPERATOR(lookahead.getTokenName()) && getPrecedence(lookahead.getTokenName()) == getPrecedence(operatorTokenOpt.value().getTokenName()) && getAssociativity(lookahead.getTokenName()) == RIGHT_ASSOCIATIVE)
+            (IS_TOKENKIND_BINARY_OPERATOR(lookahead.getTokenKind()) && getPrecedence(lookahead.getTokenKind()) == getPrecedence(operatorToken->getTokenKind()) && getAssociativity(lookahead.getTokenKind()) == RIGHT_ASSOCIATIVE)
         ) {
-            auto nextPrecedenceAddition = getPrecedence(lookahead.getTokenName()) > getPrecedence(operatorTokenOpt.value().getTokenName()) ? 1 : 0;
-            rhs = this->parseExpressionClimbing(std::move(rhs), getPrecedence(operatorTokenOpt.value().getTokenName()) + nextPrecedenceAddition);
+            auto nextPrecedenceAddition = getPrecedence(lookahead.getTokenKind()) > getPrecedence(operatorToken->getTokenKind()) ? 1 : 0;
+            rhs = this->parseExpressionClimbing(std::move(rhs), getPrecedence(operatorToken->getTokenKind()) + nextPrecedenceAddition);
             if (!rhs) {
                 this->addErrorMessageParseFailure("right-hand side expression");
                 return nullptr;
             }
             lookahead = this->peek(1);
         }
-        if (!IS_TOKENNAME_BINARY_OPERATOR(operatorTokenOpt.value().getTokenName())) {
+        if (!IS_TOKENKIND_BINARY_OPERATOR(operatorToken->getTokenKind())) {
             this->addErrorMessageExpected("binary operator");
             return nullptr;
         }
-        lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::make_unique<Token>(operatorTokenOpt.value()));
+        lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::move(operatorToken));
     }
     return lhs;
 }
@@ -709,7 +751,7 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
 
 std::unique_ptr<ExpressionNode> Parser::parseExpression() {
     auto token = this->peek();
-    if (this->peek() == TokenKind::Identifier && this->peek(1).getTokenName() == TokenKind::Equal) {
+    if (this->peek() == TokenKind::Identifier && this->peek(1).getTokenKind() == TokenKind::Equal) {
         auto assignmentExpressionNode = this->parseAssignmentExpression();
         if (!assignmentExpressionNode) {
             this->addErrorMessageParseFailure("assignment expression");
@@ -731,4 +773,15 @@ std::unique_ptr<ExpressionNode> Parser::parseExpression() {
         return nullptr;
     }
     return this->parseExpressionClimbing(std::move(primaryExpressionNode), 0);
+}
+
+std::unique_ptr<TypeExpressionNode> Parser::parseTypeExpression () {
+    auto token = this->peek();
+    if (token == TokenKind::TypePrimitiveBoolean || token == TokenKind::TypePrimitiveEmpty || token == TokenKind::TypePrimitiveFloat || token == TokenKind::TypePrimitiveInteger || token == TokenKind::TypePrimitiveString) {
+        this->expectAndAdvance(token.getTokenKind());
+        auto typeExpressionNode = std::make_unique<TypeExpressionNode>(std::make_unique<Token>(token));
+        return typeExpressionNode;
+    }
+    this->addErrorMessageParseFailure("type expression");
+    return nullptr;
 }

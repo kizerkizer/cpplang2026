@@ -2,8 +2,6 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <algorithm>
-#include <iterator>
 
 #include "lexer/lexer.hpp"
 #include "parser/node.hpp"
@@ -12,6 +10,7 @@
 #include "desugarer/desugarer.hpp"
 #include "binder/binder.hpp"
 #include "binder/name.hpp"
+#include "checker/type.hpp"
 
 void printParseTree (const Node* node, int indentation) {
     switch (node->getNodeKind()) {
@@ -27,6 +26,12 @@ void printParseTree (const Node* node, int indentation) {
         case NodeKind::VariableDeclaration: {
             const auto nodeCast = static_cast<const VariableDeclarationNode*>(node);
             std::print("{}VariableDeclarationNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* TypeExpressionNode\n", std::string(indentation * 2, ' '));
+            if (nodeCast->getTypeExpression()) {
+                printParseTree(nodeCast->getTypeExpression(), indentation + 1);
+            } else {
+                std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
+            }
             std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
             if (nodeCast->getAssignmentExpression()) {
                 printParseTree(nodeCast->getAssignmentExpression(), indentation + 1);
@@ -39,6 +44,12 @@ void printParseTree (const Node* node, int indentation) {
             const auto nodeCast = static_cast<const FunctionDeclarationNode*>(node);
             std::print("{}FunctionDeclarationNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Identifier: {}\n", std::string(indentation * 2, ' '), nodeCast->getIdentifier()->getName());
+            std::print("{}* ReturnTypeExpression:\n", std::string(indentation * 2, ' '));
+            if (nodeCast->getReturnTypeExpression()) {
+                printParseTree(nodeCast->getReturnTypeExpression(), indentation + 1);
+            } else {
+                std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
+            }
             std::print("{}* Parameters:\n", std::string(indentation * 2, ' '));
             for (const auto param : nodeCast->getParameters()) {
                 printParseTree(param, indentation + 1);
@@ -77,6 +88,26 @@ void printParseTree (const Node* node, int indentation) {
                 auto name = nodeCast->getNameReference();
                 std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
             }
+            break;
+        }
+        case NodeKind::IdentifierWithPossibleAnnotation: {
+            const auto nodeCast = static_cast<const IdentifierWithPossibleAnnotationNode*>(node);
+            std::print("{}IdentifierWithPossibleAnnotationNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Name:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getName());
+            std::print("{}* Annotation:\n", std::string(indentation * 2, ' '));
+            auto annotation = nodeCast->getAnnotation();
+            if (annotation) {
+                std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(annotation->getPrimitiveType()));
+            } else {
+                std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
+            }
+            if (nodeCast->getNameReference()) {
+                std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
+                auto name = nodeCast->getNameReference();
+                std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
+            }
+
             break;
         }
         case NodeKind::Invalid:
@@ -207,6 +238,13 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue() ? "true" : "false");
             break;
         }
+        case NodeKind::TypeExpression: {
+            const auto nodeCast = static_cast<const TypeExpressionNode*>(node);
+            std::print("{}TypeExpressionNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Type:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(nodeCast->getPrimitiveType()));
+            break;
+        }
     }
 }
 
@@ -241,28 +279,9 @@ int main () {
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string sourceString = buffer.str();
-    Lexer lexer;
     std::vector<std::string> errorMessages;
-    auto tokens = lexer.lex(sourceString, errorMessages);
-    if (errorMessages.empty()) {
-        std::print("No lex errors.\n");
-    } else {
-        std::print("⚠️ {} lex error(s) found.\n", errorMessages.size());
-    }
-    for (const auto& token : tokens) {
-        std::print("{}\n", token.toString());
-    }
-    for (const auto& errorMessage : errorMessages) {
-        std::print("{}\n", errorMessage);
-    }
-    if (!errorMessages.empty()) {
-        return 1;
-    }
-    std::vector<Token> nonTrivialTokens;
-    std::copy_if(tokens.begin(), tokens.end(), std::back_inserter(nonTrivialTokens), [](const Token& token) {
-        return !IS_TOKENNAME_TRIVIA(token.getTokenName());
-    });
-    Parser parser(nonTrivialTokens, errorMessages);
+    Lexer lexer = Lexer(sourceString, errorMessages);
+    Parser parser = Parser(&lexer, errorMessages);
     auto parsed = parser.parse();
     if (errorMessages.empty()) {
         std::print("No parse errors.\n");

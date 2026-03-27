@@ -1,16 +1,22 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <vector>
+
 #include "common/sourcecodelocation.hpp"
 #include "token.hpp"
 
 class Lexer {
 public:
-    Lexer();
-    std::vector<Token> lex(const std::string& sourceString, std::vector<std::string>& errorMessages_out);
+    Lexer(const std::string& sourceString, std::vector<std::string>& errorMessages_out);
+    //std::vector<Token> lex(const std::string& sourceString, std::vector<std::string>& errorMessages_out);
+    std::unique_ptr<Token> getNextToken();
+    std::unique_ptr<Token> getNextNonTrivialToken();
+    bool isDone();
 private:
     std::string sourceString;
+    std::vector<std::string> errorMessages;
     size_t index = 0;
     size_t line = 1;
     size_t column = 1;

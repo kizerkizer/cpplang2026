@@ -16,6 +16,7 @@ std::string tokenNameToString(const TokenKind &name) {
         case LiteralEmpty: return "EmptyLiteral";
         case Dot: return "Dot";
         case Comma: return "Comma";
+        case Colon: return "Colon";
         case Semicolon: return "Semicolon";
         case ParenthesisOpen: return "ParenthesisOpen";
         case ParenthesisClose: return "ParenthesisClose";
@@ -31,6 +32,8 @@ std::string tokenNameToString(const TokenKind &name) {
         case Equal: return "Equal";
         case LessThan: return "LessThan";
         case GreaterThan: return "GreaterThan";
+        case LeftArrow: return "LeftArrow";
+        case RightArrow: return "RightArrow";
         case EqualEqual: return "EqualEqual";
         case NotEqual: return "NotEqual";
         case LessThanEqual: return "LessThanEqual";
@@ -53,6 +56,12 @@ std::string tokenNameToString(const TokenKind &name) {
         case KeywordType: return "KeywordType";
         case KeywordExtensional: return "KeywordExtensional";
         case KeywordIntensional: return "KeywordIntensional";
+        case TypePrimitiveBoolean: return "TypePrimitiveBoolean";
+        case TypePrimitiveEmpty: return "TypePrimitveEmpty";
+        case TypePrimitiveFloat: return "TypePrimitveFloat";
+        case TypePrimitiveInteger: return "TypePrimitiveInteger";
+        case TypePrimitiveNumber: return "TypePrimitiveNumber";
+        case TypePrimitiveString: return "TypePrimitiveString";
     }
 }
 
@@ -61,6 +70,8 @@ int getPrecedence(const TokenKind &tokenName) {
         /*case TokenName::Not:
             return 9;*/
             // Unary operators are handled separately in the parser, so we don't assign them a precedence here
+        case TokenKind::Dot:
+            return 9;
         case TokenKind::AsteriskAsterisk:
             return 8;
         case TokenKind::Asterisk:
@@ -69,19 +80,19 @@ int getPrecedence(const TokenKind &tokenName) {
         case TokenKind::Plus:
         case TokenKind::Dash:
             return 6;
-        case TokenKind::Equal:
-            return 5;
         case TokenKind::LessThan:
         case TokenKind::GreaterThan:
         case TokenKind::LessThanEqual:
         case TokenKind::GreaterThanEqual:
-            return 4;
+            return 5;
         case TokenKind::EqualEqual:
         case TokenKind::NotEqual:
-            return 3;
+            return 4;
         case TokenKind::And:
-            return 2;
+            return 3;
         case TokenKind::Or:
+            return 2;
+        case TokenKind::Equal:
             return 1;
         default: return -1;
     }
@@ -108,7 +119,7 @@ bool getAssociativity(const TokenKind &tokenName) {
     }
 }
 
-TokenKind Token::getTokenName() const {
+TokenKind Token::getTokenKind() const {
     return this->name;
 }
 

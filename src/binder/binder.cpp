@@ -169,6 +169,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             this->exitScope();
             break;
         }
+        case NodeKind::IdentifierWithPossibleAnnotation:
         case NodeKind::Identifier: {
             // TODO I Guess make sure this doesn't visit from the children of variable/function declaration etc 
             auto identifierNode = static_cast<IdentifierNode*>(node);

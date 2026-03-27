@@ -1,7 +1,9 @@
-#include "binder/scope.hpp"
-#include "binder/name.hpp"
 #include <sys/syslimits.h>
 #include <vector>
+
+#include "binder/scope.hpp"
+#include "binder/name.hpp"
+#include "parser/node.hpp"
 
 std::string scopeKindToString(ScopeKind scopeKind) {
     switch (scopeKind) {

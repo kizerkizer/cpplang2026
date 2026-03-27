@@ -16,6 +16,8 @@ add_executable(cpplang2026
     src/binder/binder.cpp
     src/binder/name.cpp
     src/binder/scope.cpp
+    src/checker/checker.cpp
+    src/checker/type.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)

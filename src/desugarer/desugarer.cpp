@@ -72,9 +72,9 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
         case NodeKind::FunctionDeclaration: {
             auto* functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node.get());
             functionDeclarationNode->setIdentifier(unique_ptr_static_cast<IdentifierNode>(_desugar(functionDeclarationNode->takeIdentifier())));
-            std::vector<std::unique_ptr<IdentifierNode>> newParameters;
+            std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> newParameters;
             for (auto& parameter : functionDeclarationNode->takeParameters()) {
-                newParameters.push_back(unique_ptr_static_cast<IdentifierNode>(_desugar(std::move(parameter))));
+                newParameters.push_back(unique_ptr_static_cast<IdentifierWithPossibleAnnotationNode>(_desugar(std::move(parameter))));
             }
             functionDeclarationNode->setParameters(std::move(newParameters));
             functionDeclarationNode->setBodyNode(unique_ptr_static_cast<BlockStatementNode>(_desugar(functionDeclarationNode->takeBodyNode())));
@@ -142,6 +142,8 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             return unique_ptr_static_cast<IfExpressionNode>(std::move(node));
         }
         case NodeKind::Identifier:
+        case NodeKind::IdentifierWithPossibleAnnotation:
+        case NodeKind::TypeExpression:
         case NodeKind::NumberLiteral:
         case NodeKind::StringLiteral:
         case NodeKind::BooleanLiteral:
