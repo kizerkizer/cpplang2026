@@ -5,7 +5,7 @@
 
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
-#include "node.hpp"
+#include "parser/node.hpp"
 
 class Parser {
 public:
