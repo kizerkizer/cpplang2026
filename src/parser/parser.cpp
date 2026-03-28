@@ -89,15 +89,15 @@ void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
 }
 
 std::unique_ptr<Node> Parser::parse() {
-    auto program = this->parseProgram();
+    auto program = this->parseProgram(true);
     if (!program) {
         return std::make_unique<InvalidNode>();
     }
     return program;
 }
 
-std::unique_ptr<ProgramNode> Parser::parseProgram() {
-    std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>();
+std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
+    std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>(atRoot);
     while (!this->isPastTokensEnd()) {
         if (insideBlock && this->peek() == TokenKind::BraceClose) {
             this->expectAndAdvance(TokenKind::BraceClose);
@@ -254,26 +254,22 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     }
     if (this->peek() == TokenKind::Semicolon) {
         auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
-        auto identiferNode = std::make_unique<IdentifierNode>(std::move(semicolonToken));
-        auto assignmentExpressionNode = std::make_unique<AssignmentExpressionNode>(std::move(identiferNode), nullptr);
-        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(typeExpression), std::move(assignmentExpressionNode));
-        /*variableDeclaration->addToken(std::move(semicolonToken));
-        variableDeclaration->addToken(std::move(identifierToken));
-        variableDeclaration->addToken(std::move(semicolonToken));*/
+        auto identiferNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
+        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identiferNode), std::move(typeExpression), nullptr);
         return variableDeclaration;
     }
-    std::unique_ptr<ExpressionNode> node;
+    std::unique_ptr<ExpressionNode> expressionNode;
     if (this->expectAndAdvance(TokenKind::Equal)) {
-        node = this->parseExpression();
+        expressionNode = this->parseExpression();
     }
-    if (!node) {
+    if (!expressionNode) {
         this->addErrorMessageExpected("expression after variable declaration");
         return nullptr;
     }
+    // TODO eventually support comma-delimited declarations eg var foo = 5, bar = 6, ...;
     this->expectAndAdvance(TokenKind::Semicolon);
     auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(node));
-    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(typeExpression), std::move(assignmentExpression));
+    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identifierNode), std::move(typeExpression), std::move(expressionNode));
     return variableDeclaration;
 }
 
@@ -451,7 +447,7 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
 std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
     this->expectAndAdvance(TokenKind::BraceOpen);
     this->enterBlock();
-    auto programNode = Parser::parseProgram();
+    auto programNode = Parser::parseProgram(false);
     this->exitBlock();
     if (!programNode) {
         this->addErrorMessageParseFailure("block statement program node");

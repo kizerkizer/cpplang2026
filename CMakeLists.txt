@@ -18,6 +18,9 @@ add_executable(cpplang2026
     src/binder/scope.cpp
     src/checker/checker.cpp
     src/checker/type.cpp
+    src/flowbuilder/flowgraph.cpp
+    src/flowbuilder/flownode.cpp
+    src/flowbuilder/flowbuilder.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)

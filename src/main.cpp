@@ -2,7 +2,10 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <set>
 
+#include "flowbuilder/flowbuilder.hpp"
+#include "flowbuilder/flownode.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/node.hpp"
 #include "parser/parser.hpp"
@@ -26,18 +29,16 @@ void printParseTree (const Node* node, int indentation) {
         case NodeKind::VariableDeclaration: {
             const auto nodeCast = static_cast<const VariableDeclarationNode*>(node);
             std::print("{}VariableDeclarationNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* IdentifierNode\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getIdentifier(), indentation + 1);
             std::print("{}* TypeExpressionNode\n", std::string(indentation * 2, ' '));
             if (nodeCast->getTypeExpression()) {
                 printParseTree(nodeCast->getTypeExpression(), indentation + 1);
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
             }
-            std::print("{}* AssignmentExpression:\n", std::string(indentation * 2, ' '));
-            if (nodeCast->getAssignmentExpression()) {
-                printParseTree(nodeCast->getAssignmentExpression(), indentation + 1);
-            } else {
-                std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
-            }
+            std::print("{}* ExpressionNode\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getExpression(), indentation + 1);
             break;
         }
         case NodeKind::FunctionDeclaration: {
@@ -268,9 +269,252 @@ void printBinderResult (std::unique_ptr<BinderResult> binderResult) {
     printParseTree(rootNode, 0);
 }
 
-int main () {
-    std::print("Lexing...\n");
-    auto filename = "/Users/alex/Documents/Projects/cpp-lang/sampleFiles/source.txt";
+std::string getNodeSyntax(Node* node, int indentation) {
+    if (node == nullptr) {
+        return "";
+    }
+    switch (node->getNodeKind()) {
+        case NodeKind::Program: {
+            std::string ret = "";
+            for (auto child : node->getChildren()) {
+                ret += getNodeSyntax(child, indentation + 1);
+            }
+            return ret;
+        }
+        case NodeKind::VariableDeclaration: {
+            auto variableDeclarationNode = static_cast<VariableDeclarationNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ') + "var ";
+            ret += variableDeclarationNode->getIdentifier()->getName();
+            if (variableDeclarationNode->getTypeExpression()) {
+                ret += ": ";
+                ret += getNodeSyntax(variableDeclarationNode->getTypeExpression(), 0);
+            }
+            if (variableDeclarationNode->getExpression()) {
+                ret += " = ";
+                ret += getNodeSyntax(variableDeclarationNode->getExpression(), 0);
+                ret += ";\n";
+            } else {
+                ret += ";\n";
+            }
+            return ret;
+        }
+        case NodeKind::BlockStatement: {
+            auto blockStatementNode = static_cast<BlockStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ') + "{\n";
+            ret += getNodeSyntax(blockStatementNode->getProgramNode(), indentation + 1);
+            ret += std::string(indentation * 2, ' ') + "}\n";
+            return ret;
+        }
+        case NodeKind::FunctionDeclaration: {
+            auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ') + "function ";
+            ret += functionDeclarationNode->getIdentifierName();
+            ret += " (";
+            auto parameters = functionDeclarationNode->getParameters();
+            for (auto parameter : parameters) {
+                ret += parameter->getName();
+                if (parameter->getAnnotation()) {
+                    ret += ": " + getNodeSyntax(parameter->getAnnotation(), 0);
+                }
+                if (parameters.back() != parameter) {
+                    ret += ", ";
+                }
+            }
+            ret += ")";
+            if (functionDeclarationNode->getReturnTypeExpression()) {
+                ret += ": ";
+                ret += getNodeSyntax(functionDeclarationNode->getReturnTypeExpression(), 0);
+            }
+            auto body = functionDeclarationNode->getBody();
+            ret += " ";
+            ret += getNodeSyntax(body, indentation);
+            ret += "\n";
+            return ret;
+        }
+        case NodeKind::TypeExpression: {
+            auto typeExpressionNode = static_cast<TypeExpressionNode*>(node);
+            return primitiveTypeToString(typeExpressionNode->getPrimitiveType());
+        }
+        case NodeKind::IdentifierWithPossibleAnnotation: {
+            auto identifierWithPossibleAnnotationNode = static_cast<IdentifierWithPossibleAnnotationNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += identifierWithPossibleAnnotationNode->getIdentifierToken()->getSourceString();
+            if (identifierWithPossibleAnnotationNode->getAnnotation()) {
+                ret += ": ";
+                ret += getNodeSyntax(identifierWithPossibleAnnotationNode->getAnnotation(), 0);
+            }
+            return ret;
+        }
+        case NodeKind::Identifier: {
+            auto identifierNode = static_cast<IdentifierNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += identifierNode->getName();
+            return ret;
+        }
+        case NodeKind::AssignmentExpression: {
+            auto assignmentExpressionNode = static_cast<AssignmentExpressionNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += getNodeSyntax(assignmentExpressionNode->getIdentifier(), 0);
+            ret += " = ";
+            ret += getNodeSyntax(assignmentExpressionNode->getExpression(), 0);
+            return ret;
+        }
+        case NodeKind::ReturnStatement: {
+            auto returnStatementNode = static_cast<ReturnStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ') + "return";
+            if (returnStatementNode->getExpression()) {
+                ret += " " + getNodeSyntax(returnStatementNode->getExpression(), 0);
+            }
+            ret += ";\n";
+            return ret;
+        }
+        case NodeKind::AssignmentStatement: {
+            auto assignmentStatementNode = static_cast<AssignmentStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += getNodeSyntax(assignmentStatementNode->getAssignmentExpression(), 0);
+            ret += ";\n";
+            return ret;
+        }
+        case NodeKind::BinaryOperatorExpression: {
+            auto binaryOperatorExpressionNode = static_cast<BinaryOperatorExpressionNode*>(node);
+            auto ret = getNodeSyntax(binaryOperatorExpressionNode->getLeft(), indentation);
+            ret += " ";
+            ret += binaryOperatorExpressionNode->getOperatorToken()->getSourceString();
+            ret += " ";
+            ret += getNodeSyntax(binaryOperatorExpressionNode->getRight(), 0);
+            return ret;
+        }
+        case NodeKind::FunctionCallExpression: {
+            auto functionCallExpressionNode = static_cast<FunctionCallExpressionNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += functionCallExpressionNode->getIdentifier()->getName();
+            ret += "(";
+            auto arguments = functionCallExpressionNode->getArgumentNodes();
+            for (auto argument : arguments) {
+                ret += getNodeSyntax(argument, 0);
+                if (arguments.back() != argument) {
+                    ret += ", ";
+                }
+            }
+            ret += ")";
+            return ret;
+        }
+        case NodeKind::FunctionCallStatement: {
+            auto functionCallStatementNode = static_cast<FunctionCallStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += getNodeSyntax(functionCallStatementNode->getFunctionCallExpression(), indentation);
+            ret += ";\n";
+            return ret;
+        }
+        case NodeKind::BreakStatement: {
+            return std::string(indentation * 2, ' ') + "break;\n";
+        }
+        case NodeKind::ContinueStatement: {
+            return std::string(indentation * 2, ' ') + "continue;\n";
+        }
+        case NodeKind::StringLiteral: {
+            auto stringLiteralNode = static_cast<StringLiteralNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += stringLiteralNode->getValue(); // double check; should include quotes
+            return ret;
+        }
+        case NodeKind::NumberLiteral: {
+            auto numberLiteralNode = static_cast<NumberLiteralNode*>(node);
+            return std::string(indentation * 2, ' ') + numberLiteralNode->getNumberLiteralToken()->getSourceString();
+        }
+        case NodeKind::BooleanLiteral: {
+            auto booleanLiteralNode = static_cast<BooleanLiteralNode*>(node);
+            return std::string(indentation * 2, ' ') + booleanLiteralNode->getBooleanLiteralToken()->getSourceString();
+        }
+        case NodeKind::EmptyLiteral: {
+            return std::string(indentation * 2, ' ') + "empty";
+        }
+        case NodeKind::IfExpression: {
+            auto ifExpressionNode = static_cast<IfExpressionNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += "if (";
+            ret += getNodeSyntax(ifExpressionNode->getCondition(), 0);
+            ret += ") then ";
+            ret += getNodeSyntax(ifExpressionNode->getThenBranch(), 0);
+            ret += " else ";
+            ret += getNodeSyntax(ifExpressionNode->getElseBranch(), 0);
+            return ret;
+        }
+        case NodeKind::IfStatement: {
+            auto ifStatementNode = static_cast<IfStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += "if (";
+            ret += getNodeSyntax(ifStatementNode->getCondition(), 0);
+            ret += ") \n";
+            ret += std::string((indentation + 1) * 2, ' ') + "then\n";
+            ret += getNodeSyntax(ifStatementNode->getThenBranch(), indentation + 2);
+            if (ifStatementNode->getElseBranch()) {
+                ret += std::string((indentation + 1) * 2, ' ') + "else\n";
+                ret += getNodeSyntax(ifStatementNode->getElseBranch(), indentation + 2);
+            }
+            return ret;
+        }
+        case NodeKind::LoopStatement: {
+            auto loopStatementNode = static_cast<LoopStatementNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += "loop\n";
+            ret += getNodeSyntax(loopStatementNode->getBody(), indentation);
+            return ret;
+        }
+        case NodeKind::WhileStatement: {
+            // Shouldn't exist in desugared AST
+            return std::string(indentation * 2, ' ') + "<WHILE>"; // TODO
+        }
+        case NodeKind::Invalid: {
+            return std::string(indentation * 2, ' ') + "<INVALID>";
+        }
+        case NodeKind::UnaryOperatorExpression: {
+            auto unaryOperatorExpressionNode = static_cast<UnaryOperatorExpressionNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += unaryOperatorExpressionNode->getOperatorToken()->getSourceString();
+            ret += "("; // Insert parens just in case
+            ret += getNodeSyntax(unaryOperatorExpressionNode->getOperand(), 0);
+            ret += ")";
+            return ret;
+        }
+    }
+}
+
+std::set<FlowNode*> visited;
+
+void printFlowGraph (FlowGraph* graph);
+
+// Print to DOT language for visualization in Graphviz.
+void printFlowNode (FlowNode* flowNode) {
+    if (visited.contains(flowNode)) {
+        return;
+    }
+    visited.insert(flowNode);
+    for (auto successor : flowNode->getSuccessors()) {
+        std::print("n{} -> n{}\n", flowNode->getId(), successor->getId());
+    }
+    for (auto successor : flowNode->getSuccessors()) {
+        printFlowNode(successor);
+    }
+}
+
+// Print to DOT language for visualization in Graphviz.
+void printFlowGraph (FlowGraph* graph) {
+    //Node* node = graph->getAstNode();
+    //if (node) {
+        //std::print("    for {}\n", nodeKindToString(node->getNodeKind()));
+    //}
+    FlowNode* entry = graph->getEntry();
+    printFlowNode(entry);
+    visited.clear();
+}
+
+int main (int argc, char* argv[]) {
+    if (argc < 2) {
+        std::print("Usage: {} <source-file>\n", argv[0]);
+        return 1;
+    }
+    auto filename = argv[1];
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::print("Failed to open file: {}\n", filename);
@@ -295,6 +539,7 @@ int main () {
         return 1;
     }
     auto desugared = Desugarer(std::move(parsed)).desugar();
+    auto desugaredPointer = desugared.get();
     //std::print("Desugared parse tree:\n");
     //printParseTree(desugared.get(), 0);
     Binder binder(errorMessages);
@@ -310,6 +555,29 @@ int main () {
     if (!errorMessages.empty()) {
         return 1;
     }
-    printBinderResult(std::move(binderResult));
+    //printBinderResult(std::move(binderResult));
+    std::print("Print out of desugared parse tree:\n");
+    std::print("{}", getNodeSyntax(desugaredPointer, -1)); // -1 for root node
+    FlowBuilder flowBuilder = FlowBuilder();
+    std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
+    std::print("Built Flow Graphs!\n");
+    int i = 0;
+    for (auto graph : result->getGraphs()) {
+        std::print("digraph G{} {{\n", i);
+        for (auto flowNode : graph->getNodes()) {
+            std::string kind = "<None>";
+            if (flowNode->getAstNode()) {
+                kind = nodeKindToString(flowNode->getAstNode()->getNodeKind());
+            }
+            std::print("n{} [\n", flowNode->getId());
+            std::print("    label = \"{}/{}\";\n", flowNodeKindToString(flowNode->getKind()), kind);
+            std::print("]\n");
+            for (auto successor : flowNode->getSuccessors()) {
+                std::print("n{} -> n{}\n", flowNode->getId(), successor->getId());
+            }
+        }
+        i++;
+        std::print("}}\n");
+    }
     return 0;
 }

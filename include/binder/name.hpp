@@ -1,6 +1,7 @@
 #pragma once
 
 #include "binder/scope.hpp"
+#include "flowbuilder/flowgraph.hpp"
 #include "parser/node.hpp"
 #include <memory>
 #include <string>
@@ -38,19 +39,22 @@ inline NameModifierFlags operator|(NameModifierFlags a, NameModifierFlags b) {
 
 class Name {
 public:
-    Name(Scope* scope, Node* node, NameKind kind, NameModifierFlags modifierFlags, const std::string& nameString) : nameString(nameString), scope(std::move(scope)), node(node), kind(kind), modifierFlags(modifierFlags) {};
+    Name(Scope* containingScope, Node* node, NameKind kind, NameModifierFlags modifierFlags, const std::string& nameString) : nameString(nameString), containingScope(std::move(containingScope)), node(node), kind(kind), modifierFlags(modifierFlags) {};
     const std::string& getNameString() const;
-    const Scope* getScope() const;
+    const Scope* getContainingScope() const;
     NameKind getKind() const;
     const Node* getNode() const;
     NameModifierFlags getModifierFlags() const;
     Type* getType();
-    void setType(std::unique_ptr<Type> type);
+    void setType(std::unique_ptr<Type> type); // TODO maybe change to Type*
+    FlowGraph* getFlowGraph();
+    void setFlowGraph(FlowGraph* flowGraph);
 private:
     std::string nameString;
-    Scope* scope;
+    Scope* containingScope;
     Node* node;
     NameKind kind;
     NameModifierFlags modifierFlags;
     std::unique_ptr<Type> type = nullptr; // set in type checking
+    FlowGraph* flowGraph = nullptr; // set in flowbuilder
 };

@@ -57,24 +57,22 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
         }
         case NodeKind::VariableDeclaration: {
             auto variableDeclarationNode = static_cast<VariableDeclarationNode*>(node);
-            auto assignmentExpression = variableDeclarationNode->getAssignmentExpression();
-            if (assignmentExpression) {
-                // * Handle assignmentExpression ourselves since this is a declaration
-                // * Recurse first because if we have
-                //   var xxx = ...
-                //   then xxx is not yet defined so ... cannot reference it
-                // * Also, only recurse on right side (expression) since we're taking care of the identifier here
-                this->bindRecursive(assignmentExpression->getExpression());
-                auto identifierNode = assignmentExpression->getIdentifier();
-                if (identifierNode) {
-                    auto name = new Name(this->currentScope, variableDeclarationNode, NameKind::Variable, NameModifierFlags::None, identifierNode->getName());
-                    if (this->currentScope->hasNameShallow(name->getNameString())
-                ) { //|| (this->currentScope->getFirstFunctionContainingScope() && this->currentScope->getFirstFunctionContainingScope()->hasNameShallow(name->getNameString()))) {
-                        this->addErrorMessage("Name '" + name->getNameString() + "' already in scope");
-                    } else {
-                        this->currentScope->setName(name);
-                    }
-                }
+            auto identifierNode = variableDeclarationNode->getIdentifier();
+            auto expressionNode = variableDeclarationNode->getExpression();
+            // TODO handle type annotation ?
+
+            // * Recurse first because if we have
+            //   var xxx = ...
+            //   then xxx is not yet defined so ... cannot reference it
+            // * Also, only recurse on right side (expression) since we're taking care of the identifier here
+            if (expressionNode) {
+                this->bindRecursive(expressionNode);
+            }
+            auto name = new Name(this->currentScope, variableDeclarationNode, NameKind::Variable, NameModifierFlags::None, identifierNode->getName());
+            if (this->currentScope->hasNameShallow(name->getNameString())) {
+                this->addErrorMessage("Redeclaration of name '" + name->getNameString() + "', which is already declared in the current scope");
+            } else {
+                this->currentScope->setName(name);
             }
             break;
         }
@@ -87,9 +85,8 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
                 break;
             }
             auto name = new Name(this->currentScope, functionDeclarationNode, NameKind::Function, NameModifierFlags::None, identifierNode->getName());
-            if (this->currentScope->hasNameShallow(name->getNameString())
-        ) { //|| (this->currentScope->getFirstFunctionContainingScope() && this->currentScope->getFirstFunctionContainingScope()->hasNameShallow(name->getNameString()))) {
-                this->addErrorMessage("Name '" + name->getNameString() + "' already in scope");
+            if (this->currentScope->hasNameShallow(name->getNameString())) { 
+                this->addErrorMessage("Redeclaration of name '" + name->getNameString() + "', which is already in scope");
                 break; // TODO ?
             }
             if (this->currentScope->hasName(name->getNameString())) {
@@ -103,15 +100,14 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             for (auto parameter : functionDeclarationNode->getParameters()) {
                 auto parameterIdentifierNode = parameter;
                 auto parameterName = new Name(this->currentScope, parameterIdentifierNode, NameKind::Parameter, NameModifierFlags::None, parameterIdentifierNode->getName());
-                if (this->currentScope->hasNameShallow(parameterName->getNameString())
-            ) { //|| (this->currentScope->getFirstFunctionContainingScope() && this->currentScope->getFirstFunctionContainingScope()->hasNameShallow(parameterName->getNameString()))) {
+                if (this->currentScope->hasNameShallow(parameterName->getNameString())) {
                     // Can happen if parameter has duplicate name
-                    this->addErrorMessage("Name '" + parameterName->getNameString() + "' already in scope");
+                    this->addErrorMessage("Parameter name '" + parameterName->getNameString() + "' already in scope");
                 } else {
                     this->currentScope->setName(parameterName);
                 }
             }
-            this->bindRecursive(functionDeclarationNode->getBody(), true);
+            this->bindRecursive(functionDeclarationNode->getBody(), true); // do not create another scope for the function body block
             this->exitScope();
             break;
         }

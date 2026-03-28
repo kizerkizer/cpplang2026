@@ -51,8 +51,9 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
         }
         case NodeKind::VariableDeclaration: {
             auto* variableDeclarationNode = static_cast<VariableDeclarationNode*>(node.get());
-            variableDeclarationNode->setAssignmentExpression(unique_ptr_static_cast<AssignmentExpressionNode>(_desugar(variableDeclarationNode->takeAssignmentExpression())));
-            //return std::unique_ptr<VariableDeclarationNode>(variableDeclarationNode);
+            variableDeclarationNode->setIdentifier(unique_ptr_static_cast<IdentifierNode>(_desugar(variableDeclarationNode->takeIdentifier())));
+            variableDeclarationNode->setExpression(unique_ptr_static_cast<ExpressionNode>(_desugar(variableDeclarationNode->takeExpression())));
+            // TODO handle type annotation at some point
             return unique_ptr_static_cast<VariableDeclarationNode>(std::move(node));
         }
         case NodeKind::AssignmentExpression: {
@@ -61,7 +62,6 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             std::unique_ptr<ExpressionNode> expressionNode = unique_ptr_static_cast<ExpressionNode>(_desugar(assignmentExpressionNode->takeExpression()));
             assignmentExpressionNode->setIdentifier(std::move(identifierNode));
             assignmentExpressionNode->setExpression(std::move(expressionNode));
-            //return std::unique_ptr<AssignmentExpressionNode>(assignmentExpressionNode);
             return unique_ptr_static_cast<AssignmentExpressionNode>(std::move(node));
         }
         case NodeKind::BlockStatement: {

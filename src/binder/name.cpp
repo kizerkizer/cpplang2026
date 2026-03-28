@@ -1,4 +1,5 @@
 #include "binder/name.hpp"
+#include "flowbuilder/flowgraph.hpp"
 
 std::string nameKindToString(NameKind nameKind) {
     switch (nameKind) {
@@ -35,8 +36,8 @@ const std::string& Name::getNameString() const {
     return this->nameString;
 }
 
-const Scope* Name::getScope() const {
-    return this->scope;
+const Scope* Name::getContainingScope() const {
+    return this->containingScope;
 }
 
 NameKind Name::getKind() const {
@@ -45,4 +46,12 @@ NameKind Name::getKind() const {
 
 const Node* Name::getNode() const {
     return this->node;
+}
+
+FlowGraph* Name::getFlowGraph() {
+    return this->flowGraph;
+}
+
+void Name::setFlowGraph(FlowGraph* flowGraph) {
+    this->flowGraph = flowGraph;
 }

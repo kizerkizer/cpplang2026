@@ -118,6 +118,18 @@ void ProgramNode::addNode(std::unique_ptr<Node> child) {
     this->nodes.push_back(std::move(child));
 }
 
+FlowGraph* ProgramNode::getFlowGraph() {
+    return this->flowGraph;
+}
+
+void ProgramNode::setFlowGraph(FlowGraph* flowGraph) {
+    this->flowGraph = flowGraph;
+}
+
+bool ProgramNode::isRootNode() {
+    return this->isRoot;
+}
+
 const std::vector<Node*> ProgramNode::getChildren() const {
     std::vector<Node*> children;
     for (const auto& child : this->nodes) {
@@ -135,30 +147,50 @@ void ProgramNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
 }
 
 //VariableDeclarationNode
-VariableDeclarationNode::VariableDeclarationNode(std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<AssignmentExpressionNode> assignmentExpression) : Node(NodeKind::VariableDeclaration), typeExpression(std::move(typeExpression)), assignmentExpression(std::move(assignmentExpression)) { };
+VariableDeclarationNode::VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifierNode, std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<ExpressionNode> expressionNode) : Node(NodeKind::VariableDeclaration), identifierNode(std::move(identifierNode)), typeExpression(std::move(typeExpression)), expressionNode(std::move(expressionNode)) { };
+
+IdentifierNode* VariableDeclarationNode::getIdentifier() const {
+    return this->identifierNode.get();
+}
+
+std::unique_ptr<IdentifierNode> VariableDeclarationNode::takeIdentifier() {
+    return std::move(this->identifierNode);
+}
+
+void VariableDeclarationNode::setIdentifier(std::unique_ptr<IdentifierNode> identifierNode) {
+    this->identifierNode = std::move(identifierNode);
+}
+
+ExpressionNode* VariableDeclarationNode::getExpression() const {
+    return this->expressionNode.get();
+}
+
+std::unique_ptr<ExpressionNode> VariableDeclarationNode::takeExpression() {
+    return std::move(this->expressionNode);
+}
+
+void VariableDeclarationNode::setExpression(std::unique_ptr<ExpressionNode> expressionNode) {
+    this->expressionNode = std::move(expressionNode);
+}
 
 TypeExpressionNode* VariableDeclarationNode::getTypeExpression() const {
     return this->typeExpression.get();
 }
 
-AssignmentExpressionNode* VariableDeclarationNode::getAssignmentExpression() const {
-    return this->assignmentExpression.get();
-}
-
 const std::vector<Node*> VariableDeclarationNode::getChildren() const {
-    return {this->typeExpression.get(), this->assignmentExpression.get() };
-}
-
-std::unique_ptr<AssignmentExpressionNode> VariableDeclarationNode::takeAssignmentExpression() {
-    return std::move(this->assignmentExpression);
-}
-
-void VariableDeclarationNode::setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression) {
-    this->assignmentExpression = std::move(assignmentExpression);
+    return {this->typeExpression.get(), this->expressionNode.get() };
 }
 
 //FunctionDeclarationNode
 FunctionDeclarationNode::FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression) : Node(NodeKind::FunctionDeclaration), identifier(std::move(identifier)), parameters(std::move(parameters)), returnTypeExpression(std::move(returnTypeExpression)), bodyNode(std::move(bodyNode)) {};
+
+void FunctionDeclarationNode::setFlowGraph(FlowGraph* flowGraph) {
+    this->flowGraph = flowGraph;
+}
+
+FlowGraph* FunctionDeclarationNode::getFlowGraph() {
+    return this->flowGraph;
+}
 
 IdentifierNode* FunctionDeclarationNode::getIdentifier() const {
     return this->identifier.get();
@@ -485,8 +517,8 @@ IdentifierNode* FunctionCallExpressionNode::getIdentifier() const {
     return this->identifier.get();
 }
 
-const std::vector<const ExpressionNode*> FunctionCallExpressionNode::getArgumentNodes() const {
-    std::vector<const ExpressionNode*> argumentPointers;
+const std::vector<ExpressionNode*> FunctionCallExpressionNode::getArgumentNodes() const {
+    std::vector<ExpressionNode*> argumentPointers;
     for (const auto& argument : this->argumentNodes) {
         argumentPointers.push_back(argument.get());
     }
@@ -538,6 +570,10 @@ void FunctionCallStatementNode::setFunctionCallExpression(std::unique_ptr<Functi
 //NumberLiteralNode
 int NumberLiteralNode::getValue() const {
     return std::stoi(this->numberLiteralToken->getSourceString());
+}
+
+Token* NumberLiteralNode::getNumberLiteralToken() const {
+    return this->numberLiteralToken.get();
 }
 
 //BooleanLiteralNode

@@ -1,0 +1,23 @@
+function someFunction (x): Integer {
+    return x * x;
+}
+
+function testCfg (): Empty {
+    var foo = 25;
+    loop {
+        foo = foo - 1;
+        foo = foo - 1;
+        if (foo == 26) then { return foo; }
+        if (foo <= 0) then { break; } else { continue; }
+        foo = foo - 1; // unreachable
+    }
+    someFunction(12);
+    if (foo == 0) then {
+        foo = -1;
+        return foo;
+    } else {
+        foo = someFunction(foo, foo);
+    }
+    foo = foo + 1;
+    // CFG fall through here -v
+}

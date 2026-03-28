@@ -6,6 +6,7 @@
 
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
+#include "flowbuilder/flowgraph.hpp"
 #include "flowbuilder/flownode.hpp"
 #include "lexer/token.hpp"
 
@@ -97,7 +98,7 @@ public:
 private:
     NodeKind nodeKind;
     bool compilerCreated;
-    FlowNode* flowNode; // set by flow builder
+    FlowNode* flowNode = nullptr; // set by flow builder
     std::vector<std::unique_ptr<Token>> tokens;
 };
 
@@ -122,13 +123,18 @@ private:
 
 class ProgramNode : public Node {
 public:
-    ProgramNode() : Node(NodeKind::Program) {};
+    ProgramNode(bool isRoot = false) : Node(NodeKind::Program), isRoot(isRoot) {};
     void addNode(std::unique_ptr<Node> child);
     const std::vector<Node*> getChildren() const override;
     std::vector<std::unique_ptr<Node>> takeChildren();
     void setChildren(std::vector<std::unique_ptr<Node>> children);
+    bool isRootNode();
+    FlowGraph* getFlowGraph(); // only for the root node
+    void setFlowGraph(FlowGraph* flowGraph); // only for the root node
 private:
     std::vector<std::unique_ptr<Node>> nodes;
+    bool isRoot;
+    FlowGraph* flowGraph;
 };
 
 class ExpressionNode : public Node {
@@ -172,15 +178,23 @@ private:
 
 class VariableDeclarationNode : public Node {
 public:
-    VariableDeclarationNode(std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
+    VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifierNode, std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<ExpressionNode> expressionNode); //std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
+    IdentifierNode* getIdentifier() const;
     TypeExpressionNode* getTypeExpression() const;
-    AssignmentExpressionNode* getAssignmentExpression() const;
+    ExpressionNode* getExpression() const;
+    std::unique_ptr<IdentifierNode> takeIdentifier();
+    std::unique_ptr<ExpressionNode> takeExpression();
+    void setIdentifier(std::unique_ptr<IdentifierNode> identifierNode);
+    void setExpression(std::unique_ptr<ExpressionNode> expressionNode);
     const std::vector<Node*> getChildren() const override;
-    std::unique_ptr<AssignmentExpressionNode> takeAssignmentExpression();
-    void setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
+    //AssignmentExpressionNode* getAssignmentExpression() const;
+    //std::unique_ptr<AssignmentExpressionNode> takeAssignmentExpression();
+    //void setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
 private:
+    std::unique_ptr<IdentifierNode> identifierNode;
     std::unique_ptr<TypeExpressionNode> typeExpression;
-    std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
+    std::unique_ptr<ExpressionNode> expressionNode;
+    //std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
 };
 
 class BlockStatementNode : public Node {
@@ -207,6 +221,8 @@ private:
 class FunctionDeclarationNode : public Node {
 public:
     FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression);
+    FlowGraph* getFlowGraph();
+    void setFlowGraph(FlowGraph* flowGraph);
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
     TypeExpressionNode* getReturnTypeExpression() const;
@@ -226,6 +242,7 @@ private:
     std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters;
     std::unique_ptr<TypeExpressionNode> returnTypeExpression;
     std::unique_ptr<BlockStatementNode> bodyNode;
+    FlowGraph* flowGraph = nullptr; // set by flowbuilder
 };
 
 class IfStatementNode : public Node {
@@ -329,7 +346,7 @@ class FunctionCallExpressionNode : public PrimaryExpressionNode {
 public:
     FunctionCallExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<ExpressionNode>> argumentNodes) : PrimaryExpressionNode(NodeKind::FunctionCallExpression), identifier(std::move(identifier)), argumentNodes(std::move(argumentNodes)) {};
     IdentifierNode* getIdentifier() const;
-    const std::vector<const ExpressionNode*> getArgumentNodes() const;
+    const std::vector<ExpressionNode*> getArgumentNodes() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<IdentifierNode> takeIdentifier();
     std::vector<std::unique_ptr<ExpressionNode>> takeArgumentNodes();
