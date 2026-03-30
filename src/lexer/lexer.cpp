@@ -138,7 +138,12 @@ bool Lexer::isDone() {
 std::unique_ptr<Token> Lexer::getNextNonTrivialToken() {
     auto token = this->getNextToken();
     while (IS_TOKENKIND_TRIVIA(token->getTokenKind())) {
-        token = this->getNextToken();
+        if (token) {
+            token = this->getNextToken();
+        } else {
+            errorMessages.push_back(this->makeErrorMessage("Unexpected end of input while looking for non-trivia token"));
+            return std::make_unique<Token>("", 0, 0, 0, TokenKind::OutOfRange);
+        }
     }
     return token;
 }

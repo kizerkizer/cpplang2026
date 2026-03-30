@@ -5,7 +5,7 @@
 #include <map>
 
 class Node; // In parser/parser.hpp
-class Name; // In name.hpp
+class Symbol; // In symbol.hpp
 
 enum class ScopeKind {
     Root,
@@ -30,24 +30,24 @@ public:
     void setNode(Node* node);
     std::vector<Scope*> getChildren() const;
     void addChild(Scope* child);
-    Name* getMyNameReference() const;
-    void setMyNameReference(Name* name);
-    bool hasName(const std::string& nameString) const;
-    Name* getName(const std::string& nameString) const;
-    Name* getNameShallow(const std::string& nameString) const;
-    bool hasNameShallow(const std::string& nameString) const;
+    Symbol* getMySymbolReference() const;
+    void setMySymbolReference(Symbol* symbol);
+    bool hasSymbol(const std::string& symbolString) const;
+    Symbol* getSymbol(const std::string& symbolString) const;
+    Symbol* getSymbolShallow(const std::string& symbolString) const;
+    bool hasSymbolShallow(const std::string& symbolString) const;
     Scope* getFirstFunctionContainingScope();
     Scope* getFirstLoopContainingScope();
-    std::map<std::string, Name*> getNames() const;
-    bool setName(Name* name);
+    std::map<std::string, Symbol*> getSymbols() const;
+    bool setSymbol(Symbol* symbol);
     Scope* getThisKeywordScope() const;
     void setThisKeywordScope(Scope* thisKeywordScope);
 private:
     Node* node;
     ScopeKind kind;
-    Name* myName = nullptr; // Set during binding
+    Symbol* mySymbol = nullptr; // Set during binding
     Scope* parent;
-    std::map<std::string, Name*> names;
+    std::map<std::string, Symbol*> symbols;
     std::vector<Scope*> children;
     Scope* thisKeywordScope = nullptr; // TODO Set during binding
 };

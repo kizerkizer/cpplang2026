@@ -4,6 +4,7 @@
 #include <sstream>
 #include <set>
 
+#include "checker/checker.hpp"
 #include "flowbuilder/flowbuilder.hpp"
 #include "flowbuilder/flownode.hpp"
 #include "lexer/lexer.hpp"
@@ -12,7 +13,7 @@
 #include "lexer/token.hpp"
 #include "desugarer/desugarer.hpp"
 #include "binder/binder.hpp"
-#include "binder/name.hpp"
+#include "binder/symbol.hpp"
 #include "checker/type.hpp"
 
 void printParseTree (const Node* node, int indentation) {
@@ -84,9 +85,9 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}IdentifierNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Name:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getName());
-            if (nodeCast->getNameReference()) {
+            if (nodeCast->getSymbolReference()) {
                 std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
-                auto name = nodeCast->getNameReference();
+                auto name = nodeCast->getSymbolReference();
                 std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
             }
             break;
@@ -99,13 +100,13 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}* Annotation:\n", std::string(indentation * 2, ' '));
             auto annotation = nodeCast->getAnnotation();
             if (annotation) {
-                std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(annotation->getPrimitiveType()));
+                std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(annotation->getPrimitiveTypeKind()));
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
             }
-            if (nodeCast->getNameReference()) {
+            if (nodeCast->getSymbolReference()) {
                 std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
-                auto name = nodeCast->getNameReference();
+                auto name = nodeCast->getSymbolReference();
                 std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
             }
 
@@ -243,7 +244,7 @@ void printParseTree (const Node* node, int indentation) {
             const auto nodeCast = static_cast<const TypeExpressionNode*>(node);
             std::print("{}TypeExpressionNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Type:\n", std::string(indentation * 2, ' '));
-            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(nodeCast->getPrimitiveType()));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(nodeCast->getPrimitiveTypeKind()));
             break;
         }
     }
@@ -252,8 +253,8 @@ void printParseTree (const Node* node, int indentation) {
 void printScope (Scope* scope, int indentation) {
     std::print("{}Scope ({})\n", std::string(indentation * 2, ' '), scopeKindToString(scope->getKind()));
     std::print("{}* Names:\n", std::string(indentation * 2, ' '));
-    for (const auto [nameString, name] : scope->getNames()) {
-        std::print("{}- {} ({})\n", std::string((indentation + 1) * 2, ' '), nameString, nameKindToString(name->getKind()));
+    for (const auto [nameString, name] : scope->getSymbols()) {
+        std::print("{}- {} ({})\n", std::string((indentation + 1) * 2, ' '), nameString, symbolKindToString(name->getKind()));
     }
     std::print("{}* Child Scopes:\n", std::string(indentation * 2, ' '));
     for (const auto childScope : scope->getChildren()) {
@@ -333,7 +334,7 @@ std::string getNodeSyntax(Node* node, int indentation) {
         }
         case NodeKind::TypeExpression: {
             auto typeExpressionNode = static_cast<TypeExpressionNode*>(node);
-            return primitiveTypeToString(typeExpressionNode->getPrimitiveType());
+            return primitiveTypeToString(typeExpressionNode->getPrimitiveTypeKind());
         }
         case NodeKind::IdentifierWithPossibleAnnotation: {
             auto identifierWithPossibleAnnotationNode = static_cast<IdentifierWithPossibleAnnotationNode*>(node);
@@ -509,6 +510,27 @@ void printFlowGraph (FlowGraph* graph) {
     visited.clear();
 }
 
+void printFlowBuilderResult (std::unique_ptr<FlowBuilderResult> result) {
+    int i = 0;
+    for (auto graph : result->getGraphs()) {
+        std::print("digraph G{} {{\n", i);
+        for (auto flowNode : graph->getNodes()) {
+            std::string kind = "<None>";
+            if (flowNode->getAstNode()) {
+                kind = nodeKindToString(flowNode->getAstNode()->getNodeKind());
+            }
+            std::print("n{} [\n", flowNode->getId());
+            std::print("    label = \"{}/{}\";\n", flowNodeKindToString(flowNode->getKind()), kind);
+            std::print("]\n");
+            for (auto successor : flowNode->getSuccessors()) {
+                std::print("n{} -> n{}\n", flowNode->getId(), successor->getId());
+            }
+        }
+        i++;
+        std::print("}}\n");
+    }
+}
+
 int main (int argc, char* argv[]) {
     if (argc < 2) {
         std::print("Usage: {} <source-file>\n", argv[0]);
@@ -539,7 +561,7 @@ int main (int argc, char* argv[]) {
         return 1;
     }
     auto desugared = Desugarer(std::move(parsed)).desugar();
-    auto desugaredPointer = desugared.get();
+    //auto desugaredPointer = desugared.get();
     //std::print("Desugared parse tree:\n");
     //printParseTree(desugared.get(), 0);
     Binder binder(errorMessages);
@@ -556,28 +578,25 @@ int main (int argc, char* argv[]) {
         return 1;
     }
     //printBinderResult(std::move(binderResult));
-    std::print("Print out of desugared parse tree:\n");
-    std::print("{}", getNodeSyntax(desugaredPointer, -1)); // -1 for root node
+    //std::print("Print out of desugared parse tree:\n");
+    //std::print("{}", getNodeSyntax(desugaredPointer, -1)); // -1 for root node
     FlowBuilder flowBuilder = FlowBuilder();
     std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
-    std::print("Built Flow Graphs!\n");
-    int i = 0;
     for (auto graph : result->getGraphs()) {
-        std::print("digraph G{} {{\n", i);
-        for (auto flowNode : graph->getNodes()) {
-            std::string kind = "<None>";
-            if (flowNode->getAstNode()) {
-                kind = nodeKindToString(flowNode->getAstNode()->getNodeKind());
-            }
-            std::print("n{} [\n", flowNode->getId());
-            std::print("    label = \"{}/{}\";\n", flowNodeKindToString(flowNode->getKind()), kind);
-            std::print("]\n");
-            for (auto successor : flowNode->getSuccessors()) {
-                std::print("n{} -> n{}\n", flowNode->getId(), successor->getId());
-            }
-        }
-        i++;
-        std::print("}}\n");
+        graph->assignReachabilityToNodes();
+    }
+    std::print("Built Flow Graphs!\n");
+    //printFlowBuilderResult(std::move(result));
+    // TODO print results of reachability analysis on flow graph
+    TypeChecker typeChecker = TypeChecker(errorMessages);
+    typeChecker.typeCheck(binderResult->getNode());
+    if (errorMessages.empty()) {
+        std::print("No type errors.\n");
+    } else {
+        std::print("⚠️ {} type error(s) found.\n", errorMessages.size());
+    }
+    for (const auto& errorMessage : errorMessages) {
+        std::print("{}\n", errorMessage);
     }
     return 0;
 }

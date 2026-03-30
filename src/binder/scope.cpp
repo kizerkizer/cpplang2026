@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "binder/scope.hpp"
-#include "binder/name.hpp"
+#include "binder/symbol.hpp"
 #include "parser/node.hpp"
 
 std::string scopeKindToString(ScopeKind scopeKind) {
@@ -40,8 +40,8 @@ void Scope::addChild(Scope *child) {
     this->children.push_back(child);
 }
 
-std::map<std::string, Name*> Scope::getNames() const {
-    return this->names;
+std::map<std::string, Symbol*> Scope::getSymbols() const {
+    return this->symbols;
 }
 
 void Scope::setNode(Node* node) {
@@ -56,46 +56,46 @@ ScopeKind Scope::getKind() const {
     return this->kind;
 }
 
-Name* Scope::getMyNameReference() const {
-    return this->myName;
+Symbol* Scope::getMySymbolReference() const {
+    return this->mySymbol;
 }
 
-void Scope::setMyNameReference(Name* name) {
-    this->myName = name;
+void Scope::setMySymbolReference(Symbol* symbol) {
+    this->mySymbol = symbol;
 }
 
-bool Scope::hasName(const std::string& nameString) const {
-    return this->getName(nameString) != nullptr;
+bool Scope::hasSymbol(const std::string& nameString) const {
+    return this->getSymbol(nameString) != nullptr;
 }
 
-Name* Scope::getName(const std::string& nameString) const {
-    auto name = this->getNameShallow(nameString);
+Symbol* Scope::getSymbol(const std::string& nameString) const {
+    auto name = this->getSymbolShallow(nameString);
     if (name) {
         return name;
     } else if (this->parent != nullptr) {
-        return this->parent->getName(nameString);
+        return this->parent->getSymbol(nameString);
     }
     return nullptr;
 }
 
-Name* Scope::getNameShallow(const std::string& nameString) const {
-    auto it = this->names.find(nameString);
-    if (it != this->names.end()) {
+Symbol* Scope::getSymbolShallow(const std::string& nameString) const {
+    auto it = this->symbols.find(nameString);
+    if (it != this->symbols.end()) {
         return it->second;
     }
     return nullptr;
 }
 
-bool Scope::hasNameShallow (const std::string& nameString) const {
-    return this->getNameShallow(nameString) != nullptr;
+bool Scope::hasSymbolShallow (const std::string& nameString) const {
+    return this->getSymbolShallow(nameString) != nullptr;
 }
 
-bool Scope::setName(Name* name) {
+bool Scope::setSymbol(Symbol* name) {
     auto nameString = name->getNameString();
-    if (this->hasNameShallow(nameString)) {
+    if (this->hasSymbolShallow(nameString)) {
         return false;
     }
-    this->names[nameString] = name;
+    this->symbols[nameString] = name;
     return true;
 }
 

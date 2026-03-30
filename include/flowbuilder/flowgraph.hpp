@@ -22,4 +22,5 @@ public:
     std::vector<FlowNode*> getUnreachable();
     Node* getAstNode();
     void setAstNode(Node* node);
+    void assignReachabilityToNodes();
 };

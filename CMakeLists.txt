@@ -14,10 +14,11 @@ add_executable(cpplang2026
     src/parser/node.cpp
     src/desugarer/desugarer.cpp
     src/binder/binder.cpp
-    src/binder/name.cpp
+    src/binder/symbol.cpp
     src/binder/scope.cpp
     src/checker/checker.cpp
     src/checker/type.cpp
+    src/checker/typestore.cpp
     src/flowbuilder/flowgraph.cpp
     src/flowbuilder/flownode.cpp
     src/flowbuilder/flowbuilder.cpp

@@ -1,0 +1,25 @@
+function add (x: Integer, y: Integer): Integer {
+    return x + y;
+}
+
+function foo (param: Boolean): Integer {
+    if (param) then {
+        return 12;
+    }
+    return 0;
+}
+
+function qux () { // Assumed Void return
+    if (125 == 125) then {
+        add(5, 6); // Type error; argument type mismatch
+        return;
+    }
+}
+
+function main () {
+    var myString: String = 'my string'; // OK
+    var myInteger = 5;
+    var myResult: Integer = add(myInteger, 12); // OK
+    //var foo = myResult + 'xyz';
+    //var baz = add('foo', 'bar');
+}

@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 #include "flowbuilder/flowgraph.hpp"
 #include "flowbuilder/flowbuilder.hpp"
 #include "flowbuilder/flownode.hpp"
+#include "parser/node.hpp"
 
 std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
     std::vector<FlowGraph*> graphPointers;
@@ -71,10 +73,45 @@ void FlowGraph::addEdge(FlowNode* from, FlowNode* to) {
     to->addPredecessor(from);
 }
 
-bool FlowGraph::isReachable(FlowNode* start, FlowNode* to) {
-    return start->getId() && to->getId() && false; // TODO Implement
+void _markReachable (FlowNode* node, std::map<FlowNode*, bool>& visited) {
+    visited[node] = true;
+    for (auto& successor : node->getSuccessors()) {
+        if (!visited[successor]) {
+            _markReachable(successor, visited);
+        }
+    }
 }
 
 std::vector<FlowNode*> FlowGraph::getUnreachable() {
-    return {}; // TODO Implement
+    std::vector<FlowNode*> nodes = this->getNodes();
+    std::map<FlowNode*, bool> visited;
+    _markReachable(this->getEntry(), visited);
+    std::vector<FlowNode*> unreachableNodes;
+    for (auto& node : nodes) {
+        if (!visited[node]) {
+            unreachableNodes.push_back(node);
+        }
+    }
+    return unreachableNodes;
+}
+
+bool FlowGraph::isReachable(FlowNode* start, FlowNode* to) {
+    std::map<FlowNode*, bool> visited;
+    _markReachable(start, visited);
+    return visited[to];
+}
+
+void FlowGraph::assignReachabilityToNodes() {
+    std::vector<FlowNode*> unreachableNodes = this->getUnreachable();
+    std::vector<FlowNode*> nodes = this->getNodes();
+    for (auto& node : nodes) {
+        if (node->getAstNode() == nullptr) {
+            continue;
+        }
+        if (std::count(unreachableNodes.begin(), unreachableNodes.end(), node)) {
+            node->getAstNode()->setReachable(false);
+        } else {
+            node->getAstNode()->setReachable(true);
+        }
+    }
 }

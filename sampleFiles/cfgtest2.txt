@@ -1,0 +1,19 @@
+function log (string: String): Empty {
+    
+}
+
+function main () {
+    var myVariable = 0;
+    while (myVariable < 50) {
+        myVariable = myVariable + 10;
+        if (myVariable == 20) then {
+            log('twenty!');
+        } else {
+            log('...');
+            continue;
+        }
+        var baz: Integer = log('iteration');
+    }
+    log('Testing 123!');
+    log('Another!');
+}

@@ -44,7 +44,7 @@ Literal ::= NumberLiteral | StringLiteral | BooleanLiteral | EmptyLiteral | Obje
 PrimaryExpression ::= Identifier | FunctionCallExpression | IfExpression | UnaryOperatorExpression | Literal | '(' Expression ')'
 */
 
-class Name; // in binder/name.hpp
+class Symbol; // in binder/symbol.hpp
 
 enum class NodeKind {
     Program,
@@ -95,10 +95,16 @@ public:
     SourceCodeLocation getLastSourceCodeLocation();
     FlowNode* getFlowNode();
     void setFlowNode(FlowNode* flowNode);
+    bool isReachable() const; // set by flow builder
+    void setReachable(bool reachable); // set by flow builder
+    Type* getType() const;
+    void setType(Type* type);
 private:
     NodeKind nodeKind;
     bool compilerCreated;
     FlowNode* flowNode = nullptr; // set by flow builder
+    bool reachable = false; // set by flow builder
+    Type* type = nullptr; // set by type checker
     std::vector<std::unique_ptr<Token>> tokens;
 };
 
@@ -116,7 +122,7 @@ public:
     const std::vector<Node*> getChildren() const override {
         return {};
     }
-    PrimitiveTypeKind getPrimitiveType() const; // TODO eventually move to TypePrimitiveNode
+    PrimitiveTypeKind getPrimitiveTypeKind() const; // TODO eventually move to TypePrimitiveNode
 private:
     std::unique_ptr<Token> token;
 };
@@ -153,11 +159,11 @@ public:
     std::string getName() const;
     Token* getIdentifierToken() const;
     const std::vector<Node*> getChildren() const override;
-    Name* getNameReference() const;
-    void setNameReference(Name* name);
+    Symbol* getSymbolReference() const;
+    void setSymbolReference(Symbol* name);
 private:
     std::unique_ptr<Token> identifierToken;
-    Name* name = nullptr; // Set during binding
+    Symbol* symbol = nullptr; // Set during binding
 };
 
 class AssignmentExpressionNode : public ExpressionNode {
@@ -187,14 +193,10 @@ public:
     void setIdentifier(std::unique_ptr<IdentifierNode> identifierNode);
     void setExpression(std::unique_ptr<ExpressionNode> expressionNode);
     const std::vector<Node*> getChildren() const override;
-    //AssignmentExpressionNode* getAssignmentExpression() const;
-    //std::unique_ptr<AssignmentExpressionNode> takeAssignmentExpression();
-    //void setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression);
 private:
     std::unique_ptr<IdentifierNode> identifierNode;
     std::unique_ptr<TypeExpressionNode> typeExpression;
     std::unique_ptr<ExpressionNode> expressionNode;
-    //std::unique_ptr<AssignmentExpressionNode> assignmentExpression;
 };
 
 class BlockStatementNode : public Node {
@@ -221,8 +223,8 @@ private:
 class FunctionDeclarationNode : public Node {
 public:
     FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression);
-    FlowGraph* getFlowGraph();
-    void setFlowGraph(FlowGraph* flowGraph);
+    FlowGraph* getFlowGraph(); // set by flow builder
+    void setFlowGraph(FlowGraph* flowGraph); // set by flow builder
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
     TypeExpressionNode* getReturnTypeExpression() const;
@@ -292,25 +294,25 @@ private:
 class BreakStatementNode : public Node {
 public:
     BreakStatementNode() : Node(NodeKind::BreakStatement) {};
-    Name* getLoopNameReference() const;
-    void setLoopNameReference(Name* name);
+    Symbol* getLoopNameReference() const;
+    void setLoopNameReference(Symbol* name);
     const std::vector<Node*> getChildren() const override {
         return {};
     }
 private:
-    Name* loopName; // set during binding
+    Symbol* loopName; // set during binding
 };
 
 class ContinueStatementNode : public Node {
 public:
     ContinueStatementNode() : Node(NodeKind::ContinueStatement) {};
-    Name* getLoopNameReference() const;
-    void setLoopNameReference(Name* name);
+    Symbol* getLoopNameReference() const;
+    void setLoopNameReference(Symbol* name);
     const std::vector<Node*> getChildren() const override {
         return {};
     }
 private:
-    Name* loopName; // set during binding
+    Symbol* loopName; // set during binding
 };
 
 class ReturnStatementNode : public Node {
@@ -320,11 +322,11 @@ public:
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<ExpressionNode> takeExpression();
     void setExpression(std::unique_ptr<ExpressionNode> expression);
-    Name *getFunctionNameReference();
-    void setFunctionNameReference(Name *functionName);
+    Symbol *getFunctionNameReference();
+    void setFunctionNameReference(Symbol *functionName);
 private:
     std::unique_ptr<ExpressionNode> expression;
-    Name *functionName = nullptr; // Set during binding
+    Symbol *functionName = nullptr; // Set during binding
 };
 
 class AssignmentStatementNode : public Node {

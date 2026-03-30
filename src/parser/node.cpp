@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "parser/node.hpp"
-#include "binder/name.hpp"
+#include "binder/symbol.hpp"
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
 #include "flowbuilder/flownode.hpp"
@@ -67,6 +67,14 @@ NodeKind Node::getNodeKind() const {
     return this->nodeKind;
 }
 
+void Node::setReachable(bool reachable) {
+    this->reachable = reachable;
+}
+
+bool Node::isReachable() const {
+    return this->reachable;
+}
+
 bool Node::operator==(const NodeKind& rhs) const {
     return this->nodeKind == rhs;
 }
@@ -85,6 +93,14 @@ FlowNode* Node::getFlowNode() {
 
 void Node::setFlowNode(FlowNode* flowNode) {
     this->flowNode = flowNode;
+}
+
+Type* Node::getType() const {
+    return this->type;
+}
+
+void Node::setType(Type* type) {
+    this->type = type;
 }
 
 void Node::addToken(std::unique_ptr<Token> token) {
@@ -386,20 +402,20 @@ void LoopStatementNode::setBody(std::unique_ptr<BlockStatementNode> body) {
 }
 
 //BreakStatementNode
-Name* BreakStatementNode::getLoopNameReference() const {
+Symbol* BreakStatementNode::getLoopNameReference() const {
     return this->loopName;
 }
 
-void BreakStatementNode::setLoopNameReference(Name* name) {
+void BreakStatementNode::setLoopNameReference(Symbol* name) {
     this->loopName = name;
 }
 
 //ContinueStatementNode
-Name* ContinueStatementNode::getLoopNameReference() const {
+Symbol* ContinueStatementNode::getLoopNameReference() const {
     return this->loopName;
 }
 
-void ContinueStatementNode::setLoopNameReference(Name* name) {
+void ContinueStatementNode::setLoopNameReference(Symbol* name) {
     this->loopName = name;
 }
 
@@ -423,11 +439,11 @@ void ReturnStatementNode::setExpression(std::unique_ptr<ExpressionNode> expressi
     this->expression = std::move(expression);
 }
 
-Name* ReturnStatementNode::getFunctionNameReference() {
+Symbol* ReturnStatementNode::getFunctionNameReference() {
     return this->functionName;
 }
 
-void ReturnStatementNode::setFunctionNameReference(Name* name) {
+void ReturnStatementNode::setFunctionNameReference(Symbol* name) {
     this->functionName = name;
 }
 
@@ -504,12 +520,12 @@ Token* IdentifierNode::getIdentifierToken() const {
     return this->identifierToken.get();
 }
 
-Name* IdentifierNode::getNameReference() const {
-    return this->name;
+Symbol* IdentifierNode::getSymbolReference() const {
+    return this->symbol;
 }
 
-void IdentifierNode::setNameReference(Name* name) {
-    this->name = name;
+void IdentifierNode::setSymbolReference(Symbol* symbol) {
+    this->symbol = symbol;
 }
 
 //FunctionCallExpressionNode
@@ -697,7 +713,7 @@ void IfExpressionNode::setElseBranch(std::unique_ptr<ExpressionNode> elseBranch)
 }
 
 //TypeExpressionNode
-PrimitiveTypeKind TypeExpressionNode::getPrimitiveType() const {
+PrimitiveTypeKind TypeExpressionNode::getPrimitiveTypeKind() const {
     switch (this->token->getTokenKind()) {
         case TokenKind::TypePrimitiveBoolean:
             return PrimitiveTypeKind::Boolean;
@@ -705,8 +721,8 @@ PrimitiveTypeKind TypeExpressionNode::getPrimitiveType() const {
             return PrimitiveTypeKind::Empty;
         case TokenKind::TypePrimitiveFloat:
             return PrimitiveTypeKind::Float;
-        case TokenKind::TypePrimitiveNumber:
-            return PrimitiveTypeKind::Number;
+        /*case TokenKind::TypePrimitiveNumber:
+            return PrimitiveTypeKind::Number;*/
         case TokenKind::TypePrimitiveInteger:
             return PrimitiveTypeKind::Integer;
         case TokenKind::TypePrimitiveString:
