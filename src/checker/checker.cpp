@@ -24,11 +24,10 @@ Type* TypeChecker::examine(Node* node) {
         case NodeKind::Identifier: {
             auto symbol = static_cast<IdentifierNode*>(node)->getSymbolReference();
             if (symbol) {
-                if (symbol->getType()) {
-                    return symbol->getType();
+                if (!symbol->getType()) {
+                    symbol->setType(this->examine(symbol->getNode()));
                 }
-                this->addErrorMessage("Symbol '" + symbol->getNameString() + "' has no type");
-                return nullptr;
+                return symbol->getType();
             }
             this->addErrorMessage("Identifier with no symbol: " + static_cast<IdentifierNode*>(node)->getName() + "");
             return nullptr;
