@@ -29,6 +29,78 @@ void TypeChecker::addInfo(int code, const std::string& message, std::optional<So
     this->addDiagnostic(DiagnosticMessageKind::Info, code, message, sourceCodeSpan);
 }
 
+void TypeChecker::checkFunctionDeclarationReturns(Type* returnType,FunctionDeclarationNode* functionDeclarationNode) {
+    auto flowGraph = functionDeclarationNode->getFlowGraph();
+    std::vector<Node*> returnStatements;
+    auto emptyReturnNode = new ReturnStatementNode(nullptr, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
+    for (auto node : flowGraph->getExit()->getPredecessors()) {
+        if (!node->getAstNode()->isReachable()) {
+            continue;
+        }
+        if (node->getAstNode()->getNodeKind() == NodeKind::ReturnStatement) {
+            returnStatements.push_back(node->getAstNode());
+        } else {
+            returnStatements.push_back(emptyReturnNode);
+        }
+    }
+    for (auto returnStatement : returnStatements) {
+        auto returnStatementNode = static_cast<ReturnStatementNode*>(returnStatement);
+        auto returnStatementType = this->examine(returnStatementNode->getExpression());
+        if (returnStatementType != nullptr && !returnStatementType->isSubtypeOf(returnType)) {
+            this->addError(21, "Return type is not compatible with function return type annotation.", functionDeclarationNode->getSourceCodeLocationSpan());
+            break;
+        } else if (returnStatementType == nullptr && returnType->getTypeKind() != TypeKind::Void) {
+            this->addError(21, "Non-void function must return a value.", functionDeclarationNode->getSourceCodeLocationSpan());
+            break;
+        }
+    }
+    delete emptyReturnNode;
+}
+
+std::vector<Symbol*> TypeChecker::checkFunctionDeclarationParameters(FunctionDeclarationNode* functionDeclarationNode) {
+    auto parameters = functionDeclarationNode->getParameters();
+    std::vector<Symbol*> parameterSymbols;
+    for (const auto& parameter : parameters) {
+        auto parameterSymbol = parameter->getSymbolReference();
+        auto parameterAnnotation = parameter->getAnnotation();
+        if (parameterAnnotation) {
+            // TODO eventually properly parse type expression type annotations instead of just primitive types. For now, if there's a type annotation, it must be a primitive type.
+            auto parameterType = this->typeStore->createType<PrimitiveType>(parameterAnnotation->getPrimitiveTypeKind());
+            parameterSymbol->setType(parameterType);
+        } else {
+            // If there's no parameter type annotation, then the parameter type is Any.
+            // TODO also should eventually infer this (will be harder since code assumes types set for symbols)
+            parameterSymbol->setType(this->typeStore->getAnyType());
+        }
+        if (parameterSymbol) {
+            parameterSymbols.push_back(parameterSymbol);
+        } else {
+            // Shouldn't happen since binder should have created a symbol for the parameter
+            // unreachable
+            this->addError(20, "Parameter '" + parameter->getName() + "' has no symbol reference", parameter->getSourceCodeLocationSpan());
+        }
+    }
+    return parameterSymbols;
+}
+
+Type* TypeChecker::getFunctionDeclarationReturnType(FunctionDeclarationNode* functionDeclarationNode) {
+    auto returnTypeExpression = functionDeclarationNode->getReturnTypeExpression();
+    if (returnTypeExpression) {
+        // TODO eventually type expression won't just be primitive types
+        return this->typeStore->createType<PrimitiveType>(returnTypeExpression->getPrimitiveTypeKind());
+    } else {
+        // If there's no return type annotation, then the return type is Void.
+        // TODO infer return type here eventually instead
+        return this->typeStore->getVoidType();
+    }
+}
+
+FunctionType* TypeChecker::getFunctionDeclarationFunctionType(FunctionDeclarationNode* functionDeclarationNode) {
+    auto parameterSymbols = this->checkFunctionDeclarationParameters(functionDeclarationNode);
+    auto returnType = this->getFunctionDeclarationReturnType(functionDeclarationNode);
+    return this->typeStore->createType<FunctionType>(parameterSymbols, returnType);
+}
+
 Type* TypeChecker::examine(Node* node) {
     if (!node) {
         return nullptr;
@@ -276,71 +348,16 @@ Type* TypeChecker::examine(Node* node) {
         }
         case NodeKind::FunctionDeclaration: {
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
-            auto returnTypeExpression = functionDeclarationNode->getReturnTypeExpression();
             auto symbol = functionDeclarationNode->getIdentifier()->getSymbolReference();
-            Type* returnType = nullptr;
-            if (returnTypeExpression) {
-                // TODO eventually type expression won't just be primitive types
-                returnType = this->typeStore->createType<PrimitiveType>(returnTypeExpression->getPrimitiveTypeKind());
-            } else {
-                // If there's no return type annotation, then the return type is Void.
-                // TODO infer return type here eventually instead
-                returnType = this->typeStore->getVoidType();
-            }
-            // Examine parameters
-            auto parameters = functionDeclarationNode->getParameters();
-            std::vector<Symbol*> parameterSymbols;
-            for (const auto& parameter : parameters) {
-                auto parameterIdentifierNode = parameter;
-                auto parameterSymbol = parameterIdentifierNode->getSymbolReference();
-                auto parameterAnnotation = parameter->getAnnotation();
-                if (parameterAnnotation) {
-                    auto parameterType = this->typeStore->createType<PrimitiveType>(parameterAnnotation->getPrimitiveTypeKind());
-                    parameterSymbol->setType(parameterType);
-                } else {
-                    // If there's no parameter type annotation, then the parameter type is Any.
-                    parameterSymbol->setType(this->typeStore->getAnyType());
-                }
-                if (parameterSymbol) {
-                    parameterSymbols.push_back(parameterSymbol);
-                } else {
-                    // Shouldn't happen since binder should have created a symbol for the parameter
-                    this->addError(20, "Parameter '" + parameterIdentifierNode->getName() + "' has no symbol reference", parameterIdentifierNode->getSourceCodeLocationSpan());
-                }
-            }
-            // check that the return type annotation is compatible with the types of the expressions in return statements in the function body:
-            auto flowGraph = functionDeclarationNode->getFlowGraph();
-            std::vector<Node*> returnStatements;
-            //auto emptyReturnNode = std::make_unique<ReturnStatementNode>(nullptr);
-            auto emptyReturnNode = new ReturnStatementNode(nullptr, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
-            for (auto node : flowGraph->getExit()->getPredecessors()) {
-                if (!node->getAstNode()->isReachable()) {
-                    continue;
-                }
-                if (node->getAstNode()->getNodeKind() == NodeKind::ReturnStatement) {
-                    returnStatements.push_back(node->getAstNode());
-                } else {
-                    returnStatements.push_back(emptyReturnNode);
-                }
-            }
-            for (auto returnStatement : returnStatements) {
-                auto returnStatementNode = static_cast<ReturnStatementNode*>(returnStatement);
-                auto returnStatementType = this->examine(returnStatementNode->getExpression());
-                if (returnStatementType != nullptr && !returnStatementType->isSubtypeOf(returnType)) {
-                    this->addError(21, "Return type is not compatible with function return type annotation.", returnStatementNode->getSourceCodeLocationSpan());
-                } else if (returnStatementType == nullptr && returnType->getTypeKind() != TypeKind::Void) {
-                    this->addError(21, "Non-void function must return a value.", returnStatementNode->getSourceCodeLocationSpan());
-                }
-            }
-            delete emptyReturnNode;
-            // Examine body
-            auto functionType = this->typeStore->createType<FunctionType>(parameterSymbols, returnType);
+            auto functionType = this->getFunctionDeclarationFunctionType(functionDeclarationNode);
+            checkFunctionDeclarationReturns(functionType->getReturnType(), functionDeclarationNode);
             if (symbol) {
                 symbol->setType(functionType);
             } else {
                 // Shouldn't happen since binder should have created a symbol for the function declaration
                 this->addError(20, "Function declaration identifier has no symbol reference", functionDeclarationNode->getIdentifier()->getSourceCodeLocationSpan());
             }
+            // Examine body
             this->examine(functionDeclarationNode->getBody());
             return this->typeStore->getVoidType();
         }

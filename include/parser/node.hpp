@@ -93,8 +93,6 @@ public:
     bool isCompilerCreated() const;
     void addToken(std::unique_ptr<Token> token);
     std::vector<Token*> getTokens();
-    /*SourceCodeLocation getFirstSourceCodeLocation();
-    SourceCodeLocation getLastSourceCodeLocation();*/
     SourceCodeLocationSpan getSourceCodeLocationSpan() const;
     FlowNode* getFlowNode();
     void setFlowNode(FlowNode* flowNode);

@@ -14,6 +14,10 @@ private:
     void addError(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
     void addWarning(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
     void addInfo(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
+    std::vector<Symbol*> checkFunctionDeclarationParameters(FunctionDeclarationNode* functionDeclarationNode);
+    void checkFunctionDeclarationReturns(Type* returnType, FunctionDeclarationNode* functionDeclarationNode);
+    Type* getFunctionDeclarationReturnType(FunctionDeclarationNode* functionDeclarationNode);
+    FunctionType* getFunctionDeclarationFunctionType(FunctionDeclarationNode* functionDeclarationNode);
     Type* examine(Node* node);
     TypeStore* typeStore = new TypeStore();
 public:

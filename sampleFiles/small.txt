@@ -3,4 +3,5 @@ function foo (): String {
         return 'baz';
     }
     return 'boo';
+    
 }

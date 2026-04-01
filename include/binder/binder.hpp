@@ -18,10 +18,11 @@ private:
 
 class Binder {
 public:
-    Binder(Diagnostics& diagnostics);
+    Binder(Source* source, Diagnostics& diagnostics);
     std::unique_ptr<BinderResult> bind(Node* node);
     std::unique_ptr<Scope> takeRootScope();
 private:
+    Source* source;
     Diagnostics& diagnostics;
     std::unique_ptr<Scope> rootScope;
     Scope* currentScope = nullptr;

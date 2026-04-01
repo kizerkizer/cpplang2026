@@ -573,7 +573,7 @@ int main (int argc, char* argv[]) {
     }
     //std::print("Desugared parse tree:\n");
     //printParseTree(desugared.get(), 0);
-    Binder binder(diagnostics);
+    Binder binder(source.get(), diagnostics);
     auto binderResult = binder.bind(desugared.get());
     for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
         std::print("{}\n", diagnosticMessage.getFullMessage());

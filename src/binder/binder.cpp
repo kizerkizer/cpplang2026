@@ -16,24 +16,25 @@ Scope* BinderResult::getRootScope() const {
     return this->rootScope.get();
 }
 
-Binder::Binder(Diagnostics& diagnostics) : diagnostics(diagnostics) {
+Binder::Binder(Source* source, Diagnostics& diagnostics) : source(source), diagnostics(diagnostics) {
     this->rootScope = std::make_unique<Scope>(ScopeKind::Root, nullptr, nullptr);
     this->currentScope = this->rootScope.get();
+    this->source = source;
 }
 
 void Binder::addErrorMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
     auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Error, DiagnosticMessageStage::Binder, span, nullptr, message));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Error, DiagnosticMessageStage::Binder, span, this->source, message));
 }
 
 void Binder::addWarningMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
     auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Warning, DiagnosticMessageStage::Binder, span, nullptr, message));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Warning, DiagnosticMessageStage::Binder, span, this->source, message));
 }
 
 void Binder::addInfoMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
     auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Info, DiagnosticMessageStage::Binder, span, nullptr, message));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Info, DiagnosticMessageStage::Binder, span, this->source, message));
 }
 
 Scope* Binder::createAndEnterScope(ScopeKind kind) {

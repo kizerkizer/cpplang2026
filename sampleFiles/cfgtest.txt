@@ -1,4 +1,4 @@
-function someFunction (x): Integer {
+function someFunction (x: Integer): Integer {
     return x * x;
 }
 
@@ -16,8 +16,9 @@ function testCfg (): Empty {
         foo = -1;
         return foo;
     } else {
-        foo = someFunction(foo, foo);
+        foo = someFunction(foo);
     }
     foo = foo + 1;
     // CFG fall through here -v
+    return empty;
 }
