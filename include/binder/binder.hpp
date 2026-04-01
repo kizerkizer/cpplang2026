@@ -1,29 +1,34 @@
 #pragma once
 
+#include "common/sourcecodelocation.hpp"
+#include "diagnostics/diagnostics.hpp"
 #include "parser/node.hpp"
 #include "binder/scope.hpp"
-#include <vector>
 
 class BinderResult {
 public:
-    BinderResult(std::unique_ptr<Node> node, Scope* rootScope) : node(std::move(node)), rootScope(rootScope) {};
+    BinderResult(Node* node, std::unique_ptr<Scope> rootScope) : node(node), rootScope(std::move(rootScope)) {};
     Node* getNode() const;
     Scope* getRootScope() const;
+    std::unique_ptr<Scope> takeRootScope();
 private:
-    std::unique_ptr<Node> node;
-    Scope* rootScope;
+    Node* node;
+    std::unique_ptr<Scope> rootScope;
 };
 
 class Binder {
 public:
-    Binder(std::vector<std::string>& errorMessages_out);
-    std::unique_ptr<BinderResult> bind(std::unique_ptr<Node> node);
+    Binder(Diagnostics& diagnostics);
+    std::unique_ptr<BinderResult> bind(Node* node);
+    std::unique_ptr<Scope> takeRootScope();
 private:
-    std::vector<std::string>& errorMessages;
-    Scope* rootScope = nullptr;
+    Diagnostics& diagnostics;
+    std::unique_ptr<Scope> rootScope;
     Scope* currentScope = nullptr;
     Scope* createAndEnterScope(ScopeKind kind);
     void exitScope();
-    void addErrorMessage(const std::string& message);
     void bindRecursive(Node* node, bool doNotCreateScope = false);
+    void addErrorMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan = std::nullopt);
+    void addWarningMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan = std::nullopt);
+    void addInfoMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan = std::nullopt);
 };

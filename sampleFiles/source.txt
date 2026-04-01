@@ -16,9 +16,10 @@ function foo (myParam: Integer): String {
         baz = 'foo';
     }
     loop {
-        if (foo) then { // Error: type error, `foo` is not assignable to `Boolean`
+        /*if (foo) then { // Error: type error, `foo` is not assignable to `Boolean`
             break;
-        }
+        }*/
+        break;
     }
     //var qux = empty; // Error: redeclaration!
     return baz;

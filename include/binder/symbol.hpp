@@ -1,9 +1,10 @@
 #pragma once
 
-#include "binder/scope.hpp"
 #include "flowbuilder/flowgraph.hpp"
 #include "parser/node.hpp"
 #include <string>
+
+class Scope; // In scope.hpp
 
 enum class SymbolKind {
     Variable,
@@ -38,11 +39,11 @@ inline SymbolModifierFlags operator|(SymbolModifierFlags a, SymbolModifierFlags 
 
 class Symbol {
 public:
-    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : nameString(nameString), containingScope(std::move(containingScope)), node(node), kind(kind), modifierFlags(modifierFlags) {};
+    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : nameString(nameString), containingScope(containingScope), node(node), kind(kind), modifierFlags(modifierFlags) {};
     const std::string& getNameString() const;
     const Scope* getContainingScope() const;
     SymbolKind getKind() const;
-    Node* getNode() const;
+    Node* getDefiningNode() const;
     SymbolModifierFlags getModifierFlags() const;
     Type* getType();
     void setType(Type* type);
@@ -55,5 +56,5 @@ private:
     SymbolKind kind;
     SymbolModifierFlags modifierFlags;
     Type* type = nullptr; // set in type checking
-    FlowGraph* flowGraph = nullptr; // set in flowbuilder
+    FlowGraph* flowGraph = nullptr; // set in flowbuilder TODO ?
 };

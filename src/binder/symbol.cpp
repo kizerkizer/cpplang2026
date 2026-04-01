@@ -1,4 +1,5 @@
 #include "binder/symbol.hpp"
+#include "binder/scope.hpp"
 
 std::string symbolKindToString(SymbolKind symbolKind) {
     switch (symbolKind) {
@@ -43,7 +44,7 @@ SymbolKind Symbol::getKind() const {
     return this->kind;
 }
 
-Node* Symbol::getNode() const {
+Node* Symbol::getDefiningNode() const {
     return this->node;
 }
 

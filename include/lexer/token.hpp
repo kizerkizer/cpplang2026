@@ -1,6 +1,8 @@
 #pragma once
-#include "common/sourcecodelocation.hpp"
 #include <string>
+
+#include "common/sourcecodelocation.hpp"
+#include "common/source.hpp"
 
 enum class TokenKind {
     OutOfRange,
@@ -79,15 +81,16 @@ std::string tokenNameToString (const TokenKind &name);
 
 class Token {
 public:
-    Token(const std::string &sourceString, size_t index, size_t line, size_t column, TokenKind name, bool compilerCreated = false)
-        : name(name), sourceString(sourceString), firstIndex(index), firstLine(line), firstColumn(column), lastIndex(index), lastLine(line), lastColumn(column), compilerCreated(compilerCreated) {};
+    Token(Source* source, const std::string &sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
+        : source(source), name(name), sourceString(sourceString), sourceCodeLocationSpan(sourceCodeLocationSpan), compilerCreated(compilerCreated) {};
     TokenKind getTokenKind() const;
-    int getFirstIndex() const;
+    Source* getSource() const;
+    /*int getFirstIndex() const;
     int getFirstLine() const;
     int getFirstColumn() const;
     int getLastIndex() const;
     int getLastLine() const;
-    int getLastColumn() const;
+    int getLastColumn() const;*/
     std::string getSourceString() const;
     std::string toString() const;
     bool operator==(const TokenKind& rhs) const;
@@ -95,18 +98,22 @@ public:
     friend bool operator==(const Token& lhs,const Token& rhs);
     friend bool operator!=(const Token& lhs,const Token& rhs);
     bool isCompilerCreated() const;
+    SourceCodeLocationSpan getSourceCodeLocationSpan() const;
+    /*void setLastSourceCodeLocation(SourceCodeLocation location);
     void setFirstSourceCodeLocation(SourceCodeLocation location);
     void setLastSourceCodeLocation(SourceCodeLocation location);
     SourceCodeLocation getFirstSourceCodeLocation() const;
-    SourceCodeLocation getLastSourceCodeLocation() const;
+    SourceCodeLocation getLastSourceCodeLocation() const;*/
 private:
+    Source* source;
     TokenKind name;
     std::string sourceString;
-    int firstIndex;
+    SourceCodeLocationSpan sourceCodeLocationSpan;
+    /*int firstIndex;
     int firstLine;
     int firstColumn;
     int lastIndex;
     int lastLine;
-    int lastColumn;
+    int lastColumn;*/
     bool compilerCreated;
 };

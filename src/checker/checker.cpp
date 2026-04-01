@@ -2,6 +2,7 @@
 
 #include "checker/checker.hpp"
 #include "checker/type.hpp"
+#include "common/sourcecodelocation.hpp"
 #include "lexer/token.hpp"
 #include "parser/node.hpp"
 #include "binder/symbol.hpp"
@@ -11,8 +12,21 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
     return std::unique_ptr<To>(static_cast<To*>(from.release()));
 }
 
-void TypeChecker::addErrorMessage(const std::string errorMessage) {
-    this->errorMessages.push_back(errorMessage);
+void TypeChecker::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
+    auto span = sourceCodeSpan.has_value() ? sourceCodeSpan.value() : SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, kind, DiagnosticMessageStage::TypeChecker, span, this->source, message));
+}
+
+void TypeChecker::addError(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
+    this->addDiagnostic(DiagnosticMessageKind::Error, code, message, sourceCodeSpan);
+}
+
+void TypeChecker::addWarning(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
+    this->addDiagnostic(DiagnosticMessageKind::Warning, code, message, sourceCodeSpan);
+}
+
+void TypeChecker::addInfo(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
+    this->addDiagnostic(DiagnosticMessageKind::Info, code, message, sourceCodeSpan);
 }
 
 Type* TypeChecker::examine(Node* node) {
@@ -25,11 +39,11 @@ Type* TypeChecker::examine(Node* node) {
             auto symbol = static_cast<IdentifierNode*>(node)->getSymbolReference();
             if (symbol) {
                 if (!symbol->getType()) {
-                    symbol->setType(this->examine(symbol->getNode()));
+                    symbol->setType(this->examine(symbol->getDefiningNode()));
                 }
                 return symbol->getType();
             }
-            this->addErrorMessage("Identifier with no symbol: " + static_cast<IdentifierNode*>(node)->getName() + "");
+            this->addError(10, "Identifier with no symbol: " + static_cast<IdentifierNode*>(node)->getName(), static_cast<IdentifierNode*>(node)->getSourceCodeLocationSpan());
             return nullptr;
         }
         case NodeKind::TypeExpression: {
@@ -90,7 +104,7 @@ Type* TypeChecker::examine(Node* node) {
                 }
                 // TODO eventually support operator overloading, but for now only allow primitive types.
                 // Invalid types for +, -, *, / (arithmetic)
-                this->addErrorMessage("Bad types for operator '" + operatorToken.getSourceString() + "'");
+                this->addError(11, "Bad types for operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
                 return nullptr; // TODO maybe return void at some point?
             }
             // logical operators
@@ -107,7 +121,7 @@ Type* TypeChecker::examine(Node* node) {
                 // TODO eventually support operator overloading, but for now only allow primitive types.
                 // Invalid types for comparison operators
                 // TODO refactor error messages
-                this->addErrorMessage("Bad types for operator '" + operatorToken.getSourceString() + "'");
+                this->addError(11, "Bad types for operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
                 return nullptr;
             }
             // number comparison operators
@@ -124,7 +138,7 @@ Type* TypeChecker::examine(Node* node) {
                 // TODO eventually support operator overloading, but for now only allow primitive types.
                 // Invalid types for comparison operators
                 // TODO refactor error messages
-                this->addErrorMessage("Bad types for operator '" + operatorToken.getSourceString() + "'");
+                this->addError(11, "Bad types for operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
                 return nullptr;
             }
             // TODO eventually handle == and !=? Or just let that be determined at runtime?
@@ -135,7 +149,7 @@ Type* TypeChecker::examine(Node* node) {
             // TODO eventually support operator overloading, but for now only allow primitive types.
             // Unknown binary operator (still need to handle dot and equal operators).
             // TODO refactor error messages
-            this->addErrorMessage("Unknown operator '" + operatorToken.getSourceString() + "'");
+            this->addError(12, "Unknown operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
             return nullptr; // TODO maybe return void at some point?
         }
         case NodeKind::UnaryOperatorExpression: {
@@ -153,7 +167,7 @@ Type* TypeChecker::examine(Node* node) {
                 }
                 // TODO eventually support operator overloading, but for now only allow primitive types.
                 // Invalid type for unary -
-                this->addErrorMessage("Bad type for operator '" + operatorToken.getSourceString() + "'");
+                this->addError(11, "Bad type for operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
                 return nullptr;
             }
             if (operatorToken == TokenKind::Not) {
@@ -167,17 +181,17 @@ Type* TypeChecker::examine(Node* node) {
                 }
                 // TODO eventually support operator overloading, but for now only allow primitive types.
                 // Invalid type for unary !
-                this->addErrorMessage("Bad type for operator '" + operatorToken.getSourceString() + "'");
+                this->addError(11, "Bad type for operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
                 return nullptr;
             }
-            this->addErrorMessage("Unknown operator '" + operatorToken.getSourceString() + "'");
+            this->addError(12, "Unknown operator '" + operatorToken.getSourceString() + "'", operatorToken.getSourceCodeLocationSpan());
             return nullptr; // TODO maybe return void at some point?
         }
         case NodeKind::IfExpression: {
             auto* ifExpressionNode = static_cast<IfExpressionNode*>(node);
             auto conditionType = this->examine(ifExpressionNode->getCondition());
             if (!(ifExpressionNode->getThenBranch() && ifExpressionNode->getElseBranch())) {
-                this->addErrorMessage("If expressions must have both then and else branches");
+                this->addError(13, "If expressions must have both then and else branches", ifExpressionNode->getSourceCodeLocationSpan());
                 return nullptr;
             }
             if (conditionType->getTypeKind() == TypeKind::Primitive) {
@@ -193,7 +207,7 @@ Type* TypeChecker::examine(Node* node) {
                 // Fall through --v
             }
             // Invalid type for if condition
-            this->addErrorMessage("Bad type for if condition. Expected boolean.");
+            this->addError(14, "Bad type for if condition. Expected boolean.", ifExpressionNode->getCondition()->getSourceCodeLocationSpan());
             return nullptr;
         }
         case NodeKind::FunctionCallStatement: {
@@ -205,11 +219,10 @@ Type* TypeChecker::examine(Node* node) {
         case NodeKind::FunctionCallExpression: {
             auto functionCallExpressionNode = static_cast<FunctionCallExpressionNode*>(node);
             auto functionType = static_cast<FunctionType*>(functionCallExpressionNode->getIdentifier()->getSymbolReference()->getType());
-            //auto returnType = functionType->getReturnType();
             auto arguments = functionCallExpressionNode->getArgumentNodes();
             auto parameters = functionType->getParameters();
             if (arguments.size() != parameters.size()) {
-                this->addErrorMessage("Argument count does not match parameter count in function call");
+                this->addError(15, "Argument count does not match parameter count in function call", functionCallExpressionNode->getSourceCodeLocationSpan());
                 return functionType->getReturnType();
             }
             for (size_t i = 0; i < arguments.size(); i++) {
@@ -217,20 +230,7 @@ Type* TypeChecker::examine(Node* node) {
                 auto parameterSymbol = parameters[i];
                 auto parameterType = parameterSymbol->getType();
                 if (!argumentType->isSubtypeOf(parameterType)) {
-                    // TODO refactor this mess and all error message construction.
-                    std::string message = "Argument type is not compatible with parameter type in function call. ";
-                    message += "\nArgument type: " + typeKindToString(argumentType->getTypeKind());
-                    if (argumentType->getTypeKind() == TypeKind::Primitive) {
-                        auto argumentPrimitiveType = static_cast<PrimitiveType*>(argumentType);
-                        message += " (" + primitiveTypeToString(argumentPrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    message += "\nParameter type: " + typeKindToString(parameterType->getTypeKind());
-                    if (parameterType->getTypeKind() == TypeKind::Primitive) {
-                        auto parameterPrimitiveType = static_cast<PrimitiveType*>(parameterType);
-                        message += " (" + primitiveTypeToString(parameterPrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    message += "\nLine " + std::to_string(functionCallExpressionNode->getIdentifier()->getIdentifierToken()->getFirstLine());
-                    this->addErrorMessage(message);
+                    this->addError(16, "Argument type is not compatible with parameter type in function call", functionCallExpressionNode->getSourceCodeLocationSpan());
                 }
             }
             return functionType->getReturnType();
@@ -253,34 +253,25 @@ Type* TypeChecker::examine(Node* node) {
                 // Set type to what is annotated
                 auto typeExpressionType = this->typeStore->createType<PrimitiveType>(typeExpressionNode->getPrimitiveTypeKind());
                 if (!expressionType->isSubtypeOf(typeExpressionType)) {
-                    // TODO refactor this mess and all error message construction.
-                    std::string message = "Type annotation is not compatible with initializer expression type. ";
-                    message += "\nType annotation: " + typeKindToString(typeExpressionType->getTypeKind());
-                    if (typeExpressionType->getTypeKind() == TypeKind::Primitive) {
-                        auto typeExpressionPrimitiveType = static_cast<PrimitiveType*>(typeExpressionType);
-                        message += " (" + primitiveTypeToString(typeExpressionPrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    message += "\nInitializer expression type: " + typeKindToString(expressionType->getTypeKind());
-                    if (expressionType->getTypeKind() == TypeKind::Primitive) {
-                        auto expressionPrimitiveType = static_cast<PrimitiveType*>(expressionType);
-                        message += " (" + primitiveTypeToString(expressionPrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    auto line = variableDeclarationNode->getIdentifier()->getIdentifierToken()->getFirstLine();
-                    message += "\nLine " + std::to_string(line);
-                    this->addErrorMessage(message);
+                    this->addError(17, "Type annotation is not compatible with initializer expression type", identifierNode->getSourceCodeLocationSpan());
                 }
                 if (!expressionType->isSubtypeOf(typeExpressionType)) {
-                    this->addErrorMessage("Initializer expression type is not compatible with type annotation");
+                    this->addError(18, "Initializer expression type is not compatible with type annotation", identifierNode->getSourceCodeLocationSpan());
                 }
                 computedType = typeExpressionType;
             } else if (!expressionNode) {
-                this->addErrorMessage("Variable declaration with no initiazlier must have a type annotation that is a supertype of Empty");
+                this->addError(19, "Variable declaration with no initializer must have a type annotation that is a supertype of Empty", identifierNode->getSourceCodeLocationSpan());
                 computedType = expressionType;
             } else {
                 // Infer type as type of expression
                 computedType = expressionType;
             }
-            symbol->setType(computedType);
+            if (symbol) {
+                symbol->setType(computedType);
+            } else {
+                // Shouldn't happen since binder should have created a symbol for the variable declaration
+                this->addError(20, "Variable declaration identifier has no symbol reference", identifierNode->getSourceCodeLocationSpan());
+            }
             return this->typeStore->getVoidType();
         }
         case NodeKind::FunctionDeclaration: {
@@ -293,6 +284,7 @@ Type* TypeChecker::examine(Node* node) {
                 returnType = this->typeStore->createType<PrimitiveType>(returnTypeExpression->getPrimitiveTypeKind());
             } else {
                 // If there's no return type annotation, then the return type is Void.
+                // TODO infer return type here eventually instead
                 returnType = this->typeStore->getVoidType();
             }
             // Examine parameters
@@ -313,14 +305,14 @@ Type* TypeChecker::examine(Node* node) {
                     parameterSymbols.push_back(parameterSymbol);
                 } else {
                     // Shouldn't happen since binder should have created a symbol for the parameter
-                    this->addErrorMessage("Parameter '" + parameterIdentifierNode->getName() + "' has no symbol reference");
+                    this->addError(20, "Parameter '" + parameterIdentifierNode->getName() + "' has no symbol reference", parameterIdentifierNode->getSourceCodeLocationSpan());
                 }
             }
             // check that the return type annotation is compatible with the types of the expressions in return statements in the function body:
             auto flowGraph = functionDeclarationNode->getFlowGraph();
             std::vector<Node*> returnStatements;
             //auto emptyReturnNode = std::make_unique<ReturnStatementNode>(nullptr);
-            auto emptyReturnNode = new ReturnStatementNode(nullptr);
+            auto emptyReturnNode = new ReturnStatementNode(nullptr, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
             for (auto node : flowGraph->getExit()->getPredecessors()) {
                 if (!node->getAstNode()->isReachable()) {
                     continue;
@@ -335,32 +327,21 @@ Type* TypeChecker::examine(Node* node) {
                 auto returnStatementNode = static_cast<ReturnStatementNode*>(returnStatement);
                 auto returnStatementType = this->examine(returnStatementNode->getExpression());
                 if (returnStatementType != nullptr && !returnStatementType->isSubtypeOf(returnType)) {
-                    std::string message = "Return type is not compatible with function return type annotation. ";
-                    message += "\nReturn type annotation: " + typeKindToString(returnType->getTypeKind());
-                    if (returnType->getTypeKind() == TypeKind::Primitive) {
-                        auto returnTypePrimitiveType = static_cast<PrimitiveType*>(returnType);
-                        message += " (" + primitiveTypeToString(returnTypePrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    message += "\nReturn statement type: " + typeKindToString(returnStatementType->getTypeKind());
-                    if (returnStatementType->getTypeKind() == TypeKind::Primitive) {
-                        auto returnStatementPrimitiveType = static_cast<PrimitiveType*>(returnStatementType);
-                        message += " (" + primitiveTypeToString(returnStatementPrimitiveType->getPrimitiveTypeKind()) + ")";
-                    }
-                    auto [index, line, column] = returnStatement->getFirstSourceCodeLocation();
-                    message += "\nLine " + std::to_string(line);
-                    this->addErrorMessage(message);
+                    this->addError(21, "Return type is not compatible with function return type annotation.", returnStatementNode->getSourceCodeLocationSpan());
                 } else if (returnStatementType == nullptr && returnType->getTypeKind() != TypeKind::Void) {
-                    std::string message = "Non-void function must return a value.";
-                    auto [index, line, column] = functionDeclarationNode->getIdentifier()->getIdentifierToken()->getFirstSourceCodeLocation();
-                    message += "\nLine " + std::to_string(line);
-                    this->addErrorMessage(message);
+                    this->addError(21, "Non-void function must return a value.", returnStatementNode->getSourceCodeLocationSpan());
                 }
             }
             delete emptyReturnNode;
             // Examine body
-            this->examine(functionDeclarationNode->getBody());
             auto functionType = this->typeStore->createType<FunctionType>(parameterSymbols, returnType);
-            symbol->setType(functionType);
+            if (symbol) {
+                symbol->setType(functionType);
+            } else {
+                // Shouldn't happen since binder should have created a symbol for the function declaration
+                this->addError(20, "Function declaration identifier has no symbol reference", functionDeclarationNode->getIdentifier()->getSourceCodeLocationSpan());
+            }
+            this->examine(functionDeclarationNode->getBody());
             return this->typeStore->getVoidType();
         }
         case NodeKind::IfStatement: {
@@ -374,10 +355,10 @@ Type* TypeChecker::examine(Node* node) {
                         this->examine(ifStatementNode->getElseBranch());
                     }
                 } else {
-                    this->addErrorMessage("Bad type for if condition. Expected Boolean.");
+                    this->addError(14, "Bad type for if condition. Expected Boolean.", ifStatementNode->getCondition()->getSourceCodeLocationSpan());
                 }
             } else {
-                this->addErrorMessage("Bad type for if condition. Expected Boolean.");
+                this->addError(14, "Bad type for if condition. Expected Boolean.", ifStatementNode->getCondition()->getSourceCodeLocationSpan());
             }
             return this->typeStore->getVoidType();
         }
@@ -393,7 +374,11 @@ Type* TypeChecker::examine(Node* node) {
             this->examine(blockStatementNode->getProgramNode());
             return this->typeStore->getVoidType();
         }
-        case NodeKind::LoopStatement:
+        case NodeKind::LoopStatement: {
+            auto loopStatementNode = static_cast<LoopStatementNode*>(node);
+            this->examine(loopStatementNode->getBody());
+            return this->typeStore->getVoidType();
+        }
         case NodeKind::ReturnStatement:
         case NodeKind::Invalid: // shouldn't exist
         case NodeKind::ContinueStatement:
@@ -412,7 +397,7 @@ Type* TypeChecker::examine(Node* node) {
             auto identifierType = this->examine(assignmentExpressionNode->getIdentifier());
             auto expressionType = this->examine(assignmentExpressionNode->getExpression());
             if (!expressionType->isSubtypeOf(identifierType)) {
-                this->addErrorMessage("Type of right-hand side of assignment is not compatible with type of left-hand side");
+                this->addError(22, "Type of right-hand side of assignment is not compatible with type of left-hand side.", assignmentExpressionNode->getSourceCodeLocationSpan());
             }
             return expressionType;
         }

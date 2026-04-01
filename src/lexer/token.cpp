@@ -132,14 +132,18 @@ bool Token::operator!=(const TokenKind& rhs) const {
 }
 
 bool operator==(const Token& lhs, const Token& rhs) {
-    return lhs.name == rhs.name && lhs.sourceString == rhs.sourceString && lhs.firstIndex == rhs.firstIndex && lhs.firstLine == rhs.firstLine && lhs.firstColumn == rhs.firstColumn;
+    auto [lhsStartLine, lhsStartColumn, lhsStartOffset] = lhs.sourceCodeLocationSpan.start;
+    auto [lhsEndLine, lhsEndColumn, lhsEndOffset] = lhs.sourceCodeLocationSpan.end;
+    auto [rhsStartLine, rhsStartColumn, rhsStartOffset] = rhs.sourceCodeLocationSpan.start;
+    auto [rhsEndLine, rhsEndColumn, rhsEndOffset] = rhs.sourceCodeLocationSpan.end;
+    return lhs.name == rhs.name && lhs.sourceString == rhs.sourceString && lhsStartLine == rhsStartLine && lhsStartColumn == rhsStartColumn && lhsStartOffset == rhsStartOffset && lhsEndLine == rhsEndLine && lhsEndColumn == rhsEndColumn && lhsEndOffset == rhsEndOffset;
 }
 
 bool operator!=(const Token& lhs, const Token& rhs) {
     return !(lhs == rhs);
 }
 
-int Token::getFirstIndex() const {
+/*int Token::getFirstIndex() const {
     return this->firstIndex;
 }
 
@@ -161,23 +165,27 @@ int Token::getLastLine() const {
 
 int Token::getLastColumn() const {
     return this->lastColumn;
-}
+}*/
 
-void Token::setFirstSourceCodeLocation(SourceCodeLocation location) {
+/*void Token::setFirstSourceCodeLocation(SourceCodeLocation location) {
     std::tie(this->firstIndex, this->firstLine, this->firstColumn) = location;
 }
 
 void Token::setLastSourceCodeLocation(SourceCodeLocation location) {
     std::tie(this->lastIndex, this->lastLine, this->lastColumn) = location;
-}
+}*/
 
-SourceCodeLocation Token::getFirstSourceCodeLocation() const {
+/*SourceCodeLocation Token::getFirstSourceCodeLocation() const {
     return {this->firstIndex, this->firstLine, this->firstColumn};
 }
 
 SourceCodeLocation Token::getLastSourceCodeLocation() const {
     // TODO set line and column appropriately for multi-line tokens
     return {this->firstIndex + this->getSourceString().size(), this->firstLine, this->firstColumn + this->getSourceString().size()};
+}*/
+
+SourceCodeLocationSpan Token::getSourceCodeLocationSpan() const {
+    return this->sourceCodeLocationSpan;
 }
 
 std::string Token::getSourceString() const {

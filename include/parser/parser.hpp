@@ -1,27 +1,29 @@
 #pragma once
 
-#include <vector>
 #include <deque>
 
+#include "common/sourcecodelocation.hpp"
+#include "diagnostics/diagnostics.hpp"
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 #include "parser/node.hpp"
 
 class Parser {
 public:
-    Parser(Lexer* lexer, std::vector<std::string>& errorMessages_out) : lexer(lexer), errorMessages(errorMessages_out) {};
+    Parser(Source* source, Lexer* lexer, Diagnostics& diagnostics) : source(source), lexer(lexer), diagnostics(diagnostics) {};
     std::unique_ptr<Node> parse();
 private:
+    Source* source;
     Lexer* lexer;
+    Diagnostics& diagnostics;
     size_t index = 0;
     std::deque<std::unique_ptr<Token>> tokenBuffer;
-    std::vector<std::string> &errorMessages;
 
     /**
-     * @brief Expects the next token to have the specified token name, and advances the index. If the next token does not have the expected token name, an error message is added to errorMessages_out and std::nullopt is returned.
+     * @brief Expects the next token to have the specified token name, and advances the index. If the next token does not have the expected token name, an error message is added to diagnostics and nullptr is returned.
      * 
      * @param expectedTokenName Name of the expected token
-     * @return std::optional<Token> 
+     * @return std::unique_ptr<Token> 
      */
     std::unique_ptr<Token> expectAndAdvance(const TokenKind& expectedTokenName);
     Token peek(size_t offset = 0);
@@ -31,9 +33,12 @@ private:
      * @brief Matches the next token with the specified token name and advances the index. If the next token does not have the expected token name, nothing happens.
      * 
      * @param expectedTokenName Name of the expected token
-     * @return std::optional<Token> 
+     * @return std::unique_ptr<Token> 
      */
     std::unique_ptr<Token> matchAndAdvance(const TokenKind& expectedTokenName);
+    /*SourceCodeLocation getCurrentSourceCodeLocationStart();
+    SourceCodeLocation getCurrentSourceCodeLocationEnd();*/
+    SourceCodeLocationSpan getCurrentSourceCodeLocationSpan();
     bool isPastTokensEnd() const;
     int insideLoop = 0;
     int insideFunction = 0;

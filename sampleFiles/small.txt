@@ -1,0 +1,6 @@
+function foo (): String {
+    if (foo) then { // Type error; foo is not Boolean
+        return 'baz';
+    }
+    return 'boo';
+}

@@ -1,4 +1,5 @@
 #include "desugarer/desugarer.hpp"
+#include "common/sourcecodelocation.hpp"
 #include "parser/node.hpp"
 #include <memory>
 
@@ -20,22 +21,25 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             //     }
             //     body
             // }
-            auto newProgramNode = std::make_unique<ProgramNode>();
+            // TODO should we reference original source code locations? Or just keep using -1,-1,-1 for compiler-created nodes?
+            auto newProgramNode = std::make_unique<ProgramNode>(emptySourceCodeLocationSpan, false);
             auto newIfStatement = std::make_unique<IfStatementNode>(
                 std::make_unique<UnaryOperatorExpressionNode>(
                     whileStatementNode->takeCondition(),
-                    std::make_unique<Token>("!", 0, 0, 0, TokenKind::Not, true)
+                    std::make_unique<Token>(nullptr, "!", emptySourceCodeLocationSpan, TokenKind::Not, true),
+                    emptySourceCodeLocationSpan
                 ),
-                std::make_unique<BreakStatementNode>(),
-                nullptr
+                std::make_unique<BreakStatementNode>(emptySourceCodeLocationSpan), // TODO should be blockstatement, unless statements in general allowed
+                nullptr,
+                emptySourceCodeLocationSpan
             );
             newProgramNode->addNode(std::move(newIfStatement));
             auto children = whileStatementNode->takeBody()->takeProgramNode()->takeChildren();
             for (auto& child : children) {
                 newProgramNode->addNode(std::move(child));
             }
-            auto newBody = std::make_unique<BlockStatementNode>(std::move(newProgramNode));
-            auto loopStatement = std::make_unique<LoopStatementNode>(std::move(newBody));
+            auto newBody = std::make_unique<BlockStatementNode>(std::move(newProgramNode), emptySourceCodeLocationSpan);
+            auto loopStatement = std::make_unique<LoopStatementNode>(std::move(newBody), emptySourceCodeLocationSpan);
             return loopStatement;
         }
         case NodeKind::Program: {
@@ -46,7 +50,6 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
                 newChildren.push_back(_desugar(std::move(child)));
             }
             programNode->setChildren(std::move(newChildren));
-            //return std::unique_ptr<ProgramNode>(static_cast<ProgramNode*>(node.release()));
             return unique_ptr_static_cast<ProgramNode>(std::move(node));
         }
         case NodeKind::VariableDeclaration: {

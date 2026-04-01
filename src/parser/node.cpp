@@ -115,7 +115,7 @@ std::vector<Token*> Node::getTokens() {
     return returnTokens;
 }
 
-SourceCodeLocation Node::getFirstSourceCodeLocation() {
+/*SourceCodeLocation Node::getFirstSourceCodeLocation() {
     if (!this->tokens.size()) {
         return {-1, -1, -1};
     }
@@ -127,6 +127,10 @@ SourceCodeLocation Node::getLastSourceCodeLocation() {
         return {-1, -1, -1};
     }
     return this->tokens.back()->getLastSourceCodeLocation();
+}*/
+
+SourceCodeLocationSpan Node::getSourceCodeLocationSpan() const {
+    return this->sourceCodeLocationSpan;
 }
 
 // ProgramNode
@@ -163,8 +167,6 @@ void ProgramNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
 }
 
 //VariableDeclarationNode
-VariableDeclarationNode::VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifierNode, std::unique_ptr<TypeExpressionNode> typeExpression, std::unique_ptr<ExpressionNode> expressionNode) : Node(NodeKind::VariableDeclaration), identifierNode(std::move(identifierNode)), typeExpression(std::move(typeExpression)), expressionNode(std::move(expressionNode)) { };
-
 IdentifierNode* VariableDeclarationNode::getIdentifier() const {
     return this->identifierNode.get();
 }
@@ -198,8 +200,6 @@ const std::vector<Node*> VariableDeclarationNode::getChildren() const {
 }
 
 //FunctionDeclarationNode
-FunctionDeclarationNode::FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<TypeExpressionNode> returnTypeExpression) : Node(NodeKind::FunctionDeclaration), identifier(std::move(identifier)), parameters(std::move(parameters)), returnTypeExpression(std::move(returnTypeExpression)), bodyNode(std::move(bodyNode)) {};
-
 void FunctionDeclarationNode::setFlowGraph(FlowGraph* flowGraph) {
     this->flowGraph = flowGraph;
 }
@@ -288,8 +288,6 @@ void IdentifierWithPossibleAnnotationNode::setAnnotation(std::unique_ptr<TypeExp
 }
 
 //BlockStatementNode
-BlockStatementNode::BlockStatementNode(std::unique_ptr<ProgramNode> programNode) : Node(NodeKind::BlockStatement), programNode(std::move(programNode)) {};
-
 ProgramNode* BlockStatementNode::getProgramNode() const {
     return this->programNode.get();
 }
@@ -448,8 +446,6 @@ void ReturnStatementNode::setFunctionNameReference(Symbol* name) {
 }
 
 //AssignmentExpressionNode
-AssignmentExpressionNode::AssignmentExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<ExpressionNode> expression) : ExpressionNode(NodeKind::AssignmentExpression), identifier(std::move(identifier)), expression(std::move(expression)) {};
-
 IdentifierNode* AssignmentExpressionNode::getIdentifier() const {
     return this->identifier.get();
 }
@@ -593,12 +589,12 @@ Token* NumberLiteralNode::getNumberLiteralToken() const {
 }
 
 //BooleanLiteralNode
-Token* BooleanLiteralNode::getBooleanLiteralToken() const {
-    return this->booleanLiteralToken.get();
-}
-
 bool BooleanLiteralNode::getValue() const {
     return this->booleanLiteralToken->getSourceString() == "true";
+}
+
+Token* BooleanLiteralNode::getBooleanLiteralToken() const {
+    return this->booleanLiteralToken.get();
 }
 
 //EmptyLiteralNode

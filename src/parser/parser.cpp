@@ -1,4 +1,6 @@
 #include "parser/parser.hpp"
+#include "common/sourcecodelocation.hpp"
+#include "diagnostics/diagnosticmessage.hpp"
 #include "parser/node.hpp"
 #include "lexer/token.hpp"
 
@@ -7,9 +9,9 @@
 #include <print>
 
 Token Parser::peek(size_t offset) {
-    if (this->isPastTokensEnd()) {
-        return Token("", 0, 0, 0, TokenKind::OutOfRange);
-    }
+    /*if (this->isPastTokensEnd()) {
+        return Token(this->source, "", SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), TokenKind::OutOfRange);
+    }*/
     int needed = offset - this->tokenBuffer.size();
     while (needed >= 0) {
         this->tokenBuffer.push_back(this->lexer->getNextNonTrivialToken());
@@ -35,15 +37,30 @@ std::unique_ptr<Token> Parser::consumeCurrentToken() {
 }
 
 std::unique_ptr<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenName) {
-    if (this->isPastTokensEnd()) {
+    /*if (this->isPastTokensEnd()) {
         return nullptr;
-    }
+    }*/
     auto token = this->peek();
     if (token != expectedTokenName) {
         return nullptr;
     }
     auto returnToken = this->consumeCurrentToken();
     return returnToken;
+}
+
+/*SourceCodeLocation Parser::getCurrentSourceCodeLocationStart() {
+    auto token = this->peek();
+    return token.getSourceCodeLocationSpan().start;
+}
+
+SourceCodeLocation Parser::getCurrentSourceCodeLocationEnd() {
+    auto token = this->peek();
+    return token.getSourceCodeLocationSpan().end;
+}*/
+
+SourceCodeLocationSpan Parser::getCurrentSourceCodeLocationSpan() {
+    auto token = this->peek();
+    return token.getSourceCodeLocationSpan();
 }
 
 void Parser::enterLoop() {
@@ -77,15 +94,15 @@ void Parser::exitBlock() {
 }
 
 void Parser::addErrorMessageParseFailure(const std::string& failedToParse) {
-    this->errorMessages.push_back("Failed to parse " + failedToParse + " at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(5, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Failed to parse " + failedToParse));
 }
 
 void Parser::addErrorMessageExpected(const std::string& expected) {
-    this->errorMessages.push_back("Expected '" + expected + "' but found '" + this->peek().getSourceString() + "' at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Expected '" + expected + "' but found '" + this->peek().getSourceString() + "'"));
 }
 
 void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
-    this->errorMessages.push_back("Unexpected '" + unexpected + "' at line " + std::to_string(this->peek().getFirstLine()) + ", column " + std::to_string(this->peek().getFirstColumn()));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Unexpected '" + unexpected + "'"));
 }
 
 std::unique_ptr<Node> Parser::parse() {
@@ -97,104 +114,103 @@ std::unique_ptr<Node> Parser::parse() {
 }
 
 std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
-    std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>(atRoot);
+    std::vector<std::unique_ptr<Node>> children;
     while (!this->isPastTokensEnd()) {
         if (insideBlock && this->peek() == TokenKind::BraceClose) {
-            this->expectAndAdvance(TokenKind::BraceClose);
-            return program;
+            goto makeProgram;
         }
         switch (this->peek().getTokenKind()) {
             case TokenKind::KeywordVar: {
                 auto node = this->parseVariableDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("variable declaration");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordFunction: {
                 auto node = this->parseFunctionDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("function declaration");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordIf: {
                 auto node = this->parseIfStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("if statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordReturn: {
                 if (!this->insideFunction) {
                     this->addErrorMessageUnexpected("'return' statement outside of function");
-                    return program;
+                    goto makeProgram;
                 }
                 auto node = this->parseReturnStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("return statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordBreak: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'break' statement outside of while loop");
-                    return program;
+                    goto makeProgram;
                 }
                 auto node = this->parseBreakStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("break statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordContinue: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'continue' statement outside of while loop");
-                    return program;
+                    goto makeProgram;
                 }
                 auto node = this->parseContinueStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("continue statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordWhile: {
                 auto node = this->parseWhileStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("while statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::KeywordLoop: {
                 auto node = this->parseLoopStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("loop statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
-            case TokenKind::BraceOpen: {
+            case TokenKind::BraceOpen: { // TODO Allow stand-alone block statements?
                 auto node = this->parseBlockStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("block statement");
-                    return program;
+                    goto makeProgram;
                 }
-                program->addNode(std::move(node));
+                children.push_back(std::move(node));
                 break;
             }
             case TokenKind::Identifier: {
@@ -202,33 +218,40 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                     auto node = this->parseAssignmentStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("assignment statement");
-                        return program;
+                        goto makeProgram;
                     }
-                    program->addNode(std::move(node));
+                    children.push_back(std::move(node));
                     break;
                 } else if (this->peek(1) == TokenKind::ParenthesisOpen) {
                     auto node = this->parseFunctionCallStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("function call statement");
-                        return program;
+                        goto makeProgram;
                     }
-                    program->addNode(std::move(node));
+                    children.push_back(std::move(node));
                     break;
                 } else {
                     this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
-                    return program;
+                    goto makeProgram;
                 }
             }
             default:
                 this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
-                return program;
+                goto makeProgram;
         }
     }
-    if (this->insideBlock) {
+    /*if (this->insideBlock && this->peek() != TokenKind::BraceClose) {
         this->addErrorMessageExpected("'}'");
+    }*/
+    makeProgram:
+        SourceCodeLocation start = children.size() > 0 ? children.front()->getSourceCodeLocationSpan().start : this->getCurrentSourceCodeLocationSpan().start;
+        SourceCodeLocation end = children.size() > 0 ? children.back()->getSourceCodeLocationSpan().end : start;
+        SourceCodeLocationSpan sourceCodeLocationSpan(start, end);
+        std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>(sourceCodeLocationSpan, atRoot);
+        for (auto& child : children) {
+            program->addNode(std::move(child));
+        }
         return program;
-    }
-    return program;
 };
 
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
@@ -254,8 +277,9 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     }
     if (this->peek() == TokenKind::Semicolon) {
         auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
-        auto identiferNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identiferNode), std::move(typeExpression), nullptr);
+        auto identiferNode = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierToken->getSourceCodeLocationSpan());
+        auto sourceCodeLocationSpan = SourceCodeLocationSpan(varToken->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+        auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identiferNode), std::move(typeExpression), nullptr, sourceCodeLocationSpan);
         return variableDeclaration;
     }
     std::unique_ptr<ExpressionNode> expressionNode;
@@ -267,9 +291,10 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         return nullptr;
     }
     // TODO eventually support comma-delimited declarations eg var foo = 5, bar = 6, ...;
-    this->expectAndAdvance(TokenKind::Semicolon);
-    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identifierNode), std::move(typeExpression), std::move(expressionNode));
+    auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierToken->getSourceCodeLocationSpan());
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(varToken->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto variableDeclaration = std::make_unique<VariableDeclarationNode>(std::move(identifierNode), std::move(typeExpression), std::move(expressionNode), sourceCodeLocationSpan);
     return variableDeclaration;
 }
 
@@ -284,7 +309,8 @@ std::unique_ptr<IdentifierWithPossibleAnnotationNode> Parser::parseIdentifierWit
         this->expectAndAdvance(TokenKind::Colon);
         annotation = this->parseTypeExpression();
     }
-    auto identifier = std::make_unique<IdentifierWithPossibleAnnotationNode>(std::move(identifierToken), std::move(annotation));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(identifierToken->getSourceCodeLocationSpan().start, annotation ? annotation->getSourceCodeLocationSpan().end : identifierToken->getSourceCodeLocationSpan().end);
+    auto identifier = std::make_unique<IdentifierWithPossibleAnnotationNode>(std::move(identifierToken), std::move(annotation), sourceCodeLocationSpan);
     return identifier;
 }
 
@@ -336,8 +362,9 @@ std::unique_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration() {
         this->addErrorMessageParseFailure("function body");
         return nullptr;
     }
-    auto functionNameIdentifier = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto functionDeclaration = std::make_unique<FunctionDeclarationNode>(std::move(functionNameIdentifier), std::move(parameters), std::move(bodyNode), std::move(returnTypeExpression));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(functionToken->getSourceCodeLocationSpan().start, bodyNode->getSourceCodeLocationSpan().end);  
+    auto functionNameIdentifier = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierToken->getSourceCodeLocationSpan());
+    auto functionDeclaration = std::make_unique<FunctionDeclarationNode>(std::move(functionNameIdentifier), std::move(parameters), std::move(bodyNode), std::move(returnTypeExpression), sourceCodeLocationSpan);
     return functionDeclaration;
 }
 
@@ -378,7 +405,8 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
             return nullptr;
         }
     }
-    auto ifStatement = std::make_unique<IfStatementNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(ifToken->getSourceCodeLocationSpan().start, (elseBranchNode ? elseBranchNode->getSourceCodeLocationSpan().end : thenBranchNode->getSourceCodeLocationSpan().end));
+    auto ifStatement = std::make_unique<IfStatementNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode), sourceCodeLocationSpan);
     return ifStatement;
 }
 
@@ -408,7 +436,8 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
         this->addErrorMessageParseFailure("while statement body");
         return nullptr;
     }
-    auto whileStatement = std::make_unique<WhileStatementNode>(std::move(conditionNode), std::move(bodyNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(whileToken->getSourceCodeLocationSpan().start, bodyNode->getSourceCodeLocationSpan().end);
+    auto whileStatement = std::make_unique<WhileStatementNode>(std::move(conditionNode), std::move(bodyNode), sourceCodeLocationSpan);
     return whileStatement;
 }
 
@@ -425,12 +454,17 @@ std::unique_ptr<LoopStatementNode> Parser::parseLoopStatement() {
         this->addErrorMessageParseFailure("loop statement body");
         return nullptr;
     }
-    auto loopStatement = std::make_unique<LoopStatementNode>(std::move(bodyNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(loopToken->getSourceCodeLocationSpan().start, bodyNode->getSourceCodeLocationSpan().end);
+    auto loopStatement = std::make_unique<LoopStatementNode>(std::move(bodyNode), sourceCodeLocationSpan);
     return loopStatement;
 }
 
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
-    this->expectAndAdvance(TokenKind::KeywordReturn);
+    auto returnToken = this->expectAndAdvance(TokenKind::KeywordReturn);
+    if (!returnToken) {
+        this->addErrorMessageExpected("'return'");
+        return nullptr;
+    }
     std::unique_ptr<ExpressionNode> expressionNode = nullptr;
     if (this->peek() != TokenKind::Semicolon) {
         expressionNode = this->parseExpression();
@@ -440,12 +474,17 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
         }
     }
     this->expectAndAdvance(TokenKind::Semicolon);
-    auto returnStatement = std::make_unique<ReturnStatementNode>(std::move(expressionNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(returnToken->getSourceCodeLocationSpan().start, (expressionNode ? expressionNode->getSourceCodeLocationSpan().end : returnToken->getSourceCodeLocationSpan().end));
+    auto returnStatement = std::make_unique<ReturnStatementNode>(std::move(expressionNode), sourceCodeLocationSpan);
     return returnStatement;
 }
 
 std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
-    this->expectAndAdvance(TokenKind::BraceOpen);
+    auto braceOpenToken = this->expectAndAdvance(TokenKind::BraceOpen);
+    if (!braceOpenToken) {
+        this->addErrorMessageExpected("'{'");
+        return nullptr;
+    }
     this->enterBlock();
     auto programNode = Parser::parseProgram(false);
     this->exitBlock();
@@ -453,33 +492,45 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
         this->addErrorMessageParseFailure("block statement program node");
         return nullptr;
     }
-    auto blockStatement = std::make_unique<BlockStatementNode>(std::move(programNode));
+    auto braceCloseToken = this->expectAndAdvance(TokenKind::BraceClose);
+    if (!braceCloseToken) {
+        this->addErrorMessageExpected("'}' after block statement body");
+        return nullptr;
+    }
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(braceOpenToken->getSourceCodeLocationSpan().start, braceCloseToken->getSourceCodeLocationSpan().end);
+    auto blockStatement = std::make_unique<BlockStatementNode>(std::move(programNode), sourceCodeLocationSpan);
     return blockStatement;
 }
 
 std::unique_ptr<BreakStatementNode> Parser::parseBreakStatement() {
-    if (!this->expectAndAdvance(TokenKind::KeywordBreak)) {
+    auto breakToken = this->expectAndAdvance(TokenKind::KeywordBreak);
+    if (!breakToken) {
         this->addErrorMessageExpected("'break'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
+    auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
+    if (!semicolonToken) {
         this->addErrorMessageExpected("';' after 'break'");
         return nullptr;
     }
-    auto breakStatement = std::make_unique<BreakStatementNode>();
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(breakToken->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto breakStatement = std::make_unique<BreakStatementNode>(sourceCodeLocationSpan);
     return breakStatement;
 }
 
 std::unique_ptr<ContinueStatementNode> Parser::parseContinueStatement() {
-    if (!this->expectAndAdvance(TokenKind::KeywordContinue)) {
+    auto continueToken = this->expectAndAdvance(TokenKind::KeywordContinue);
+    if (!continueToken) {
         this->addErrorMessageExpected("'continue'");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
+    auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
+    if (!semicolonToken) {
         this->addErrorMessageExpected("';' after 'continue'");
         return nullptr;
     }
-    auto continueStatement = std::make_unique<ContinueStatementNode>();
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(continueToken->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto continueStatement = std::make_unique<ContinueStatementNode>(sourceCodeLocationSpan);
     return continueStatement;
 }
 
@@ -509,12 +560,14 @@ std::unique_ptr<FunctionCallExpressionNode> Parser::parseFunctionCallExpression(
             }
         }
     }
-    if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
+    auto parenthesisCloseToken = this->expectAndAdvance(TokenKind::ParenthesisClose);
+    if (!parenthesisCloseToken) {
         this->addErrorMessageExpected("')' after function call arguments");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto functionCallExpression = std::make_unique<FunctionCallExpressionNode>(std::move(identifierNode), std::move(arguments));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(identifierToken->getSourceCodeLocationSpan().start, parenthesisCloseToken->getSourceCodeLocationSpan().end);
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierToken->getSourceCodeLocationSpan());
+    auto functionCallExpression = std::make_unique<FunctionCallExpressionNode>(std::move(identifierNode), std::move(arguments), sourceCodeLocationSpan);
     return functionCallExpression;
 }
 
@@ -524,11 +577,13 @@ std::unique_ptr<FunctionCallStatementNode> Parser::parseFunctionCallStatement() 
         this->addErrorMessageParseFailure("function call expression");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
+    auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
+    if (!semicolonToken) {
         this->addErrorMessageExpected("';' after function call expression");
         return nullptr;
     }
-    auto functionCallStatement = std::make_unique<FunctionCallStatementNode>(std::move(functionCallExpressionNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(functionCallExpressionNode->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto functionCallStatement = std::make_unique<FunctionCallStatementNode>(std::move(functionCallExpressionNode), sourceCodeLocationSpan);
     return functionCallStatement;
 }
 
@@ -547,13 +602,17 @@ std::unique_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement() {
         this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
-    if (!this->expectAndAdvance(TokenKind::Semicolon)) {
+    auto semicolonToken = this->expectAndAdvance(TokenKind::Semicolon);
+    if (!semicolonToken) {
         this->addErrorMessageExpected("';' after assignment expression");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode));
-    auto assignmentStatement = std::make_unique<AssignmentStatementNode>(std::move(assignmentExpression));
+    auto identifierTokenPtr = identifierToken.get();
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierTokenPtr->getSourceCodeLocationSpan());
+    auto assignmentSourceCodeLocationSpan = SourceCodeLocationSpan(identifierTokenPtr->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode), assignmentSourceCodeLocationSpan);
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(identifierTokenPtr->getSourceCodeLocationSpan().start, semicolonToken->getSourceCodeLocationSpan().end);
+    auto assignmentStatement = std::make_unique<AssignmentStatementNode>(std::move(assignmentExpression), sourceCodeLocationSpan);
     return assignmentStatement;
 }
 
@@ -572,8 +631,9 @@ std::unique_ptr<AssignmentExpressionNode> Parser::parseAssignmentExpression() {
         this->addErrorMessageParseFailure("assignment expression");
         return nullptr;
     }
-    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken));
-    auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode));
+    auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken), identifierToken->getSourceCodeLocationSpan());
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(identifierToken->getSourceCodeLocationSpan().start, expressionNode->getSourceCodeLocationSpan().end);
+    auto assignmentExpression = std::make_unique<AssignmentExpressionNode>(std::move(identifierNode), std::move(expressionNode), sourceCodeLocationSpan);
     return assignmentExpression;
 }
 
@@ -589,15 +649,21 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 }
                 return functionCallExpression;
             }
-            this->expectAndAdvance(TokenKind::Identifier);
-            auto identifierNode = std::make_unique<IdentifierNode>(std::make_unique<Token>(token));
+            auto identifierToken = this->expectAndAdvance(TokenKind::Identifier);
+            auto identifierTokenPtr = identifierToken.get();
+            auto sourceCodeLocationSpan = identifierTokenPtr->getSourceCodeLocationSpan();
+            auto identifierNode = std::make_unique<IdentifierNode>(std::move(identifierToken), sourceCodeLocationSpan);
             return identifierNode;
         }
         case TokenKind::ParenthesisOpen: {
+            auto parenthesisOpenToken = this->expectAndAdvance(TokenKind::ParenthesisOpen);
             this->expectAndAdvance(TokenKind::ParenthesisOpen);
             auto expression = this->parseExpression();
-            this->expectAndAdvance(TokenKind::ParenthesisClose);
-            return expression;
+            if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
+                this->addErrorMessageExpected("')' after parenthesized expression");
+                return nullptr;
+            }
+            return expression; // sourcecodelocationspan ignores parens. OK
         }
         case TokenKind::LiteralBoolean: {
             auto booleanLiteralToken = this->expectAndAdvance(TokenKind::LiteralBoolean);
@@ -606,7 +672,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("boolean literal");
                 return nullptr;
             }
-            std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::move(booleanLiteralToken));
+            std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::move(booleanLiteralToken), booleanLiteralToken->getSourceCodeLocationSpan());
             return booleanLiteralNode;
         }
         case TokenKind::LiteralInteger: {
@@ -616,7 +682,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("integer literal");
                 return nullptr;
             }
-            std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::move(integerLiteralToken));
+            std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::move(integerLiteralToken), integerLiteralToken->getSourceCodeLocationSpan());
             return integerLiteralNode;
         }
         case TokenKind::LiteralString: {
@@ -626,7 +692,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("string literal");
                 return nullptr;
             }
-            std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::move(stringLiteralToken));
+            std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::move(stringLiteralToken), stringLiteralToken->getSourceCodeLocationSpan());
             return stringLiteralNode;
         }
         case TokenKind::LiteralEmpty: {
@@ -636,7 +702,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageExpected("empty literal");
                 return nullptr;
             }
-            std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::move(emptyLiteralToken));
+            std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::move(emptyLiteralToken), emptyLiteralToken->getSourceCodeLocationSpan());
             return emptyLiteralNode;
         }
         case TokenKind::Not: {
@@ -651,7 +717,8 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageParseFailure("operand of '!' operator");
                 return nullptr;
             }
-            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken));
+            auto sourceCodeLocationSpan = SourceCodeLocationSpan(operatorToken->getSourceCodeLocationSpan().start, operandNode->getSourceCodeLocationSpan().end);
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken), sourceCodeLocationSpan);
             return unaryOperatorNode;
         }
         case TokenKind::Dash: {
@@ -666,7 +733,8 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
                 this->addErrorMessageParseFailure("operand of '-' operator");
                 return nullptr;
             }
-            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken));
+            auto sourceCodeLocationSpan = SourceCodeLocationSpan(operatorToken->getSourceCodeLocationSpan().start, operandNode->getSourceCodeLocationSpan().end);
+            auto unaryOperatorNode = std::make_unique<UnaryOperatorExpressionNode>(std::move(operandNode), std::move(operatorToken), sourceCodeLocationSpan);
             return unaryOperatorNode;
         }
         default:
@@ -707,7 +775,8 @@ std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr
             this->addErrorMessageExpected("binary operator");
             return nullptr;
         }
-        lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::move(operatorToken));
+        auto sourceCodeLocationSpan = SourceCodeLocationSpan(lhs->getSourceCodeLocationSpan().start, rhs->getSourceCodeLocationSpan().end);
+        lhs = std::make_unique<BinaryOperatorExpressionNode>(std::move(lhs), std::move(rhs), std::move(operatorToken), sourceCodeLocationSpan);
     }
     return lhs;
 }
@@ -741,7 +810,8 @@ std::unique_ptr<IfExpressionNode> Parser::parseIfExpression() {
         this->addErrorMessageParseFailure("if expression else branch");
         return nullptr;
     }
-    auto ifExpression = std::make_unique<IfExpressionNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode));
+    auto sourceCodeLocationSpan = SourceCodeLocationSpan(ifToken->getSourceCodeLocationSpan().start, elseBranchNode->getSourceCodeLocationSpan().end);
+    auto ifExpression = std::make_unique<IfExpressionNode>(std::move(conditionNode), std::move(thenBranchNode), std::move(elseBranchNode), sourceCodeLocationSpan);
     return ifExpression;
 }
 
@@ -775,7 +845,8 @@ std::unique_ptr<TypeExpressionNode> Parser::parseTypeExpression () {
     auto token = this->peek();
     if (token == TokenKind::TypePrimitiveBoolean || token == TokenKind::TypePrimitiveEmpty || token == TokenKind::TypePrimitiveFloat || token == TokenKind::TypePrimitiveInteger || token == TokenKind::TypePrimitiveString) {
         this->expectAndAdvance(token.getTokenKind());
-        auto typeExpressionNode = std::make_unique<TypeExpressionNode>(std::make_unique<Token>(token));
+        auto sourceCodeLocationSpan = token.getSourceCodeLocationSpan();
+        auto typeExpressionNode = std::make_unique<TypeExpressionNode>(std::make_unique<Token>(token), sourceCodeLocationSpan);
         return typeExpressionNode;
     }
     this->addErrorMessageParseFailure("type expression");

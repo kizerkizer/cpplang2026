@@ -33,15 +33,23 @@ Scope* Scope::getParent() const {
 }
 
 std::vector<Scope*> Scope::getChildren() const {
-    return this->children;
+    std::vector<Scope*> children;
+    for (const auto& child : this->children) {
+        children.push_back(child.get());
+    }
+    return children;
 }
 
-void Scope::addChild(Scope *child) {
-    this->children.push_back(child);
+void Scope::addChildScope(std::unique_ptr<Scope> child) {
+    this->children.push_back(std::move(child));
 }
 
 std::map<std::string, Symbol*> Scope::getSymbols() const {
-    return this->symbols;
+    std::map<std::string, Symbol*> symbols;
+    for (const auto& [name, symbol] : this->symbols) {
+        symbols[name] = symbol.get();
+    }
+    return symbols;
 }
 
 void Scope::setNode(Node* node) {
@@ -81,7 +89,7 @@ Symbol* Scope::getSymbol(const std::string& nameString) const {
 Symbol* Scope::getSymbolShallow(const std::string& nameString) const {
     auto it = this->symbols.find(nameString);
     if (it != this->symbols.end()) {
-        return it->second;
+        return it->second.get();
     }
     return nullptr;
 }
@@ -90,12 +98,12 @@ bool Scope::hasSymbolShallow (const std::string& nameString) const {
     return this->getSymbolShallow(nameString) != nullptr;
 }
 
-bool Scope::setSymbol(Symbol* name) {
+bool Scope::setSymbol(std::unique_ptr<Symbol> name) {
     auto nameString = name->getNameString();
     if (this->hasSymbolShallow(nameString)) {
         return false;
     }
-    this->symbols[nameString] = name;
+    this->symbols[nameString] = std::move(name);
     return true;
 }
 

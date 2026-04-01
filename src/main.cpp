@@ -1,3 +1,4 @@
+#include <memory>
 #include <print>
 #include <fstream>
 #include <string>
@@ -5,6 +6,7 @@
 #include <set>
 
 #include "checker/checker.hpp"
+#include "common/sourcecodelocation.hpp"
 #include "flowbuilder/flowbuilder.hpp"
 #include "flowbuilder/flownode.hpp"
 #include "lexer/lexer.hpp"
@@ -17,6 +19,8 @@
 #include "checker/type.hpp"
 
 void printParseTree (const Node* node, int indentation) {
+    auto sourceCodeLocationSpan = node->getSourceCodeLocationSpan();
+    std::print("{}{}\n", std::string(indentation * 2, ' '), sourceCodeLocationSpanToString(sourceCodeLocationSpan));
     switch (node->getNodeKind()) {
         case NodeKind::Program: {
             const auto nodeCast = static_cast<const ProgramNode*>(node);
@@ -109,7 +113,6 @@ void printParseTree (const Node* node, int indentation) {
                 auto name = nodeCast->getSymbolReference();
                 std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
             }
-
             break;
         }
         case NodeKind::Invalid:
@@ -545,58 +548,61 @@ int main (int argc, char* argv[]) {
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string sourceString = buffer.str();
-    std::vector<std::string> errorMessages;
-    Lexer lexer = Lexer(sourceString, errorMessages);
-    Parser parser = Parser(&lexer, errorMessages);
+    std::unique_ptr<Source> source = std::make_unique<Source>(SourceKind::File, filename, sourceString);
+    Diagnostics diagnostics = Diagnostics();
+    Lexer lexer = Lexer(source.get(), diagnostics);
+    Parser parser = Parser(source.get(), &lexer, diagnostics);
     auto parsed = parser.parse();
-    if (errorMessages.empty()) {
-        std::print("No parse errors.\n");
-    } else {
-        std::print("⚠️ {} parse error(s) found.\n", errorMessages.size());
+    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
+        std::print("{}\n", diagnosticMessage.getFullMessage());
     }
-    for (const auto& errorMessage : errorMessages) {
-        std::print("{}\n", errorMessage);
-    }
-    if (!errorMessages.empty()) {
+    if (!diagnostics.getDiagnosticMessages().empty()) {
         return 1;
+    } else {
+        std::print("Parsed successfully!\n");
     }
-    auto desugared = Desugarer(std::move(parsed)).desugar();
-    //auto desugaredPointer = desugared.get();
+    Desugarer desugarer = Desugarer(std::move(parsed), diagnostics);
+    auto desugared = desugarer.desugar();
+    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
+        std::print("{}\n", diagnosticMessage.getFullMessage());
+    }
+    if (!diagnostics.getDiagnosticMessages().empty()) {
+        return 1;
+    } else {
+        std::print("Desugared successfully!\n");
+    }
     //std::print("Desugared parse tree:\n");
     //printParseTree(desugared.get(), 0);
-    Binder binder(errorMessages);
-    auto binderResult = binder.bind(std::move(desugared));
-    if (errorMessages.empty()) {
-        std::print("No binder errors.\n");
-    } else {
-        std::print("⚠️ {} binder error(s) found.\n", errorMessages.size());
+    Binder binder(diagnostics);
+    auto binderResult = binder.bind(desugared.get());
+    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
+        std::print("{}\n", diagnosticMessage.getFullMessage());
     }
-    for (const auto& errorMessage : errorMessages) {
-        std::print("{}\n", errorMessage);
-    }
-    if (!errorMessages.empty()) {
+    if (!diagnostics.getDiagnosticMessages().empty()) {
         return 1;
+    } else {
+        std::print("Bound successfully!\n");
     }
-    //printBinderResult(std::move(binderResult));
     //std::print("Print out of desugared parse tree:\n");
-    //std::print("{}", getNodeSyntax(desugaredPointer, -1)); // -1 for root node
+    //std::print("{}", getNodeSyntax(desugared.get(), -1)); // -1 for root node
     FlowBuilder flowBuilder = FlowBuilder();
     std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
     for (auto graph : result->getGraphs()) {
         graph->assignReachabilityToNodes();
     }
-    std::print("Built Flow Graphs!\n");
-    //printFlowBuilderResult(std::move(result));
     // TODO print results of reachability analysis on flow graph
-    TypeChecker typeChecker = TypeChecker(errorMessages);
+    //std::print("Built Flow Graphs!\n");
+    //printFlowBuilderResult(std::move(result));
+
+    TypeChecker typeChecker = TypeChecker(source.get(), diagnostics);
     typeChecker.typeCheck(binderResult->getNode());
-    if (errorMessages.empty()) {
-        std::print("No type errors.\n");
-    } else {
-        std::print("⚠️ {} type error(s) found.\n", errorMessages.size());
+    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
+        std::print("{}\n", diagnosticMessage.getFullMessage());
     }
-    for (const auto& errorMessage : errorMessages) {
-        std::print("{}\n", errorMessage);
+    if (!diagnostics.getDiagnosticMessages().empty()) {
+        return 1;
+    } else {
+        std::print("Type checked successfully!\n");
     }
     return 0;
 }

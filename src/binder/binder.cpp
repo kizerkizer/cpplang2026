@@ -4,34 +4,48 @@
 #include "binder/binder.hpp"
 #include "binder/scope.hpp"
 #include "binder/symbol.hpp"
+#include "common/sourcecodelocation.hpp"
+#include "diagnostics/diagnosticmessage.hpp"
 #include "parser/node.hpp"
 
 Node* BinderResult::getNode() const {
-    return this->node.get();
+    return this->node;
 }
 
 Scope* BinderResult::getRootScope() const {
-    return this->rootScope;
+    return this->rootScope.get();
 }
 
-Binder::Binder(std::vector<std::string>& errorMessages_out) : errorMessages(errorMessages_out) {
-    this->rootScope = new Scope(ScopeKind::Root, nullptr, nullptr);
-    this->currentScope = this->rootScope;
+Binder::Binder(Diagnostics& diagnostics) : diagnostics(diagnostics) {
+    this->rootScope = std::make_unique<Scope>(ScopeKind::Root, nullptr, nullptr);
+    this->currentScope = this->rootScope.get();
 }
 
-void Binder::addErrorMessage(const std::string& message) {
-    this->errorMessages.push_back(message);
+void Binder::addErrorMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
+    auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Error, DiagnosticMessageStage::Binder, span, nullptr, message));
+}
+
+void Binder::addWarningMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
+    auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Warning, DiagnosticMessageStage::Binder, span, nullptr, message));
+}
+
+void Binder::addInfoMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan) {
+    auto span = sourceCodeLocationSpan.value_or(SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, DiagnosticMessageKind::Info, DiagnosticMessageStage::Binder, span, nullptr, message));
 }
 
 Scope* Binder::createAndEnterScope(ScopeKind kind) {
-    Scope* newScope = new Scope(kind, this->currentScope, nullptr);
-    this->currentScope->addChild(newScope);
-    this->currentScope = newScope;
-    return newScope;
+    auto newScope = std::make_unique<Scope>(kind, this->currentScope, nullptr);
+    Scope* newScopePtr = newScope.get();
+    this->currentScope->addChildScope(std::move(newScope));
+    this->currentScope = newScopePtr;
+    return newScopePtr;
 }
 
 void Binder::exitScope() {
-    if (this->currentScope != this->rootScope) {
+    if (this->currentScope != this->rootScope.get()) {
         this->currentScope = this->currentScope->getParent();
     }
 }
@@ -40,10 +54,10 @@ void Binder::exitScope() {
 // TODO handle type definitions and corresponding scopes
 // TODO handle 'this'/'super'/other contextual keywords
 
-std::unique_ptr<BinderResult> Binder::bind(std::unique_ptr<Node> rootNode) {
-    this->currentScope->setNode(rootNode.get());
-    this->bindRecursive(rootNode.get());
-    return std::make_unique<BinderResult>(std::move(rootNode), this->rootScope);
+std::unique_ptr<BinderResult> Binder::bind(Node* rootNode) {
+    this->currentScope->setNode(rootNode);
+    this->bindRecursive(rootNode);
+    return std::make_unique<BinderResult>(rootNode, std::move(this->rootScope));
 }
 
 void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
@@ -71,46 +85,49 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             if (expressionNode) {
                 this->bindRecursive(expressionNode);
             }
-            auto name = new Symbol(this->currentScope, variableDeclarationNode, SymbolKind::Variable, SymbolModifierFlags::None, identifierNode->getName());
-            if (this->currentScope->hasSymbolShallow(name->getNameString())) {
-                this->addErrorMessage("Redeclaration of name '" + name->getNameString() + "', which is already declared in the current scope");
+            auto symbol = std::make_unique<Symbol>(this->currentScope, variableDeclarationNode, SymbolKind::Variable, SymbolModifierFlags::None, identifierNode->getName());
+            auto symbolPointer = symbol.get();
+            if (this->currentScope->hasSymbolShallow(symbol->getNameString())) {
+                this->addErrorMessage(6, "Redeclaration of name '" + symbol->getNameString() + "', which is already declared in the current scope", identifierNode->getSourceCodeLocationSpan());
             } else {
-                this->currentScope->setSymbol(name);
+                this->currentScope->setSymbol(std::move(symbol));
             }
-            identifierNode->setSymbolReference(name); // TODO doesn't match node that symbol references.
+            identifierNode->setSymbolReference(symbolPointer); // TODO doesn't match node that symbol references.
             break;
         }
         case NodeKind::FunctionDeclaration: {
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
             auto identifierNode = functionDeclarationNode->getIdentifier();
-            if (!identifierNode) {
+            /*if (!identifierNode) {
                 // TODO
                 // Anonymous function? Don't handle it? Handled by `var xxx = function (...) {...}` ?
                 break;
-            }
-            auto name = new Symbol(this->currentScope, functionDeclarationNode, SymbolKind::Function, SymbolModifierFlags::None, identifierNode->getName());
-            if (this->currentScope->hasSymbolShallow(name->getNameString())) { 
-                this->addErrorMessage("Redeclaration of name '" + name->getNameString() + "', which is already in scope");
+            }*/
+            auto symbol = std::make_unique<Symbol>(this->currentScope, functionDeclarationNode, SymbolKind::Function, SymbolModifierFlags::None, identifierNode->getName());
+            if (this->currentScope->hasSymbolShallow(symbol->getNameString())) { 
+                this->addErrorMessage(6, "Redeclaration of name '" + symbol->getNameString() + "', which is already in scope", identifierNode->getSourceCodeLocationSpan());
                 break; // TODO ?
             }
-            if (this->currentScope->hasSymbol(name->getNameString())) {
+            if (this->currentScope->hasSymbol(symbol->getNameString())) {
                 // TODO warn about shadowing
             }
-            this->currentScope->setSymbol(name);
-            identifierNode->setSymbolReference(name); // TODO double check
+            auto symbolPointer = symbol.get();
+            this->currentScope->setSymbol(std::move(symbol));
+            identifierNode->setSymbolReference(symbolPointer); // TODO double check
             this->createAndEnterScope(ScopeKind::Function);
             this->currentScope->setNode(functionDeclarationNode);
-            this->currentScope->setMySymbolReference(name);
+            this->currentScope->setMySymbolReference(symbolPointer);
             for (auto parameter : functionDeclarationNode->getParameters()) {
                 auto parameterIdentifierNode = parameter;
-                auto parameterSymbol = new Symbol(this->currentScope, parameterIdentifierNode, SymbolKind::Parameter, SymbolModifierFlags::None, parameterIdentifierNode->getName());
+                auto parameterSymbol = std::make_unique<Symbol>(this->currentScope, parameterIdentifierNode, SymbolKind::Parameter, SymbolModifierFlags::None, parameterIdentifierNode->getName());
+                auto parameterSymbolPtr = parameterSymbol.get();
                 if (this->currentScope->hasSymbolShallow(parameterSymbol->getNameString())) {
                     // Can happen if parameter has duplicate name
-                    this->addErrorMessage("Parameter name '" + parameterSymbol->getNameString() + "' already in scope");
+                    this->addErrorMessage(6, "Parameter name '" + parameterSymbol->getNameString() + "' already in scope", parameterIdentifierNode->getSourceCodeLocationSpan());
                 } else {
-                    this->currentScope->setSymbol(parameterSymbol);
+                    this->currentScope->setSymbol(std::move(parameterSymbol));
                 }
-                parameter->setSymbolReference(parameterSymbol);
+                parameter->setSymbolReference(parameterSymbolPtr);
             }
             this->bindRecursive(functionDeclarationNode->getBody(), true); // do not create another scope for the function body block
             this->exitScope();
@@ -123,7 +140,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             if (identifierNode) {
                 auto name = this->currentScope->getSymbol(identifierNode->getName());
                 if (name == nullptr) {
-                   this->addErrorMessage("Name '" + identifierNode->getName() + "' not found in scope");
+                   this->addErrorMessage(7, "Name '" + identifierNode->getName() + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
                     break; 
                 }
                 identifierNode->setSymbolReference(name);
@@ -146,6 +163,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             break;
         }
         case NodeKind::IfStatement: {
+            // TODO this depends on blocks for then/else branches
             auto ifStatementNode = static_cast<IfStatementNode*>(node);
             this->bindRecursive(ifStatementNode->getCondition());
             this->createAndEnterScope(ScopeKind::Block);
@@ -162,10 +180,11 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
         }
         case NodeKind::LoopStatement: {
             auto loopStatementNode = static_cast<LoopStatementNode*>(node);
-            auto name = new Symbol(this->currentScope, loopStatementNode, SymbolKind::Loop, SymbolModifierFlags::None, "");
+            auto symbol = std::make_unique<Symbol>(this->currentScope, loopStatementNode, SymbolKind::Loop, SymbolModifierFlags::None, "");
+            auto symbolPtr = symbol.get();
             this->createAndEnterScope(ScopeKind::Loop);
             this->currentScope->setNode(loopStatementNode);
-            this->currentScope->setMySymbolReference(name); // Not in parent's scope since it's not a real name. That's OK.
+            this->currentScope->setMySymbolReference(symbolPtr); // Not in parent's scope since it's not a real name. That's OK.
             this->bindRecursive(loopStatementNode->getBody(), true); // Do not create another scope for the block
             this->exitScope();
             break;
@@ -175,30 +194,29 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             // TODO I Guess make sure this doesn't visit from the children of variable/function declaration etc 
             auto identifierNode = static_cast<IdentifierNode*>(node);
             if (identifierNode) {
-                auto name = this->currentScope->getSymbol(identifierNode->getName());
-                if (name == nullptr) {
-                   this->addErrorMessage("Name '" + identifierNode->getName() + "' not found in scope");
-                    break; 
+                auto symbol = this->currentScope->getSymbol(identifierNode->getName());
+                if (symbol == nullptr) {
+                   this->addErrorMessage(7, "Name '" + identifierNode->getName() + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
+                   break; 
                 }
-                identifierNode->setSymbolReference(name);
+                identifierNode->setSymbolReference(symbol);
             }
             break;
         }
         case NodeKind::ReturnStatement: {
             auto returnStatementNode = static_cast<ReturnStatementNode*>(node);
             auto functionScope = this->currentScope->getFirstFunctionContainingScope();
-            auto functionNameReference = functionScope->getMySymbolReference();
+            auto functionSymbolReference = functionScope->getMySymbolReference();
             this->bindRecursive(returnStatementNode->getExpression());
-            returnStatementNode->setFunctionNameReference(functionNameReference);
+            returnStatementNode->setFunctionNameReference(functionSymbolReference);
             break;
         }
         case NodeKind::BreakStatement: {
             auto breakStatementNode = static_cast<BreakStatementNode*>(node);
-            auto [index, line, column] = breakStatementNode->getFirstSourceCodeLocation();
             auto loopScope = this->currentScope->getFirstLoopContainingScope();
             if (!loopScope) {
                 // Should never reach here because breaks inside loops enforced by parser
-                this->addErrorMessage("'break' found outside of loop at line " + std::to_string(line) + ", col " + std::to_string(column));
+                this->addErrorMessage(8, "'break' found outside of loop", breakStatementNode->getSourceCodeLocationSpan());
                 break; 
             }
             breakStatementNode->setLoopNameReference(loopScope->getMySymbolReference());
@@ -206,11 +224,10 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
         }
         case NodeKind::ContinueStatement: {
             auto continueStatementNode = static_cast<ContinueStatementNode*>(node);
-            auto [index, line, column] = continueStatementNode->getFirstSourceCodeLocation();
             auto loopScope = this->currentScope->getFirstLoopContainingScope();
             if (!loopScope) {
-                // Should never reach here because continueus inside loops enforced by parser
-                this->addErrorMessage("'continue' found outside of loop at line " + std::to_string(line) + ", col " + std::to_string(column));
+                // Should never reach here because continues inside loops enforced by parser
+                this->addErrorMessage(8, "'continue' found outside of loop", continueStatementNode->getSourceCodeLocationSpan());
                 break; 
             }
             continueStatementNode->setLoopNameReference(loopScope->getMySymbolReference());

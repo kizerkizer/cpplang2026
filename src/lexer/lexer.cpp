@@ -7,6 +7,7 @@
 
 #include "lexer/lexer.hpp"
 #include "common/sourcecodelocation.hpp"
+#include "diagnostics/diagnosticmessage.hpp"
 #include "lexer/token.hpp"
 
 bool isIdentifierStart (char c) {
@@ -33,8 +34,6 @@ bool isStringLiteralQuote (char c) {
     return c == '\'';
 }
 
-Lexer::Lexer(const std::string& sourceString, std::vector<std::string>& errorMessages_out) : sourceString(sourceString), errorMessages(errorMessages_out) {}
-
 void Lexer::advance(const int &steps = 1) {
     this->index += steps;
     this->column += steps;
@@ -42,6 +41,26 @@ void Lexer::advance(const int &steps = 1) {
 
 std::tuple<int, int, int> Lexer::getCurrentSourceCodeLocation() const {
     return {this->index, this->line, this->column};
+}
+
+std::unique_ptr<Token> Lexer::makeToken(TokenKind tokenKind, std::string sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation, std::optional<SourceCodeLocation> endSourceCodeLocation) {
+    if (tokenKind == TokenKind::OutOfRange) {
+        return std::make_unique<Token>(this->source, sourceString, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), tokenKind);
+    }
+    if (!startSourceCodeLocation.has_value()) {
+        startSourceCodeLocation = this->getCurrentSourceCodeLocation();
+    }
+    auto [index, line, column] = startSourceCodeLocation.value();
+    auto endLocation = endSourceCodeLocation.has_value() ? endSourceCodeLocation.value() : SourceCodeLocation(index + sourceString.size() - 1, line, column + sourceString.size() - 1);
+    SourceCodeLocationSpan sourceCodeLocationSpan(startSourceCodeLocation.value(), endLocation);
+    auto token = std::make_unique<Token>(this->source, sourceString, sourceCodeLocationSpan, tokenKind);
+    return token;
+}
+
+std::unique_ptr<Token> Lexer::makeTokenAndAdvance(TokenKind tokenKind, std::string sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation, std::optional<SourceCodeLocation> endSourceCodeLocation) {
+    auto token = this->makeToken(tokenKind, sourceString, startSourceCodeLocation, endSourceCodeLocation);
+    this->advance(sourceString.size());
+    return token;
 }
 
 struct LongestToShortestComparer {
@@ -116,8 +135,23 @@ std::map<std::string, TokenKind, LongestToShortestComparer> punctuators = {
     {"]", TokenKind::BracketClose},
 };
 
-std::string Lexer::makeErrorMessage(const std::string& message) const {
-    return "Lexer error at line " + std::to_string(this->line) + ", column " + std::to_string(this->column) + ": " + message;
+void Lexer::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocation> location) {
+    auto loc = location.has_value() ? location.value() : SourceCodeLocation(this->index, this->line, this->column);
+    auto locationSpan = SourceCodeLocationSpan(loc, loc);
+    auto diagnosticMessage = DiagnosticMessage(code, kind, DiagnosticMessageStage::Lexer, locationSpan, this->source, message);
+    this->diagnostics.addDiagnosticMessage(diagnosticMessage);
+}
+
+void Lexer::addError(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
+    this->addDiagnostic(DiagnosticMessageKind::Error, code, message, location);
+}
+
+void Lexer::addWarning(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
+    this->addDiagnostic(DiagnosticMessageKind::Warning, code, message, location);
+}
+
+void Lexer::addInfo(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
+    this->addDiagnostic(DiagnosticMessageKind::Info, code, message, location);
 }
 
 char Lexer::getCharacter(const int &offset = 0) const {
@@ -138,25 +172,19 @@ bool Lexer::isDone() {
 std::unique_ptr<Token> Lexer::getNextNonTrivialToken() {
     auto token = this->getNextToken();
     while (IS_TOKENKIND_TRIVIA(token->getTokenKind())) {
-        if (token) {
-            token = this->getNextToken();
-        } else {
-            errorMessages.push_back(this->makeErrorMessage("Unexpected end of input while looking for non-trivia token"));
-            return std::make_unique<Token>("", 0, 0, 0, TokenKind::OutOfRange);
-        }
+        token = this->getNextToken();
     }
     return token;
 }
 
 std::unique_ptr<Token> Lexer::getNextToken() {
     if (this->isPastSourceStringEnd()) {
-        return std::make_unique<Token>("", 0, 0, 0, TokenKind::OutOfRange);
+        return this->makeToken(TokenKind::OutOfRange, "");
     }
     std::unique_ptr<Token> nextToken = nullptr;
     if (this->getCharacter() == '\r' && this->getCharacter(1) == '\n') {
         // Windows-style newline
-        auto token = std::make_unique<Token>(sourceString.substr(this->index, 2), this->index, this->line, this->column, TokenKind::TriviaNewline);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index + 1, this->line, this->column + 1));
+        auto token = this->makeToken(TokenKind::TriviaNewline, sourceString.substr(this->index, 2));
         nextToken = std::move(token);
         this->advance(2);
         this->line++;
@@ -165,7 +193,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
     }
     if (this->getCharacter() == '\n') {
         // Unix-style newline
-        auto token = std::make_unique<Token>(sourceString.substr(this->index, 1), this->index, this->line, this->column, TokenKind::TriviaNewline);
+        auto token = this->makeToken(TokenKind::TriviaNewline, sourceString.substr(this->index, 1));
         // LastSourceLocation automatically set to first in constructor
         nextToken = std::move(token);
         this->advance();
@@ -178,8 +206,8 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         while (isWhitespace(this->getCharacter()) && !isNewline(this->getCharacter())) {
             this->advance();
         }
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaWhitespace);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto token = this->makeToken(TokenKind::TriviaWhitespace, sourceString.substr(startIndex, this->index - startIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
@@ -189,8 +217,8 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         while (!isNewline(this->getCharacter()) && !this->isPastSourceStringEnd()) {
             this->advance();
         }
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentShort);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto token = this->makeToken(TokenKind::TriviaCommentShort, sourceString.substr(startIndex, this->index - startIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
@@ -199,28 +227,35 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         auto [startIndex, startLine, startColumn] = this->getCurrentSourceCodeLocation();
         this->advance(2);
         while (!(this->getCharacter() == '*' && this->getCharacter(1) == '/') && !this->isPastSourceStringEnd()) {
-            if (isNewline(this->getCharacter())) {
+            if (this->getCharacter() == '\r' && this->getCharacter(1) == '\n') {
+                this->advance(2);
                 this->line++;
                 this->column = 1;
+                continue;
+            }
+            if (this->getCharacter() == '\n') {
+                this->advance();
+                this->line++;
+                this->column = 1;
+                continue;
             }
             this->advance();
         }
         if (this->isPastSourceStringEnd()) {
-            this->errorMessages.push_back(this->makeErrorMessage("Unterminated comment starting at line " + std::to_string(startLine) + ", column " + std::to_string(startColumn)));
+            this->addError(2, "Unterminated comment", SourceCodeLocation(startIndex - 1, startLine, startColumn - 1));
             return nextToken;
         }
         this->advance(2);
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::TriviaCommentLong);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto endLocation = SourceCodeLocation(this->index - 1, this->line, this->column - 1);
+        auto token = this->makeToken(TokenKind::TriviaCommentLong, sourceString.substr(startIndex, this->index - startIndex), startLocation, endLocation);
         nextToken = std::move(token);
         return nextToken;
     }
     // Keywords
     for (const auto& [keyword, tokenName] : keywords) {
         if (sourceString.compare(this->index, keyword.size(), keyword) == 0) {
-            auto token = std::make_unique<Token>(keyword, this->index, this->line, this->column, tokenName);
-            token->setLastSourceCodeLocation(SourceCodeLocation(this->index + keyword.size() - 1, this->line, this->column));
-            this->advance(keyword.size());
+            auto token = this->makeTokenAndAdvance(tokenName, keyword);
             nextToken = std::move(token);
             return nextToken;
         }
@@ -228,9 +263,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
     // Special values
     for (const auto& [value, tokenName] : specialValues) {
         if (sourceString.compare(this->index, value.size(), value) == 0) {
-            auto token = std::make_unique<Token>(value, this->index, this->line, this->column, tokenName);
-            token->setLastSourceCodeLocation(SourceCodeLocation(this->index + value.size() - 1, this->line, this->column));
-            this->advance(value.size());
+            auto token = this->makeTokenAndAdvance(tokenName, value);
             nextToken = std::move(token);
             return nextToken;
         }
@@ -242,8 +275,8 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         while (isIdentifierPart(this->getCharacter())) {
             this->advance();
         }
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::Identifier);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column-1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto token = this->makeToken(TokenKind::Identifier, sourceString.substr(startIndex, this->index - startIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
@@ -253,7 +286,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         this->advance();
         while (!isStringLiteralQuote(this->getCharacter())) {
             if (isNewline(this->getCharacter()) || this->isPastSourceStringEnd()) {
-                this->errorMessages.push_back(this->makeErrorMessage("Unterminated string literal"));
+                this->addError(3, "Unterminated string literal", SourceCodeLocation(startIndex - 1, startLine, startColumn - 1));
                 return nextToken;
             } 
             if (this->getCharacter() == '\\' && isStringLiteralQuote(this->getCharacter(1))) {
@@ -263,8 +296,8 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             this->advance();
         }
         this->advance();
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralString);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto token = this->makeToken(TokenKind::LiteralString, sourceString.substr(startIndex, this->index - startIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
@@ -275,17 +308,15 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         while (isIntegerLiteral(this->getCharacter())) {
             this->advance();
         }
-        auto token = std::make_unique<Token>(sourceString.substr(startIndex, this->index - startIndex), startIndex, startLine, startColumn, TokenKind::LiteralInteger);
-        token->setLastSourceCodeLocation(SourceCodeLocation(this->index - 1, this->line, this->column - 1));
+        auto startLocation = SourceCodeLocation(startIndex, startLine, startColumn);
+        auto token = this->makeToken(TokenKind::LiteralInteger, sourceString.substr(startIndex, this->index - startIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
     // Operators
     for (const auto& [op, tokenName] : operators) {
         if (sourceString.compare(this->index, op.size(), op) == 0) {
-            auto token = std::make_unique<Token>(op, this->index, this->line, this->column, tokenName);
-            token->setLastSourceCodeLocation(SourceCodeLocation(this->index + op.size() - 1, this->line, this->column));
-            this->advance(op.size());
+            auto token = this->makeTokenAndAdvance(tokenName, op);
             nextToken = std::move(token);
             return nextToken;
         }
@@ -293,13 +324,11 @@ std::unique_ptr<Token> Lexer::getNextToken() {
     // Punctuators
     for (const auto& [punctuator, tokenName] : punctuators) {
         if (this->getCharacter() == punctuator[0]) {
-            auto token = std::make_unique<Token>(punctuator, this->index, this->line, this->column, tokenName);
-            token->setLastSourceCodeLocation(SourceCodeLocation(this->index + punctuator.size() - 1, this->line, this->column));
-            this->advance(1);
+            auto token = this->makeTokenAndAdvance(tokenName, punctuator);
             nextToken = std::move(token);
             return nextToken;
         }
     }
-    this->errorMessages.push_back(this->makeErrorMessage(std::string("Unexpected character '") + this->getCharacter() + "'"));
+    this->addError(4, std::string("Unexpected character '") + this->getCharacter() + "'", this->getCurrentSourceCodeLocation());
     return nextToken;
 }

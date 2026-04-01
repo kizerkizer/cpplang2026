@@ -12,6 +12,11 @@ add_executable(cpplang2026
     src/lexer/lexer.cpp
     src/parser/parser.cpp
     src/parser/node.cpp
+    src/common/programuniqueid.cpp
+    src/common/sourcecodelocation.cpp
+    src/common/source.cpp
+    src/diagnostics/diagnostics.cpp
+    src/diagnostics/diagnosticmessage.cpp
     src/desugarer/desugarer.cpp
     src/binder/binder.cpp
     src/binder/symbol.cpp

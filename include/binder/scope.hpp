@@ -4,8 +4,9 @@
 #include <string>
 #include <map>
 
+#include "binder/symbol.hpp"
+
 class Node; // In parser/parser.hpp
-class Symbol; // In symbol.hpp
 
 enum class ScopeKind {
     Root,
@@ -29,7 +30,7 @@ public:
     Node* getNode() const;
     void setNode(Node* node);
     std::vector<Scope*> getChildren() const;
-    void addChild(Scope* child);
+    void addChildScope(std::unique_ptr<Scope> child);
     Symbol* getMySymbolReference() const;
     void setMySymbolReference(Symbol* symbol);
     bool hasSymbol(const std::string& symbolString) const;
@@ -39,7 +40,7 @@ public:
     Scope* getFirstFunctionContainingScope();
     Scope* getFirstLoopContainingScope();
     std::map<std::string, Symbol*> getSymbols() const;
-    bool setSymbol(Symbol* symbol);
+    bool setSymbol(std::unique_ptr<Symbol> symbol);
     Scope* getThisKeywordScope() const;
     void setThisKeywordScope(Scope* thisKeywordScope);
 private:
@@ -47,7 +48,7 @@ private:
     ScopeKind kind;
     Symbol* mySymbol = nullptr; // Set during binding
     Scope* parent;
-    std::map<std::string, Symbol*> symbols;
-    std::vector<Scope*> children;
+    std::map<std::string, std::unique_ptr<Symbol>> symbols;
+    std::vector<std::unique_ptr<Scope>> children;
     Scope* thisKeywordScope = nullptr; // TODO Set during binding
 };
