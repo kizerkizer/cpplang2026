@@ -17,6 +17,8 @@
 #include "binder/binder.hpp"
 #include "binder/symbol.hpp"
 #include "checker/type.hpp"
+#include "treewalker/interpreter.hpp"
+#include "treewalker/outputstream.hpp"
 
 void printParseTree (const Node* node, int indentation) {
     auto sourceCodeLocationSpan = node->getSourceCodeLocationSpan();
@@ -583,8 +585,8 @@ int main (int argc, char* argv[]) {
     } else {
         std::print("Bound successfully!\n");
     }
-    //std::print("Print out of desugared parse tree:\n");
-    //std::print("{}", getNodeSyntax(desugared.get(), -1)); // -1 for root node
+    std::print("Print out of desugared parse tree:\n");
+    std::print("{}", getNodeSyntax(desugared.get(), -1)); // -1 for root node
     FlowBuilder flowBuilder = FlowBuilder();
     std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
     for (auto graph : result->getGraphs()) {
@@ -603,6 +605,13 @@ int main (int argc, char* argv[]) {
         return 1;
     } else {
         std::print("Type checked successfully!\n");
+    }
+    StdOutOutputStream outputStream = StdOutOutputStream();
+    Interpreter interpreter = Interpreter(&outputStream);
+    auto resultingValue = interpreter.interpret(binderResult->getNode());
+    if (resultingValue->getKind() == ValueKind::Integer) {
+        auto integerValue = static_cast<IntegerValue*>(resultingValue);
+        std::print("Program interpretation result: {}\n", integerValue->getValue());
     }
     return 0;
 }

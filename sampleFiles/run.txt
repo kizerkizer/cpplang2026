@@ -1,0 +1,25 @@
+function doAddition (x: Integer, y: Integer): Integer {
+    return x + y;
+}
+
+function log (x: String) {
+    
+}
+
+function logi (x: Integer) {
+
+}
+
+function main () {
+    var b = 150 - 24 * 3;
+    var c = 25 + 8 ** 2;
+    var e = doAddition(b, c);
+    var y = 0;
+    while (e > 0) {
+        y = y + 2;
+        e = e - 1;
+        log('iteration');
+        logi(e);
+    }
+    return y;
+}

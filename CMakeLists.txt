@@ -27,6 +27,9 @@ add_executable(cpplang2026
     src/flowbuilder/flowgraph.cpp
     src/flowbuilder/flownode.cpp
     src/flowbuilder/flowbuilder.cpp
+    src/treewalker/environment.cpp
+    src/treewalker/interpreter.cpp
+    src/treewalker/outputstream.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)
