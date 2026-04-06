@@ -15,6 +15,7 @@ add_executable(cpplang2026
     src/common/programuniqueid.cpp
     src/common/sourcecodelocation.cpp
     src/common/source.cpp
+    src/common/util.cpp
     src/diagnostics/diagnostics.cpp
     src/diagnostics/diagnosticmessage.cpp
     src/desugarer/desugarer.cpp

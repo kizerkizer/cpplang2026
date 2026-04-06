@@ -5,29 +5,6 @@
 #include "binder/symbol.hpp"
 #include "parser/node.hpp"
 
-std::string scopeKindToString(ScopeKind scopeKind) {
-    switch (scopeKind) {
-        case ScopeKind::Root:
-            return "Root";
-        case ScopeKind::Function:
-            return "Function";
-        case ScopeKind::Loop:
-            return "Loop";
-        case ScopeKind::Block:
-            return "Block";
-        case ScopeKind::Class:
-            return "Class";
-        case ScopeKind::Interface:
-            return "Interface";
-        case ScopeKind::Namespace:
-            return "Namespace";
-        case ScopeKind::Extensional:
-            return "Extensional";
-        case ScopeKind::Builtin:
-            return "Builtin";
-    }
-}
-
 Scope* Scope::getParent() const {
     return this->parent;
 }

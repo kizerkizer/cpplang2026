@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-#include <memory>
 #include <vector>
 
 class Symbol; // defined in binder/symbol.hpp
@@ -28,11 +26,49 @@ enum class PrimitiveTypeKind {
     Invalid,
 };
 
-#define IS_PRIMITIVE_TYPE_NUMERIC(primitiveTypeKind) (primitiveTypeKind == PrimitiveTypeKind::Float || primitiveTypeKind == PrimitiveTypeKind::Integer)
+constexpr const char* typeKindToString(TypeKind typeKind) {
+    switch (typeKind) {
+        case TypeKind::Primitive:
+            return "Primitive";
+        case TypeKind::Void:
+            return "Void";
+        case TypeKind::Any:
+            return "Any";
+        case TypeKind::Class:
+            return "Class";
+        case TypeKind::Extensional:
+            return "Extensional";
+        case TypeKind::ExtensionalMember:
+            return "ExtensionalMember";
+        case TypeKind::Intensional:
+            return "Intensional";
+        case TypeKind::Function:
+            return "Function";
+        case TypeKind::Union:
+            return "Union";
+    }
+}
 
-std::string primitiveTypeToString (PrimitiveTypeKind primitiveType);
+constexpr const char* primitiveTypeToString(PrimitiveTypeKind primitiveType) {
+    switch (primitiveType) {
+        case PrimitiveTypeKind::String:
+            return "String";
+        case PrimitiveTypeKind::Boolean:
+            return "Boolean";
+        case PrimitiveTypeKind::Empty:
+            return "Empty";
+        case PrimitiveTypeKind::Float:
+            return "Float";
+        case PrimitiveTypeKind::Integer:
+            return "Integer";
+        case PrimitiveTypeKind::Invalid:
+            return "Invalid";
+    }
+}
 
-std::string typeKindToString(TypeKind typeKind);
+constexpr bool isPrimitiveTypeNumeric(PrimitiveTypeKind primitiveType) {
+    return primitiveType == PrimitiveTypeKind::Integer || primitiveType == PrimitiveTypeKind::Float;
+}
 
 enum class TypeFlags {
     None = 0,
@@ -47,6 +83,9 @@ inline TypeFlags operator|(TypeFlags a, TypeFlags b) {
 }
 
 class Type {
+private:
+    TypeKind kind;
+    TypeFlags flags;
 public:
     Type(TypeKind kind, TypeFlags flags) : kind(kind), flags(flags) {};
     virtual ~Type() = default;
@@ -57,9 +96,6 @@ public:
     virtual bool isSubtypeOf(Type* other) const = 0;
     bool operator==(const Type& rhs) const;
     bool operator!=(const Type& rhs) const;
-private:
-    TypeKind kind;
-    TypeFlags flags;
 };
 
 class VoidType : public Type {
@@ -75,32 +111,28 @@ public:
 };
 
 class PrimitiveType : public Type {
+private:
+    PrimitiveTypeKind primitiveTypeKind;
 public:
     PrimitiveType(PrimitiveTypeKind primitiveTypeKind) : Type(TypeKind::Primitive, TypeFlags::Primitive), primitiveTypeKind(primitiveTypeKind) {};
     PrimitiveTypeKind getPrimitiveTypeKind() const;
     bool isSubtypeOf(Type* other) const override;
-    /*bool operator==(const Type& rhs) const override;
-    bool operator!=(const Type& rhs) const override;*/
-private:
-    PrimitiveTypeKind primitiveTypeKind;
 };
 
 class FunctionType : public Type {
+private:
+    std::vector<Symbol*> parameters;
+    Type* returnType;
 public:
     FunctionType(std::vector<Symbol*> parameters, Type* returnType) : Type(TypeKind::Function, TypeFlags::None), parameters(parameters), returnType(std::move(returnType)) {};
     std::vector<Symbol*> getParameters();
-    //std::vector<Type*> getParameterTypes();
     Type* getReturnType();
     bool isSubtypeOf(Type* other) const override;
-    /*bool operator==(const Type& rhs) const override;
-    bool operator!=(const Type& rhs) const override;*/
-private:
-    //std::vector<Type*> parameterTypes;
-    std::vector<Symbol*> parameters;
-    Type* returnType;
 };
 
 class UnionType : public Type {
+private:
+    std::vector<Type*> types;
 public:
     template<typename... Args>
     UnionType(Args&& ...types) : Type(TypeKind::Union, TypeFlags::None) {
@@ -110,7 +142,4 @@ public:
     std::vector<Type*> getTypes();
     void addType(Type* type);
     bool isSubtypeOf(Type* other) const override;
-    std::unique_ptr<Type> simplify(); // TODO
-private:
-    std::vector<Type*> types;
 };

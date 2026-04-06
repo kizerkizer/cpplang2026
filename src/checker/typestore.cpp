@@ -1,5 +1,6 @@
 #include "checker/typestore.hpp"
 
+// TypeStore
 Type* TypeStore::simplifyUnionType(UnionType* unionType) {
     std::vector<Type*> uniqueTypes;
     for (auto& type : unionType->getTypes()) {

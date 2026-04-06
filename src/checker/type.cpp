@@ -1,48 +1,6 @@
-#include <memory>
-
 #include "checker/type.hpp"
 #include "binder/symbol.hpp"
 #include "parser/node.hpp"
-
-std::string primitiveTypeToString(PrimitiveTypeKind primitiveType) {
-    switch (primitiveType) {
-        case PrimitiveTypeKind::String:
-            return "String";
-        case PrimitiveTypeKind::Boolean:
-            return "Boolean";
-        case PrimitiveTypeKind::Empty:
-            return "Empty";
-        case PrimitiveTypeKind::Float:
-            return "Float";
-        case PrimitiveTypeKind::Integer:
-            return "Integer";
-        case PrimitiveTypeKind::Invalid:
-            return "Invalid";
-    }
-}
-
-std::string typeKindToString(TypeKind typeKind) {
-    switch (typeKind) {
-        case TypeKind::Primitive:
-            return "Primitive";
-        case TypeKind::Void:
-            return "Void";
-        case TypeKind::Any:
-            return "Any";
-        case TypeKind::Class:
-            return "Class";
-        case TypeKind::Extensional:
-            return "Extensional";
-        case TypeKind::ExtensionalMember:
-            return "ExtensionalMember";
-        case TypeKind::Intensional:
-            return "Intensional";
-        case TypeKind::Function:
-            return "Function";
-        case TypeKind::Union:
-            return "Union";
-    }
-}
 
 //Type
 TypeKind Type::getTypeKind() const {
@@ -97,18 +55,6 @@ bool PrimitiveType::isSubtypeOf(Type* other) const {
     return this->primitiveTypeKind == otherPrimitiveType->primitiveTypeKind;
 }
 
-/*bool PrimitiveType::operator==(const Type& rhs) const {
-    if (rhs.getTypeKind() != TypeKind::Primitive) {
-        return false;
-    }
-    auto rhsPrimitiveType = static_cast<const PrimitiveType*>(&rhs);
-    return this->primitiveTypeKind == rhsPrimitiveType->primitiveTypeKind;
-}
-
-bool PrimitiveType::operator!=(const Type& rhs) const {
-    return !(*this == rhs);
-}*/
-
 //FunctionType
 std::vector<Symbol*> FunctionType::getParameters() {
     return this->parameters;
@@ -160,33 +106,6 @@ std::vector<Type*> UnionType::getTypes() {
 
 void UnionType::addType(Type* type) {
     this->types.push_back(type);
-}
-
-/**
- * @brief Simplifies the union type by removing duplicate types. If the union type only has one unique type, then that type is returned instead of a new UnionType.
- * This destroys the original UnionType and its types, so it should only be called on a UnionType that is not used anywhere else.
- * Maybe later this will not destroy the original UnionType, but for now this is simpler to implement.
- * 
- * @return std::unique_ptr<Type> The simplified type, which could be a single type or a new UnionType.
- */
-std::unique_ptr<Type> UnionType::simplify() {
-    // TODO
-    std::vector<Type*> uniqueTypes;
-    for (auto& type : this->types) {
-        auto it = std::find_if(uniqueTypes.begin(), uniqueTypes.end(), [&type](const Type* uniqueType) { return *type == *uniqueType; });
-        if (it != uniqueTypes.end()) {
-            continue;
-        }
-        uniqueTypes.push_back(type);
-    }
-    if (uniqueTypes.size() == 1) {
-        return std::unique_ptr<Type>(uniqueTypes.front());
-    }
-    std::unique_ptr<UnionType> simplifiedUnionType = std::make_unique<UnionType>();
-    for (auto& type : uniqueTypes) {
-        simplifiedUnionType->addType(type);
-    }
-    return simplifiedUnionType;
 }
 
 bool UnionType::isSubtypeOf(Type* other) const {

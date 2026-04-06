@@ -12,19 +12,21 @@ enum class DiagnosticMessageKind {
     Debug,
 };
 
-#define DIAGNOSTIC_MESSAGE_KIND_TO_STRING(diagnosticMessageKind) \
-    (diagnosticMessageKind == DiagnosticMessageKind::Error ? "Error" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Warning ? "Warning" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Info ? "Info" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Debug ? "Debug" : \
-        "Unknown"))))
+constexpr const char* diagnosticMessageKindToString(DiagnosticMessageKind diagnosticMessageKind) {
+    return (diagnosticMessageKind == DiagnosticMessageKind::Error ? "Error" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Warning ? "Warning" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Info ? "Info" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Debug ? "Debug" :
+        "Unknown"))));
+}
 
-#define DIAGNOSTIC_MESSAGE_KIND_TO_COLORED_STRING(diagnosticMessageKind) \
-    (diagnosticMessageKind == DiagnosticMessageKind::Error ? "\033[31mError\033[0m" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Warning ? "\033[33mWarning\033[0m" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Info ? "\033[34mInfo\033[0m" : \
-    (diagnosticMessageKind == DiagnosticMessageKind::Debug ? "\033[32mDebug\033[0m" : \
-        "Unknown"))))
+constexpr const char* diagnosticMessageKindToColoredString(DiagnosticMessageKind diagnosticMessageKind) {
+    return (diagnosticMessageKind == DiagnosticMessageKind::Error ? "\033[31mError\033[0m" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Warning ? "\033[33mWarning\033[0m" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Info ? "\033[34mInfo\033[0m" :
+    (diagnosticMessageKind == DiagnosticMessageKind::Debug ? "\033[32mDebug\033[0m" :
+        "Unknown"))));
+}
 
 enum class DiagnosticMessageStage {
     Scanner,
@@ -35,14 +37,16 @@ enum class DiagnosticMessageStage {
     TypeChecker,
 };
 
-#define DIAGNOSTIC_MESSAGE_STAGE_TO_STRING(diagnosticMessageStage) \
-    (diagnosticMessageStage == DiagnosticMessageStage::Scanner ? "Scanner" : \
-    (diagnosticMessageStage == DiagnosticMessageStage::Lexer ? "Lexer" : \
-    (diagnosticMessageStage == DiagnosticMessageStage::Parser ? "Parser" : \
-    (diagnosticMessageStage == DiagnosticMessageStage::Binder ? "Binder" : \
-    (diagnosticMessageStage == DiagnosticMessageStage::Desugarer ? "Desugarer" : \
-    (diagnosticMessageStage == DiagnosticMessageStage::TypeChecker ? "TypeChecker" : \
-        "Unknown"))))))
+
+constexpr const char* diagnosticMessageStageToString(DiagnosticMessageStage diagnosticMessageStage) {
+    return (diagnosticMessageStage == DiagnosticMessageStage::Scanner ? "Scanner" :
+    (diagnosticMessageStage == DiagnosticMessageStage::Lexer ? "Lexer" :
+    (diagnosticMessageStage == DiagnosticMessageStage::Parser ? "Parser" :
+    (diagnosticMessageStage == DiagnosticMessageStage::Binder ? "Binder" :
+    (diagnosticMessageStage == DiagnosticMessageStage::Desugarer ? "Desugarer" :
+    (diagnosticMessageStage == DiagnosticMessageStage::TypeChecker ? "TypeChecker" :
+        "Unknown"))))));
+}   
 
 class DiagnosticMessage {
 private:

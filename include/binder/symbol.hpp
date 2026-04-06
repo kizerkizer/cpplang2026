@@ -22,7 +22,36 @@ enum class SymbolKind {
     Builtin,
 };
 
-std::string symbolKindToString(SymbolKind symbolKind);
+constexpr const char* symbolKindToString(SymbolKind symbolKind) {
+    switch (symbolKind) {
+        case SymbolKind::Variable:
+            return "Variable";
+        case SymbolKind::Function:
+            return "Function";
+        case SymbolKind::Loop:
+            return "Loop";
+        case SymbolKind::Parameter:
+            return "Parameter";
+        case SymbolKind::Type:
+            return "Type";
+        case SymbolKind::TypeParameter:
+            return "TypeParameter";
+        case SymbolKind::Class:
+            return "Class";
+        case SymbolKind::ClassMember:
+            return "ClassMember";
+        case SymbolKind::Interface:
+            return "Interface";
+        case SymbolKind::InterfaceMember:
+            return "InterfaceMember";
+        case SymbolKind::ExtensionalMember:
+            return "ExtensionalMember";
+        case SymbolKind::NamespaceMember:
+            return "NamespaceMember";
+        case SymbolKind::Builtin:
+            return "Builtin";
+    }
+}
 
 enum class SymbolModifierFlags : uint8_t {
     None = 0,

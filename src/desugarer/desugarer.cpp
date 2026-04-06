@@ -8,7 +8,7 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
     return std::unique_ptr<To>(static_cast<To*>(from.release()));
 }
 
-std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
+std::unique_ptr<Node> Desugarer::_desugar (std::unique_ptr<Node> node) {
     switch (node->getNodeKind()) {
         case NodeKind::WhileStatement: {
             auto* whileStatementNode = static_cast<WhileStatementNode*>(node.get());
@@ -171,6 +171,7 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
     }
 }
 
+// Desugarer
 std::unique_ptr<Node> Desugarer::desugar() {
     this->root = _desugar(std::move(this->root));
     return std::move(this->root);

@@ -7,6 +7,7 @@
 #include "flowbuilder/flownode.hpp"
 #include "parser/node.hpp"
 
+// FlowBuilderResult
 std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
     std::vector<FlowGraph*> graphPointers;
     for (auto& graph : this->graphs) {
@@ -19,6 +20,7 @@ void FlowBuilderResult::addGraph(std::unique_ptr<FlowGraph> graph) {
     this->graphs.push_back(std::move(graph));
 }
 
+// FlowGraph
 FlowGraph::FlowGraph () {
     auto entry = std::make_unique<FlowNode>(FlowNodeKind::Entry);
     auto exit = std::make_unique<FlowNode>(FlowNodeKind::Exit);
@@ -51,6 +53,8 @@ FlowNode* FlowGraph::addNode(std::unique_ptr<FlowNode> node) {
         this->exit = std::move(node);
         return this->exit.get();
     }
+
+    // If already added, return nullptr
     if (std::count(this->nodes.begin(), this->nodes.end(), node)) {
         return nullptr;
     }

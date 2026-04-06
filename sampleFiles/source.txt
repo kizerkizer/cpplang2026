@@ -4,6 +4,7 @@ function foo (myParam: Integer): String {
     while (true && !(12 == qux)) { // Should all typecheck OK to Boolean
         // Maybe this will be eventually detected as an unreachable area
         var b = 'Foo bar!';
+        break;
         /*
          * Another comment (-:
          !
@@ -25,7 +26,8 @@ function foo (myParam: Integer): String {
     return baz;
 }
 
-function main () {
+function main (): Integer {
     var someVariable = if true then 45 else 40; // Should eventually optimize to just 45
     var result: String = foo(45);
+    return someVariable;
 }

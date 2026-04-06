@@ -653,7 +653,6 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
             return identifierNode;
         }
         case TokenKind::ParenthesisOpen: {
-            auto parenthesisOpenToken = this->expectAndAdvance(TokenKind::ParenthesisOpen);
             this->expectAndAdvance(TokenKind::ParenthesisOpen);
             auto expression = this->parseExpression();
             if (!this->expectAndAdvance(TokenKind::ParenthesisClose)) {
@@ -664,51 +663,26 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
         }
         case TokenKind::LiteralBoolean: {
             auto booleanLiteralToken = this->expectAndAdvance(TokenKind::LiteralBoolean);
-            if (!booleanLiteralToken) {
-                // unreachable
-                this->addErrorMessageExpected("boolean literal");
-                return nullptr;
-            }
             std::unique_ptr<BooleanLiteralNode> booleanLiteralNode = std::make_unique<BooleanLiteralNode>(std::move(booleanLiteralToken), booleanLiteralToken->getSourceCodeLocationSpan());
             return booleanLiteralNode;
         }
         case TokenKind::LiteralInteger: {
             auto integerLiteralToken = this->expectAndAdvance(TokenKind::LiteralInteger);
-            if (!integerLiteralToken) {
-                // unreachable
-                this->addErrorMessageExpected("integer literal");
-                return nullptr;
-            }
             std::unique_ptr<NumberLiteralNode> integerLiteralNode = std::make_unique<NumberLiteralNode>(std::move(integerLiteralToken), integerLiteralToken->getSourceCodeLocationSpan());
             return integerLiteralNode;
         }
         case TokenKind::LiteralString: {
             auto stringLiteralToken = this->expectAndAdvance(TokenKind::LiteralString);
-            if (!stringLiteralToken) {
-                // unreachable
-                this->addErrorMessageExpected("string literal");
-                return nullptr;
-            }
             std::unique_ptr<StringLiteralNode> stringLiteralNode = std::make_unique<StringLiteralNode>(std::move(stringLiteralToken), stringLiteralToken->getSourceCodeLocationSpan());
             return stringLiteralNode;
         }
         case TokenKind::LiteralEmpty: {
             auto emptyLiteralToken = this->expectAndAdvance(TokenKind::LiteralEmpty);
-            if (!emptyLiteralToken) {
-                // unreachable
-                this->addErrorMessageExpected("empty literal");
-                return nullptr;
-            }
             std::unique_ptr<EmptyLiteralNode> emptyLiteralNode = std::make_unique<EmptyLiteralNode>(std::move(emptyLiteralToken), emptyLiteralToken->getSourceCodeLocationSpan());
             return emptyLiteralNode;
         }
         case TokenKind::Not: {
             auto operatorToken = this->expectAndAdvance(TokenKind::Not);
-            if (!operatorToken) {
-                // unreachable
-                this->addErrorMessageExpected("'!' operator");
-                return nullptr;
-            }
             auto operandNode = this->parseExpression();
             if (!operandNode) {
                 this->addErrorMessageParseFailure("operand of '!' operator");
@@ -720,11 +694,6 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
         }
         case TokenKind::Dash: {
             auto operatorToken = this->expectAndAdvance(TokenKind::Dash);
-            if (!operatorToken) {
-                // unreachable
-                this->addErrorMessageExpected("'-' operator");
-                return nullptr;
-            }
             auto operandNode = this->parseExpression();
             if (!operandNode) {
                 this->addErrorMessageParseFailure("operand of '-' operator");
@@ -740,15 +709,10 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
     }
 }
 
-std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr<ExpressionNode> lhs, int minPrecedence = 0) {
+std::unique_ptr<ExpressionNode> Parser::parseExpressionClimbing (std::unique_ptr<ExpressionNode> lhs, int minPrecedence) {
     auto lookahead = this->peek();
     while (IS_TOKENKIND_OPERATOR(lookahead.getTokenKind()) && getPrecedence(lookahead.getTokenKind()) >= minPrecedence) {
         auto operatorToken = this->expectAndAdvance(lookahead.getTokenKind());
-        if (!operatorToken) {
-            // unreachable
-            this->addErrorMessageExpected("operator");
-            return nullptr;
-        }
         std::unique_ptr<ExpressionNode> rhs = this->parsePrimaryExpression();
         if (!rhs) {
             this->addErrorMessageParseFailure("right-hand side expression");

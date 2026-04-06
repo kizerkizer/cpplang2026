@@ -14,7 +14,7 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
 }
 
 void TypeChecker::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
-    auto span = sourceCodeSpan.has_value() ? sourceCodeSpan.value() : SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1));
+    auto span = sourceCodeSpan.has_value() ? sourceCodeSpan.value() : SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1, -1), SourceCodeLocation(-1, -1, -1, -1));
     this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, kind, DiagnosticMessageStage::TypeChecker, span, this->source, message));
 }
 
@@ -178,7 +178,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
         if (leftType->getTypeKind() == TypeKind::Primitive && rightType->getTypeKind() == TypeKind::Primitive) {
             auto leftPrimitiveType = static_cast<PrimitiveType*>(leftType);
             auto rightPrimitiveType = static_cast<PrimitiveType*>(rightType);
-            if (IS_PRIMITIVE_TYPE_NUMERIC(leftPrimitiveType->getPrimitiveTypeKind()) && IS_PRIMITIVE_TYPE_NUMERIC(rightPrimitiveType->getPrimitiveTypeKind())) {
+            if (isPrimitiveTypeNumeric(leftPrimitiveType->getPrimitiveTypeKind()) && isPrimitiveTypeNumeric(rightPrimitiveType->getPrimitiveTypeKind())) {
                 binaryOperatorExpressionNode->setType(this->typeStore->getBooleanType());
                 return binaryOperatorExpressionNode->getType();
             }
@@ -217,7 +217,7 @@ Type* TypeChecker::examineUnaryOperatorExpression(Node* node) {
     if (operatorToken == TokenKind::Dash) {
         if (operandType->getTypeKind() == TypeKind::Primitive) {
             auto operandPrimitiveType = static_cast<PrimitiveType*>(operandType);
-            if (IS_PRIMITIVE_TYPE_NUMERIC(operandPrimitiveType->getPrimitiveTypeKind())) {
+            if (isPrimitiveTypeNumeric(operandPrimitiveType->getPrimitiveTypeKind())) {
                 unaryOperatorExpressionNode->setType(this->typeStore->createType<PrimitiveType>(operandPrimitiveType->getPrimitiveTypeKind()));
                 return unaryOperatorExpressionNode->getType();
             }

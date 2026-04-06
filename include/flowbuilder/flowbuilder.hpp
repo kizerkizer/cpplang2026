@@ -33,10 +33,10 @@ public:
 };
 
 class FlowBuilder {
-public:
-    FlowBuilder();
-    std::unique_ptr<FlowBuilderResult> buildGraph(Node* rootNode);
 private:
     FlowGraph* buildGraphInternal(Node* node, FlowBuilderResult* result_out);
     FlowNode* buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowBuilderResult* result_out);
+public:
+    FlowBuilder();
+    std::unique_ptr<FlowBuilderResult> buildGraph(Node* rootNode);
 };

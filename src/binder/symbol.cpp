@@ -1,37 +1,7 @@
 #include "binder/symbol.hpp"
 #include "binder/scope.hpp"
 
-std::string symbolKindToString(SymbolKind symbolKind) {
-    switch (symbolKind) {
-        case SymbolKind::Variable:
-            return "Variable";
-        case SymbolKind::Function:
-            return "Function";
-        case SymbolKind::Loop:
-            return "Loop";
-        case SymbolKind::Parameter:
-            return "Parameter";
-        case SymbolKind::Type:
-            return "Type";
-        case SymbolKind::TypeParameter:
-            return "TypeParameter";
-        case SymbolKind::Class:
-            return "Class";
-        case SymbolKind::ClassMember:
-            return "ClassMember";
-        case SymbolKind::Interface:
-            return "Interface";
-        case SymbolKind::InterfaceMember:
-            return "InterfaceMember";
-        case SymbolKind::ExtensionalMember:
-            return "ExtensionalMember";
-        case SymbolKind::NamespaceMember:
-            return "NamespaceMember";
-        case SymbolKind::Builtin:
-            return "Builtin";
-    }
-}
-
+// Symbol
 const std::string& Symbol::getNameString() const {
     return this->nameString;
 }

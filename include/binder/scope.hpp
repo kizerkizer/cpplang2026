@@ -20,9 +20,38 @@ enum class ScopeKind {
     Builtin,
 };
 
-std::string scopeKindToString(ScopeKind scopeKind);
+constexpr const char* scopeKindToString(ScopeKind scopeKind) {
+    switch (scopeKind) {
+        case ScopeKind::Root:
+            return "Root";
+        case ScopeKind::Function:
+            return "Function";
+        case ScopeKind::Loop:
+            return "Loop";
+        case ScopeKind::Block:
+            return "Block";
+        case ScopeKind::Class:
+            return "Class";
+        case ScopeKind::Interface:
+            return "Interface";
+        case ScopeKind::Namespace:
+            return "Namespace";
+        case ScopeKind::Extensional:
+            return "Extensional";
+        case ScopeKind::Builtin:
+            return "Builtin";
+    }
+}
 
 class Scope {
+private:
+    Node* node;
+    ScopeKind kind;
+    Symbol* mySymbol = nullptr; // Set during binding
+    Scope* parent;
+    std::map<std::string, std::unique_ptr<Symbol>> symbols;
+    std::vector<std::unique_ptr<Scope>> children;
+    Scope* thisKeywordScope = nullptr; // TODO Set during binding
 public:
     Scope(ScopeKind kind, Scope* parent, Node* node) : node(node), kind(kind), parent(parent) {};
     ScopeKind getKind() const;
@@ -43,12 +72,4 @@ public:
     bool setSymbol(std::unique_ptr<Symbol> symbol);
     Scope* getThisKeywordScope() const;
     void setThisKeywordScope(Scope* thisKeywordScope);
-private:
-    Node* node;
-    ScopeKind kind;
-    Symbol* mySymbol = nullptr; // Set during binding
-    Scope* parent;
-    std::map<std::string, std::unique_ptr<Symbol>> symbols;
-    std::vector<std::unique_ptr<Scope>> children;
-    Scope* thisKeywordScope = nullptr; // TODO Set during binding
 };

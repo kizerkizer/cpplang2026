@@ -349,21 +349,21 @@ void LoopStatementNode::setBody(std::unique_ptr<BlockStatementNode> body) {
 }
 
 //BreakStatementNode
-Symbol* BreakStatementNode::getLoopNameReference() const {
-    return this->loopName;
+Symbol* BreakStatementNode::getLoopSymbolReference() const {
+    return this->loopSymbol;
 }
 
-void BreakStatementNode::setLoopNameReference(Symbol* name) {
-    this->loopName = name;
+void BreakStatementNode::setLoopSymbolReference(Symbol* name) {
+    this->loopSymbol = name;
 }
 
 //ContinueStatementNode
-Symbol* ContinueStatementNode::getLoopNameReference() const {
-    return this->loopName;
+Symbol* ContinueStatementNode::getLoopSymbolReference() const {
+    return this->loopSymbol;
 }
 
-void ContinueStatementNode::setLoopNameReference(Symbol* name) {
-    this->loopName = name;
+void ContinueStatementNode::setLoopSymbolReference(Symbol* name) {
+    this->loopSymbol = name;
 }
 
 //ReturnStatementNode

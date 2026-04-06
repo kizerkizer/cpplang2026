@@ -1,0 +1,16 @@
+/*
+{
+    "testName": "basic",
+    "description": "A few basic things",
+    "config": {
+        "arguments": "--file testFiles/basic.txt --debug"
+    }
+}
+*/
+// TODO
+function main (): Integer {
+    var foo = 125;
+    var bar: String = foo; // Type Error
+    var baz = ?:-; // Lexer/parser error, recover
+    return foo * 2;
+}

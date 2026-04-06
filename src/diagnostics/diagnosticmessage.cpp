@@ -4,7 +4,7 @@
 #include "common/source.hpp"
 #include "common/sourcecodelocation.hpp"
 
-
+// DiagnosticMessage
 int DiagnosticMessage::getCode() const {
     return this->code;
 }
@@ -31,8 +31,8 @@ std::string DiagnosticMessage::getMessage() const {
 
 std::string DiagnosticMessage::getFullMessage() const {
     std::string fullMessage = std::string("[") 
-        + DIAGNOSTIC_MESSAGE_KIND_TO_COLORED_STRING(this->kind) + std::string("] (")
-        + DIAGNOSTIC_MESSAGE_STAGE_TO_STRING(this->stage) 
+        + diagnosticMessageKindToColoredString(this->kind) + std::string("] (")
+        + diagnosticMessageStageToString(this->stage) 
         + std::string(") E") + std::format("{:06d}", this->code) + std::string("\n");
     auto [startByteOffset, startCodepointOffset, startLine, startColumn] = this->sourceCodeLocationSpan.start;
     auto [endByteOffset, endCodepointOffset, endLine, endColumn] = this->sourceCodeLocationSpan.end;
@@ -42,5 +42,5 @@ std::string DiagnosticMessage::getFullMessage() const {
 }
 
 std::string DiagnosticMessage::getCurtMessage() const {
-    return std::string(DIAGNOSTIC_MESSAGE_KIND_TO_STRING(this->kind)) + std::string(",") + std::string(DIAGNOSTIC_MESSAGE_STAGE_TO_STRING(this->stage)) + std::string(",") + std::to_string(this->code) + std::string(",") + this->message;
+    return std::string(diagnosticMessageKindToString(this->kind)) + std::string(",") + std::string(diagnosticMessageStageToString(this->stage)) + std::string(",") + std::to_string(this->code) + std::string(",") + this->message;
 }
