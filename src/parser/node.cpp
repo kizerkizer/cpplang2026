@@ -1,66 +1,12 @@
 #include <memory>
 #include <vector>
+#include <string_view>
 
 #include "parser/node.hpp"
 #include "binder/symbol.hpp"
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
 #include "flowbuilder/flownode.hpp"
-
-std::string nodeKindToString(NodeKind nodeKind) {
-    switch (nodeKind) {
-        case NodeKind::AssignmentExpression:
-            return "AssignmentExpression";
-        case NodeKind::FunctionCallExpression:
-            return "FunctionCallExpression";
-        case NodeKind::BinaryOperatorExpression:
-            return "BinaryOperatorExpression";
-        case NodeKind::UnaryOperatorExpression:
-            return "UnaryOperatorExpression";
-        case NodeKind::Program:
-            return "Program";
-        case NodeKind::Invalid:
-            return "Invalid";
-        case NodeKind::FunctionDeclaration:
-            return "FunctionDeclaration";
-        case NodeKind::VariableDeclaration:
-            return "VariableDeclaration";
-        case NodeKind::BlockStatement:
-            return "BlockStatement";
-        case NodeKind::IfStatement:
-            return "IfStatement";
-        case NodeKind::WhileStatement:
-            return "WhileStatement";
-        case NodeKind::LoopStatement:
-            return "LoopStatement";
-        case NodeKind::BreakStatement:
-            return "BreakStatement";
-        case NodeKind::ContinueStatement:
-            return "ContinueStatement";
-        case NodeKind::ReturnStatement:
-            return "ReturnStatement";
-        case NodeKind::AssignmentStatement:
-            return "AssignmentStatement";
-        case NodeKind::FunctionCallStatement:
-            return "FunctionCallStatement";
-        case NodeKind::Identifier:
-            return "Identifier";
-        case NodeKind::NumberLiteral:
-            return "NumberLiteral";
-        case NodeKind::StringLiteral:
-            return "StringLiteral";
-        case NodeKind::BooleanLiteral:
-            return "BooleanLiteral";
-        case NodeKind::EmptyLiteral:
-            return "EmptyLiteral";
-        case NodeKind::IfExpression:
-            return "IfExpression";
-        case NodeKind::TypeExpression:
-            return "TypeExpression";
-        case NodeKind::IdentifierWithPossibleAnnotation:
-            return "IdentifierWithPossibleAnnotation";
-    }
-}
 
 // Node
 NodeKind Node::getNodeKind() const {
@@ -115,28 +61,14 @@ std::vector<Token*> Node::getTokens() {
     return returnTokens;
 }
 
-/*SourceCodeLocation Node::getFirstSourceCodeLocation() {
-    if (!this->tokens.size()) {
-        return {-1, -1, -1};
-    }
-    return this->tokens.front()->getFirstSourceCodeLocation();
-}
-
-SourceCodeLocation Node::getLastSourceCodeLocation() {
-    if (!this->tokens.size()) {
-        return {-1, -1, -1};
-    }
-    return this->tokens.back()->getLastSourceCodeLocation();
-}*/
-
 SourceCodeLocationSpan Node::getSourceCodeLocationSpan() const {
     return this->sourceCodeLocationSpan;
 }
 
 // ProgramNode
-void ProgramNode::addNode(std::unique_ptr<Node> child) {
+/*void ProgramNode::addNode(std::unique_ptr<Node> child) {
     this->nodes.push_back(std::move(child));
-}
+}*/
 
 FlowGraph* ProgramNode::getFlowGraph() {
     return this->flowGraph;
@@ -146,24 +78,20 @@ void ProgramNode::setFlowGraph(FlowGraph* flowGraph) {
     this->flowGraph = flowGraph;
 }
 
-bool ProgramNode::isRootNode() {
-    return this->isRoot;
-}
-
 const std::vector<Node*> ProgramNode::getChildren() const {
-    std::vector<Node*> children;
-    for (const auto& child : this->nodes) {
-        children.push_back(child.get());
-    }
-    return children;
+    return { this->executionListNode.get() };
 }
 
-std::vector<std::unique_ptr<Node>> ProgramNode::takeChildren() {
-    return std::move(this->nodes);
+ExecutionListNode* ProgramNode::getExecutionListNode() const {
+    return this->executionListNode.get();
 }
 
-void ProgramNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
-    this->nodes = std::move(children);
+std::unique_ptr<ExecutionListNode> ProgramNode::takeExecutionListNode() {
+    return std::move(this->executionListNode);
+}
+
+void ProgramNode::setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode) {
+    this->executionListNode = std::move(executionListNode);
 }
 
 //VariableDeclarationNode
@@ -217,7 +145,7 @@ TypeExpressionNode* FunctionDeclarationNode::getReturnTypeExpression() const {
 }
 
 std::string FunctionDeclarationNode::getIdentifierName() const {
-    return this->getIdentifier()->getName();
+    return std::string(this->getIdentifier()->getName());
 }
 
 const std::vector<IdentifierWithPossibleAnnotationNode*> FunctionDeclarationNode::getParameters() const {
@@ -288,20 +216,41 @@ void IdentifierWithPossibleAnnotationNode::setAnnotation(std::unique_ptr<TypeExp
 }
 
 //BlockStatementNode
-ProgramNode* BlockStatementNode::getProgramNode() const {
-    return this->programNode.get();
+ExecutionListNode* BlockStatementNode::getExecutionListNode() const {
+    return this->executionListNode.get();
 }
 
 const std::vector<Node*> BlockStatementNode::getChildren() const {
-    return { this->programNode.get() };
+    return { this->executionListNode.get() };
 }
 
-std::unique_ptr<ProgramNode> BlockStatementNode::takeProgramNode() {
-    return std::move(this->programNode);
+std::unique_ptr<ExecutionListNode> BlockStatementNode::takeExecutionListNode() {
+    return std::move(this->executionListNode);
 }
 
-void BlockStatementNode::setProgramNode(std::unique_ptr<ProgramNode> programNode) {
-    this->programNode = std::move(programNode);
+void BlockStatementNode::setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode) {
+    this->executionListNode = std::move(executionListNode);
+}
+
+//ExecutionListNode
+const std::vector<Node*> ExecutionListNode::getChildren() const {
+    std::vector<Node*> children;
+    for (const auto& node : this->nodes) {
+        children.push_back(node.get());
+    }
+    return children;
+}
+
+std::vector<std::unique_ptr<Node>> ExecutionListNode::takeChildren() {
+    return std::move(this->nodes);
+}
+
+void ExecutionListNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
+    this->nodes = std::move(children);
+}
+
+void ExecutionListNode::addNode(std::unique_ptr<Node> node) {
+    this->nodes.push_back(std::move(node));
 }
 
 //IfStatementNode
@@ -504,7 +453,7 @@ void AssignmentStatementNode::setIdentifier(std::unique_ptr<IdentifierNode> iden
 }
 
 //IdentifierNode
-std::string IdentifierNode::getName() const {
+std::string_view IdentifierNode::getName() const {
     return this->identifierToken->getSourceString();
 }
 
@@ -581,7 +530,7 @@ void FunctionCallStatementNode::setFunctionCallExpression(std::unique_ptr<Functi
 
 //NumberLiteralNode
 int NumberLiteralNode::getValue() const {
-    return std::stoi(this->numberLiteralToken->getSourceString());
+    return std::stoi(std::string(this->numberLiteralToken->getSourceString()));
 }
 
 Token* NumberLiteralNode::getNumberLiteralToken() const {
@@ -590,7 +539,7 @@ Token* NumberLiteralNode::getNumberLiteralToken() const {
 
 //BooleanLiteralNode
 bool BooleanLiteralNode::getValue() const {
-    return this->booleanLiteralToken->getSourceString() == "true";
+    return std::string(this->booleanLiteralToken->getSourceString()) == "true";
 }
 
 Token* BooleanLiteralNode::getBooleanLiteralToken() const {
@@ -604,7 +553,7 @@ Token* EmptyLiteralNode::getEmptyLiteralToken() const {
 
 //StringLiteralNode
 std::string StringLiteralNode::getValue() const {
-    return this->stringLiteralToken->getSourceString();
+    return std::string(this->stringLiteralToken->getSourceString());
 }
 
 //BinaryOperatorExpressionNode

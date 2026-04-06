@@ -10,7 +10,7 @@ Interpreter::Interpreter(OutputStream* outputStream) : outputStream(outputStream
 }
 
 Value* Interpreter::interpretIdentifier(IdentifierNode* identifierNode, Environment* environment) {
-    return environment->getVar(identifierNode->getName());
+    return environment->getVar(std::string(identifierNode->getName()));
 }
 
 Value* Interpreter::interpret(Node* rootNode) {
@@ -22,7 +22,7 @@ Value* Interpreter::interpret(Node* rootNode) {
 
 Value* Interpreter::_interpret(Node* node, Environment* environment) {
     switch (node->getNodeKind()) {
-        case NodeKind::Program: {
+        case NodeKind::ExecutionList: {
             Value* resultingValue = this->valueStore->makeVoidValue();
             for (auto child : node->getChildren()) {
                 auto value = _interpret(child, environment);
@@ -44,17 +44,30 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
                         auto mainFunctionEnvironmentPtr = mainFunctionEnvironment.get();
                         mainFunctionDefiningEnvironment->addChildEnvironment(std::move(mainFunctionEnvironment));
                         //resultingValue = _interpret(functionDeclarationNode->getBody(), mainFunctionEnvironmentPtr);
-                        return _interpret(functionDeclarationNode->getBody()->getProgramNode(), mainFunctionEnvironmentPtr);
+                        auto mainFunctionReturnValue = _interpret(functionDeclarationNode->getBody()->getExecutionListNode(), mainFunctionEnvironmentPtr);
+                        if (mainFunctionReturnValue->getKind() == ValueKind::Return) {
+                            auto mainFunctionReturnValueCast = static_cast<ReturnValue*>(mainFunctionReturnValue);
+                            return mainFunctionReturnValueCast->getValue();
+                        } else {
+                            // shouldn't happen
+                            std::print("Main function return value kind is {}\n", valueKindToString(mainFunctionReturnValue->getKind()));
+                            return this->valueStore->makeVoidValue();
+                        }
                     }
                 }
             }
             return resultingValue;
+
+        }
+        case NodeKind::Program: {
+            auto programNode = static_cast<ProgramNode*>(node);
+            return _interpret(programNode->getExecutionListNode(), environment);
         }
         case NodeKind::FunctionCallExpression: {
             auto functionCallExpressionNode = static_cast<FunctionCallExpressionNode*>(node);
             auto arguments = functionCallExpressionNode->getArgumentNodes();
             auto name = functionCallExpressionNode->getIdentifier()->getName();
-            auto value = environment->getVar(name);
+            auto value = environment->getVar(std::string(name));
             if (!value) {
                 // unreachable; handled in type checker
                 std::print("Error: Function '{}' not found\n", name);
@@ -89,9 +102,9 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
             for (size_t i = 0; i < parameters.size(); i++) {
                 auto parameter = parameters[i];
                 auto argumentValue = _interpret(arguments[i], environment);
-                functionEnvironmentPtr->defineVar(parameter->getName(), argumentValue);
+                functionEnvironmentPtr->defineVar(std::string(parameter->getName()), argumentValue);
             }
-            auto result = _interpret(functionDeclarationNode->getBody()->getProgramNode(), functionEnvironmentPtr);
+            auto result = _interpret(functionDeclarationNode->getBody()->getExecutionListNode(), functionEnvironmentPtr);
             if (result->getKind() == ValueKind::Return) {
                 auto returnValue = static_cast<ReturnValue*>(result);
                 return returnValue->getValue();
@@ -109,7 +122,7 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
             auto variableDeclarationNode = static_cast<VariableDeclarationNode*>(node);
             // TODO handle type annotation [?] or not?
             auto value = _interpret(variableDeclarationNode->getExpression(), environment);
-            environment->defineVar(variableDeclarationNode->getIdentifier()->getName(), value);
+            environment->defineVar(std::string(variableDeclarationNode->getIdentifier()->getName()), value);
             break;
         }
         case NodeKind::WhileStatement: {
@@ -130,18 +143,18 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
             auto blockEnvironment = std::make_unique<Environment>(environment, blockStatementNode);
             auto blockEnvironmentPtr = blockEnvironment.get();
             environment->addChildEnvironment(std::move(blockEnvironment));
-            return _interpret(blockStatementNode->getProgramNode(), blockEnvironmentPtr);
+            return _interpret(blockStatementNode->getExecutionListNode(), blockEnvironmentPtr);
         }
         case NodeKind::FunctionDeclaration: {
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
             auto value = this->valueStore->makeFunctionValue(functionDeclarationNode, environment);
-            environment->defineVar(functionDeclarationNode->getIdentifier()->getName(), value);
+            environment->defineVar(std::string(functionDeclarationNode->getIdentifier()->getName()), value);
             return value;
         }
         case NodeKind::AssignmentExpression: {
             auto assignmentExpressionNode = static_cast<AssignmentExpressionNode*>(node);
             auto value = _interpret(assignmentExpressionNode->getExpression(), environment);
-            environment->setVar(assignmentExpressionNode->getIdentifier()->getName(), value);
+            environment->setVar(std::string(assignmentExpressionNode->getIdentifier()->getName()), value);
             return value;
         }
         case NodeKind::AssignmentStatement: {

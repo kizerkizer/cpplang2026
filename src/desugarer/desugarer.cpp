@@ -22,34 +22,47 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
             //     body
             // }
             // TODO should we reference original source code locations? Or just keep using -1,-1,-1 for compiler-created nodes?
-            auto newProgramNode = std::make_unique<ProgramNode>(emptySourceCodeLocationSpan, false);
+            auto ifThenBlockExecutionListNode = std::make_unique<ExecutionListNode>(emptySourceCodeLocationSpan);
+            ifThenBlockExecutionListNode->addNode(std::make_unique<BreakStatementNode>(emptySourceCodeLocationSpan));
+            auto ifThenBlockStatementNode = std::make_unique<BlockStatementNode>(std::move(ifThenBlockExecutionListNode), emptySourceCodeLocationSpan);
             auto newIfStatement = std::make_unique<IfStatementNode>(
                 std::make_unique<UnaryOperatorExpressionNode>(
                     whileStatementNode->takeCondition(),
                     std::make_unique<Token>(nullptr, "!", emptySourceCodeLocationSpan, TokenKind::Not, true),
                     emptySourceCodeLocationSpan
                 ),
-                std::make_unique<BreakStatementNode>(emptySourceCodeLocationSpan), // TODO should be blockstatement, unless statements in general allowed
+                std::move(ifThenBlockStatementNode),
                 nullptr,
                 emptySourceCodeLocationSpan
             );
-            newProgramNode->addNode(std::move(newIfStatement));
-            auto children = whileStatementNode->takeBody()->takeProgramNode()->takeChildren();
+            auto newExecutionListNode = std::make_unique<ExecutionListNode>(emptySourceCodeLocationSpan);
+            newExecutionListNode->addNode(std::move(newIfStatement));
+            auto children = whileStatementNode->takeBody()->takeExecutionListNode()->takeChildren();
             for (auto& child : children) {
-                newProgramNode->addNode(std::move(child));
+                newExecutionListNode->addNode(std::move(child));
             }
-            auto newBody = std::make_unique<BlockStatementNode>(std::move(newProgramNode), emptySourceCodeLocationSpan);
+            auto newBody = std::make_unique<BlockStatementNode>(std::move(newExecutionListNode), emptySourceCodeLocationSpan);
             auto loopStatement = std::make_unique<LoopStatementNode>(std::move(newBody), emptySourceCodeLocationSpan);
             return loopStatement;
         }
-        case NodeKind::Program: {
-            auto* programNode = static_cast<ProgramNode*>(node.get());
+        case NodeKind::ExecutionList: {
+            auto* executionListNode = static_cast<ExecutionListNode*>(node.get());
             std::vector<std::unique_ptr<Node>> newChildren;
-            auto children = programNode->takeChildren();
-            for (auto& child : children) {
+            for (auto& child : executionListNode->takeChildren()) {
                 newChildren.push_back(_desugar(std::move(child)));
             }
-            programNode->setChildren(std::move(newChildren));
+            executionListNode->setChildren(std::move(newChildren));
+            return unique_ptr_static_cast<ExecutionListNode>(std::move(node));
+        }
+        case NodeKind::Program: {
+            auto* programNode = static_cast<ProgramNode*>(node.get());
+            auto executionListNode = programNode->takeExecutionListNode();
+            std::vector<std::unique_ptr<Node>> newChildren;
+            for (auto& child : executionListNode->takeChildren()) {
+                newChildren.push_back(_desugar(std::move(child)));
+            }
+            executionListNode->setChildren(std::move(newChildren));
+            programNode->setExecutionListNode(std::move(executionListNode));
             return unique_ptr_static_cast<ProgramNode>(std::move(node));
         }
         case NodeKind::VariableDeclaration: {
@@ -69,7 +82,7 @@ std::unique_ptr<Node> _desugar (std::unique_ptr<Node> node) {
         }
         case NodeKind::BlockStatement: {
             auto* blockStatementNode = static_cast<BlockStatementNode*>(node.get());
-            blockStatementNode->setProgramNode(unique_ptr_static_cast<ProgramNode>(_desugar(blockStatementNode->takeProgramNode())));
+            blockStatementNode->setExecutionListNode(unique_ptr_static_cast<ExecutionListNode>(_desugar(blockStatementNode->takeExecutionListNode())));
             return unique_ptr_static_cast<BlockStatementNode>(std::move(node));
         }
         case NodeKind::FunctionDeclaration: {

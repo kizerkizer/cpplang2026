@@ -77,11 +77,11 @@ int getPrecedence (const TokenKind& tokenName);
 
 bool getAssociativity (const TokenKind& tokenName); // true for left, false for right. Use LEFT_ASSOCIATIVE and RIGHT_ASSOCIATIVE macros for readability
 
-std::string tokenNameToString (const TokenKind &name);
+std::string tokenKindToString (const TokenKind &tokenKind);
 
 class Token {
 public:
-    Token(Source* source, const std::string &sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
+    Token(Source* source, const std::string_view sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
         : source(source), name(name), sourceString(sourceString), sourceCodeLocationSpan(sourceCodeLocationSpan), compilerCreated(compilerCreated) {};
     TokenKind getTokenKind() const;
     Source* getSource() const;
@@ -91,12 +91,10 @@ public:
     int getLastIndex() const;
     int getLastLine() const;
     int getLastColumn() const;*/
-    std::string getSourceString() const;
+    std::string_view getSourceString() const;
     std::string toString() const;
     bool operator==(const TokenKind& rhs) const;
     bool operator!=(const TokenKind& rhs) const;
-    friend bool operator==(const Token& lhs,const Token& rhs);
-    friend bool operator!=(const Token& lhs,const Token& rhs);
     bool isCompilerCreated() const;
     SourceCodeLocationSpan getSourceCodeLocationSpan() const;
     /*void setLastSourceCodeLocation(SourceCodeLocation location);
@@ -107,7 +105,7 @@ public:
 private:
     Source* source;
     TokenKind name;
-    std::string sourceString;
+    std::string_view sourceString;
     SourceCodeLocationSpan sourceCodeLocationSpan;
     /*int firstIndex;
     int firstLine;

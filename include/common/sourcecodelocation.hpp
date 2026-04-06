@@ -1,14 +1,25 @@
 #pragma once
 
 #include <string>
-#include <tuple>
 
-typedef std::tuple<int, int, int> SourceCodeLocation;
+#include "common/source.hpp"
 
-typedef struct {
+using SourceCodeLocation = struct {
+    int byteIndex;
+    int codepointIndex;
+    int line;
+    int column;
+};
+
+using SourceCodeLocationSpan = struct {
     SourceCodeLocation start;
     SourceCodeLocation end;
-} SourceCodeLocationSpan;
+};
+
+using FullSourceCodeLocation = struct {
+    Source* source;
+    SourceCodeLocationSpan sourceCodeLocationSpan;
+};
 
 extern SourceCodeLocationSpan emptySourceCodeLocationSpan;
 

@@ -52,7 +52,7 @@ private:
     void addErrorMessageParseFailure(const std::string& failedToParse);
     void addErrorMessageExpected(const std::string& expected);
     void addErrorMessageUnexpected(const std::string& unexpected);
-    std::unique_ptr<ProgramNode> parseProgram(bool atRoot);
+    std::unique_ptr<ProgramNode> parseProgram();
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<FunctionDeclarationNode> parseFunctionDeclaration();
     std::unique_ptr<IfStatementNode> parseIfStatement();
@@ -60,6 +60,7 @@ private:
     std::unique_ptr<LoopStatementNode> parseLoopStatement();
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
     std::unique_ptr<BlockStatementNode> parseBlockStatement();
+    std::unique_ptr<ExecutionListNode> parseExecutionList();
     std::unique_ptr<BreakStatementNode> parseBreakStatement();
     std::unique_ptr<ContinueStatementNode> parseContinueStatement();
     std::unique_ptr<FunctionCallStatementNode> parseFunctionCallStatement();

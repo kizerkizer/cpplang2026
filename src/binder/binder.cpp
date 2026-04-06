@@ -68,7 +68,12 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
     switch (node->getNodeKind()) {
         case NodeKind::Program: {
             auto programNode = static_cast<ProgramNode*>(node);
-            for (auto& child : programNode->getChildren()) {
+            this->bindRecursive(programNode->getExecutionListNode());
+            break;
+        }
+        case NodeKind::ExecutionList: {
+            auto executionListNode = static_cast<ExecutionListNode*>(node);
+            for (auto& child : executionListNode->getChildren()) {
                 this->bindRecursive(child);
             }
             break;
@@ -86,7 +91,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             if (expressionNode) {
                 this->bindRecursive(expressionNode);
             }
-            auto symbol = std::make_unique<Symbol>(this->currentScope, variableDeclarationNode, SymbolKind::Variable, SymbolModifierFlags::None, identifierNode->getName());
+            auto symbol = std::make_unique<Symbol>(this->currentScope, identifierNode, SymbolKind::Variable, SymbolModifierFlags::None, std::string(identifierNode->getName()));
             auto symbolPointer = symbol.get();
             if (this->currentScope->hasSymbolShallow(symbol->getNameString())) {
                 this->addErrorMessage(6, "Redeclaration of name '" + symbol->getNameString() + "', which is already declared in the current scope", identifierNode->getSourceCodeLocationSpan());
@@ -104,7 +109,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
                 // Anonymous function? Don't handle it? Handled by `var xxx = function (...) {...}` ?
                 break;
             }*/
-            auto symbol = std::make_unique<Symbol>(this->currentScope, functionDeclarationNode, SymbolKind::Function, SymbolModifierFlags::None, identifierNode->getName());
+            auto symbol = std::make_unique<Symbol>(this->currentScope, identifierNode, SymbolKind::Function, SymbolModifierFlags::None, std::string(identifierNode->getName()));
             if (this->currentScope->hasSymbolShallow(symbol->getNameString())) { 
                 this->addErrorMessage(6, "Redeclaration of name '" + symbol->getNameString() + "', which is already in scope", identifierNode->getSourceCodeLocationSpan());
                 break; // TODO ?
@@ -120,7 +125,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             this->currentScope->setMySymbolReference(symbolPointer);
             for (auto parameter : functionDeclarationNode->getParameters()) {
                 auto parameterIdentifierNode = parameter;
-                auto parameterSymbol = std::make_unique<Symbol>(this->currentScope, parameterIdentifierNode, SymbolKind::Parameter, SymbolModifierFlags::None, parameterIdentifierNode->getName());
+                auto parameterSymbol = std::make_unique<Symbol>(this->currentScope, parameterIdentifierNode, SymbolKind::Parameter, SymbolModifierFlags::None, std::string(parameterIdentifierNode->getName()));
                 auto parameterSymbolPtr = parameterSymbol.get();
                 if (this->currentScope->hasSymbolShallow(parameterSymbol->getNameString())) {
                     // Can happen if parameter has duplicate name
@@ -139,9 +144,9 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             auto identifierNode = assignmentExpressionNode->getIdentifier();
             auto expressionNode = assignmentExpressionNode->getExpression();
             if (identifierNode) {
-                auto name = this->currentScope->getSymbol(identifierNode->getName());
+                auto name = this->currentScope->getSymbol(std::string(identifierNode->getName()));
                 if (name == nullptr) {
-                   this->addErrorMessage(7, "Name '" + identifierNode->getName() + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
+                   this->addErrorMessage(7, "Name '" + std::string(identifierNode->getName()) + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
                     break; 
                 }
                 identifierNode->setSymbolReference(name);
@@ -157,7 +162,7 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
                 this->createAndEnterScope(ScopeKind::Block);
                 this->currentScope->setNode(blockStatementNode);
             }
-            this->bindRecursive(blockStatementNode->getProgramNode());
+            this->bindRecursive(blockStatementNode->getExecutionListNode());
             if (!doNotCreateScope) {
                 this->exitScope();
             }
@@ -195,9 +200,9 @@ void Binder::bindRecursive(Node* node, bool doNotCreateScope) {
             // TODO I Guess make sure this doesn't visit from the children of variable/function declaration etc 
             auto identifierNode = static_cast<IdentifierNode*>(node);
             if (identifierNode) {
-                auto symbol = this->currentScope->getSymbol(identifierNode->getName());
+                auto symbol = this->currentScope->getSymbol(std::string(identifierNode->getName()));
                 if (symbol == nullptr) {
-                   this->addErrorMessage(7, "Name '" + identifierNode->getName() + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
+                   this->addErrorMessage(7, "Name '" + std::string(identifierNode->getName()) + "' not found in scope", identifierNode->getSourceCodeLocationSpan());
                    break; 
                 }
                 identifierNode->setSymbolReference(symbol);

@@ -48,16 +48,6 @@ std::unique_ptr<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenNa
     return returnToken;
 }
 
-/*SourceCodeLocation Parser::getCurrentSourceCodeLocationStart() {
-    auto token = this->peek();
-    return token.getSourceCodeLocationSpan().start;
-}
-
-SourceCodeLocation Parser::getCurrentSourceCodeLocationEnd() {
-    auto token = this->peek();
-    return token.getSourceCodeLocationSpan().end;
-}*/
-
 SourceCodeLocationSpan Parser::getCurrentSourceCodeLocationSpan() {
     auto token = this->peek();
     return token.getSourceCodeLocationSpan();
@@ -98,7 +88,7 @@ void Parser::addErrorMessageParseFailure(const std::string& failedToParse) {
 }
 
 void Parser::addErrorMessageExpected(const std::string& expected) {
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Expected '" + expected + "' but found '" + this->peek().getSourceString() + "'"));
+    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Expected '" + expected + "' but found '" + std::string(this->peek().getSourceString()) + "'"));
 }
 
 void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
@@ -106,25 +96,31 @@ void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
 }
 
 std::unique_ptr<Node> Parser::parse() {
-    auto program = this->parseProgram(true);
+    auto program = this->parseProgram();
     if (!program) {
         return std::make_unique<InvalidNode>();
     }
     return program;
 }
 
-std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
+std::unique_ptr<ProgramNode> Parser::parseProgram() {
+    auto executionListNode = this->parseExecutionList();
+    auto programNode = std::make_unique<ProgramNode>(std::move(executionListNode), executionListNode->getSourceCodeLocationSpan());
+    return programNode;
+};
+
+std::unique_ptr<ExecutionListNode> Parser::parseExecutionList() {
     std::vector<std::unique_ptr<Node>> children;
     while (!this->isPastTokensEnd()) {
         if (insideBlock && this->peek() == TokenKind::BraceClose) {
-            goto makeProgram;
+            goto makeExecutionList;
         }
         switch (this->peek().getTokenKind()) {
             case TokenKind::KeywordVar: {
                 auto node = this->parseVariableDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("variable declaration");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -133,7 +129,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                 auto node = this->parseFunctionDeclaration();
                 if (!node) {
                     this->addErrorMessageParseFailure("function declaration");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -142,7 +138,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                 auto node = this->parseIfStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("if statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -150,12 +146,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
             case TokenKind::KeywordReturn: {
                 if (!this->insideFunction) {
                     this->addErrorMessageUnexpected("'return' statement outside of function");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 auto node = this->parseReturnStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("return statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -163,12 +159,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
             case TokenKind::KeywordBreak: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'break' statement outside of while loop");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 auto node = this->parseBreakStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("break statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -176,12 +172,12 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
             case TokenKind::KeywordContinue: {
                 if (!this->insideLoop) {
                     this->addErrorMessageUnexpected("'continue' statement outside of while loop");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 auto node = this->parseContinueStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("continue statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -190,7 +186,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                 auto node = this->parseWhileStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("while statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -199,7 +195,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                 auto node = this->parseLoopStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("loop statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -208,7 +204,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                 auto node = this->parseBlockStatement();
                 if (!node) {
                     this->addErrorMessageParseFailure("block statement");
-                    goto makeProgram;
+                    goto makeExecutionList;
                 }
                 children.push_back(std::move(node));
                 break;
@@ -218,7 +214,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                     auto node = this->parseAssignmentStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("assignment statement");
-                        goto makeProgram;
+                        goto makeExecutionList;
                     }
                     children.push_back(std::move(node));
                     break;
@@ -226,33 +222,33 @@ std::unique_ptr<ProgramNode> Parser::parseProgram(bool atRoot) {
                     auto node = this->parseFunctionCallStatement();
                     if (!node) {
                         this->addErrorMessageParseFailure("function call statement");
-                        goto makeProgram;
+                        goto makeExecutionList;
                     }
                     children.push_back(std::move(node));
                     break;
                 } else {
-                    this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
-                    goto makeProgram;
+                    this->addErrorMessageUnexpected("token '" + std::string(this->peek().getSourceString()) + "'");
+                    goto makeExecutionList;
                 }
             }
+            case TokenKind::OutOfRange: {
+                goto makeExecutionList;
+            }
             default:
-                this->addErrorMessageUnexpected("token '" + this->peek().getSourceString() + "'");
-                goto makeProgram;
+                this->addErrorMessageUnexpected("token '" + std::string(this->peek().getSourceString()) + "'");
+                goto makeExecutionList;
         }
     }
-    /*if (this->insideBlock && this->peek() != TokenKind::BraceClose) {
-        this->addErrorMessageExpected("'}'");
-    }*/
-    makeProgram:
+    makeExecutionList:
         SourceCodeLocation start = children.size() > 0 ? children.front()->getSourceCodeLocationSpan().start : this->getCurrentSourceCodeLocationSpan().start;
         SourceCodeLocation end = children.size() > 0 ? children.back()->getSourceCodeLocationSpan().end : start;
         SourceCodeLocationSpan sourceCodeLocationSpan(start, end);
-        std::unique_ptr<ProgramNode> program = std::make_unique<ProgramNode>(sourceCodeLocationSpan, atRoot);
+        auto executionListNode = std::make_unique<ExecutionListNode>(sourceCodeLocationSpan);
         for (auto& child : children) {
-            program->addNode(std::move(child));
+            executionListNode->addNode(std::move(child));
         }
-        return program;
-};
+        return executionListNode;
+}
 
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto varToken = this->expectAndAdvance(TokenKind::KeywordVar);
@@ -486,10 +482,11 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
         return nullptr;
     }
     this->enterBlock();
-    auto programNode = Parser::parseProgram(false);
+    //auto programNode = Parser::parseProgram(false);
+    auto executionListNode = this->parseExecutionList();
     this->exitBlock();
-    if (!programNode) {
-        this->addErrorMessageParseFailure("block statement program node");
+    if (!executionListNode) {
+        this->addErrorMessageParseFailure("block statement execution list node");
         return nullptr;
     }
     auto braceCloseToken = this->expectAndAdvance(TokenKind::BraceClose);
@@ -498,7 +495,7 @@ std::unique_ptr<BlockStatementNode> Parser::parseBlockStatement() {
         return nullptr;
     }
     auto sourceCodeLocationSpan = SourceCodeLocationSpan(braceOpenToken->getSourceCodeLocationSpan().start, braceCloseToken->getSourceCodeLocationSpan().end);
-    auto blockStatement = std::make_unique<BlockStatementNode>(std::move(programNode), sourceCodeLocationSpan);
+    auto blockStatement = std::make_unique<BlockStatementNode>(std::move(executionListNode), sourceCodeLocationSpan);
     return blockStatement;
 }
 
@@ -738,7 +735,7 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimaryExpression() {
             return unaryOperatorNode;
         }
         default:
-            this->addErrorMessageUnexpected("token '" + token.getSourceString() + "'");
+            this->addErrorMessageUnexpected("token '" + std::string(token.getSourceString()) + "'");
             return nullptr;
     }
 }

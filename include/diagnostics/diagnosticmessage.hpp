@@ -27,6 +27,7 @@ enum class DiagnosticMessageKind {
         "Unknown"))))
 
 enum class DiagnosticMessageStage {
+    Scanner,
     Lexer,
     Parser,
     Binder,
@@ -35,12 +36,13 @@ enum class DiagnosticMessageStage {
 };
 
 #define DIAGNOSTIC_MESSAGE_STAGE_TO_STRING(diagnosticMessageStage) \
+    (diagnosticMessageStage == DiagnosticMessageStage::Scanner ? "Scanner" : \
     (diagnosticMessageStage == DiagnosticMessageStage::Lexer ? "Lexer" : \
     (diagnosticMessageStage == DiagnosticMessageStage::Parser ? "Parser" : \
     (diagnosticMessageStage == DiagnosticMessageStage::Binder ? "Binder" : \
     (diagnosticMessageStage == DiagnosticMessageStage::Desugarer ? "Desugarer" : \
     (diagnosticMessageStage == DiagnosticMessageStage::TypeChecker ? "TypeChecker" : \
-        "Unknown")))))
+        "Unknown"))))))
 
 class DiagnosticMessage {
 private:

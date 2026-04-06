@@ -30,6 +30,7 @@ add_executable(cpplang2026
     src/treewalker/environment.cpp
     src/treewalker/interpreter.cpp
     src/treewalker/outputstream.cpp
+    src/utf8scanner/utf8scanner.cpp
 )
 
 target_include_directories(cpplang2026 PRIVATE include)

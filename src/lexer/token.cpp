@@ -1,8 +1,8 @@
 #include "lexer/token.hpp"
 #include "common/sourcecodelocation.hpp"
 
-std::string tokenNameToString(const TokenKind &name) {
-    switch (name) {
+std::string tokenKindToString(const TokenKind &tokenKind) {
+    switch (tokenKind) {
         using enum TokenKind;
         case OutOfRange: return "OutOfRange";
         case TriviaWhitespace: return "Whitespace";
@@ -131,18 +131,6 @@ bool Token::operator!=(const TokenKind& rhs) const {
     return this->name != rhs;
 }
 
-bool operator==(const Token& lhs, const Token& rhs) {
-    auto [lhsStartLine, lhsStartColumn, lhsStartOffset] = lhs.sourceCodeLocationSpan.start;
-    auto [lhsEndLine, lhsEndColumn, lhsEndOffset] = lhs.sourceCodeLocationSpan.end;
-    auto [rhsStartLine, rhsStartColumn, rhsStartOffset] = rhs.sourceCodeLocationSpan.start;
-    auto [rhsEndLine, rhsEndColumn, rhsEndOffset] = rhs.sourceCodeLocationSpan.end;
-    return lhs.name == rhs.name && lhs.sourceString == rhs.sourceString && lhsStartLine == rhsStartLine && lhsStartColumn == rhsStartColumn && lhsStartOffset == rhsStartOffset && lhsEndLine == rhsEndLine && lhsEndColumn == rhsEndColumn && lhsEndOffset == rhsEndOffset;
-}
-
-bool operator!=(const Token& lhs, const Token& rhs) {
-    return !(lhs == rhs);
-}
-
 /*int Token::getFirstIndex() const {
     return this->firstIndex;
 }
@@ -188,12 +176,12 @@ SourceCodeLocationSpan Token::getSourceCodeLocationSpan() const {
     return this->sourceCodeLocationSpan;
 }
 
-std::string Token::getSourceString() const {
+std::string_view Token::getSourceString() const {
     return this->sourceString;
 }
 
 std::string Token::toString() const {
-    return "<" + tokenNameToString(this->name) + "> ('" + this->sourceString + "')";
+    return "<" + tokenKindToString(this->name) + "> ('" + std::string(this->sourceString) + "')";
 }
 
 bool Token::isCompilerCreated() const {

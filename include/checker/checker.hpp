@@ -18,6 +18,15 @@ private:
     void checkFunctionDeclarationReturns(Type* returnType, FunctionDeclarationNode* functionDeclarationNode);
     Type* getFunctionDeclarationReturnType(FunctionDeclarationNode* functionDeclarationNode);
     FunctionType* getFunctionDeclarationFunctionType(FunctionDeclarationNode* functionDeclarationNode);
+    Type* examineIdentifier(Node* node);
+    Type* examineTypeExpression(Node* node);
+    Type* examineBinaryOperatorExpression(Node* node);
+    Type* examineUnaryOperatorExpression(Node* node);
+    Type* examineIfExpression(Node* node);
+    Type* examineFunctionCallExpression(Node* node);
+    Type* examineVariableDeclaration(Node* node);
+    Type* examineFunctionDeclaration(Node* node);
+    Type* examineIfStatement(Node* node);
     Type* examine(Node* node);
     TypeStore* typeStore = new TypeStore();
 public:

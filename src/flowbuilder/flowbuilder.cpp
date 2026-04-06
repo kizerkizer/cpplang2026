@@ -99,10 +99,10 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             flowNode->setAstNode(node);
             node->setFlowNode(flowNode.get());
             FlowNode* blockStatementNodePointer = graph->addNode(std::move(flowNode));
-            auto programNode = blockStatementNode->getProgramNode();
+            auto executionListNode = blockStatementNode->getExecutionListNode();
             auto next = successor;
-            auto children = programNode->getChildren();
-            for (int i = children.size() - 1; i >= 0; i--) {
+            auto children = executionListNode->getChildren();
+            for (int i = children.size() - 1; i >= 0; --i) {
                 next = buildFlowNode(graph, children[i], next, context, result);
             }
             graph->addEdge(blockStatementNodePointer, next);
@@ -110,14 +110,15 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
         }
         case NodeKind::Program: {
             auto programNode = static_cast<ProgramNode*>(node);
-            assert(programNode->isRootNode() == true);
+            auto executionListNode = programNode->getExecutionListNode();
+
             //std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Global);
             //flowNode->setAstNode(node);
             //node->setFlowNode(flowNode.get());
             //auto flowNodePointer = graph->addNode(std::move(flowNode));
-            auto children = programNode->getChildren();
+            auto children = executionListNode->getChildren();
             auto next = successor;
-            for (int i = children.size() - 1; i >= 0; i--) {
+            for (int i = children.size() - 1; i >= 0; --i) {
                 next = buildFlowNode(graph, children[i], next, context, result);
             }
             //graph->addEdge(flowNodePointer, next); // next is now first flownode within the block
@@ -144,7 +145,6 @@ FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result
     // Either the global scope, or a function:
     if (node->getNodeKind() == NodeKind::Program) {
         auto programNode = static_cast<ProgramNode*>(node);
-        assert(programNode->isRootNode() == true);
         programNode->setFlowGraph(graph.get());
         graph->setAstNode(node);
         flowNode = std::make_unique<FlowNode>(FlowNodeKind::Global);

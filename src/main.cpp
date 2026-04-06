@@ -19,6 +19,7 @@
 #include "checker/type.hpp"
 #include "treewalker/interpreter.hpp"
 #include "treewalker/outputstream.hpp"
+#include "utf8scanner/utf8scanner.hpp"
 
 void printParseTree (const Node* node, int indentation) {
     auto sourceCodeLocationSpan = node->getSourceCodeLocationSpan();
@@ -27,10 +28,8 @@ void printParseTree (const Node* node, int indentation) {
         case NodeKind::Program: {
             const auto nodeCast = static_cast<const ProgramNode*>(node);
             std::print("{}ProgramNode\n", std::string(indentation * 2, ' '));
-            std::print("{}* Children:\n", std::string(indentation * 2, ' '));
-            for (const auto child : nodeCast->getChildren()) {
-                printParseTree(child, indentation + 1);
-            }
+            std::print("{}* ExecutionListNode:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getExecutionListNode(), indentation + 1);
             break;
         }
         case NodeKind::VariableDeclaration: {
@@ -189,8 +188,17 @@ void printParseTree (const Node* node, int indentation) {
         case NodeKind::BlockStatement: {
             const auto nodeCast = static_cast<const BlockStatementNode*>(node);
             std::print("{}BlockStatementNode\n", std::string(indentation * 2, ' '));
-            std::print("{}* ProgramNode:\n", std::string(indentation * 2, ' '));
-            printParseTree(nodeCast->getProgramNode(), indentation + 1);
+            std::print("{}* ExecutionListNode:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getExecutionListNode(), indentation + 1);
+            break;
+        }
+        case NodeKind::ExecutionList: {
+            const auto nodeCast = static_cast<const ExecutionListNode*>(node);
+            std::print("{}ExecutionListNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Children:\n", std::string(indentation * 2, ' '));
+            for (const auto child : nodeCast->getChildren()) {
+                printParseTree(child, indentation + 1);
+            }
             break;
         }
         case NodeKind::AssignmentStatement: {
@@ -281,9 +289,13 @@ std::string getNodeSyntax(Node* node, int indentation) {
     }
     switch (node->getNodeKind()) {
         case NodeKind::Program: {
+            auto programNode = static_cast<ProgramNode*>(node);
+            return getNodeSyntax(programNode->getExecutionListNode(), indentation);
+        }
+        case NodeKind::ExecutionList: {
             std::string ret = "";
             for (auto child : node->getChildren()) {
-                ret += getNodeSyntax(child, indentation + 1);
+                ret += getNodeSyntax(child, indentation);
             }
             return ret;
         }
@@ -307,7 +319,7 @@ std::string getNodeSyntax(Node* node, int indentation) {
         case NodeKind::BlockStatement: {
             auto blockStatementNode = static_cast<BlockStatementNode*>(node);
             std::string ret = std::string(indentation * 2, ' ') + "{\n";
-            ret += getNodeSyntax(blockStatementNode->getProgramNode(), indentation + 1);
+            ret += getNodeSyntax(blockStatementNode->getExecutionListNode(), indentation + 1);
             ret += std::string(indentation * 2, ' ') + "}\n";
             return ret;
         }
@@ -426,11 +438,11 @@ std::string getNodeSyntax(Node* node, int indentation) {
         }
         case NodeKind::NumberLiteral: {
             auto numberLiteralNode = static_cast<NumberLiteralNode*>(node);
-            return std::string(indentation * 2, ' ') + numberLiteralNode->getNumberLiteralToken()->getSourceString();
+            return std::string(indentation * 2, ' ') + std::string(numberLiteralNode->getNumberLiteralToken()->getSourceString());
         }
         case NodeKind::BooleanLiteral: {
             auto booleanLiteralNode = static_cast<BooleanLiteralNode*>(node);
-            return std::string(indentation * 2, ' ') + booleanLiteralNode->getBooleanLiteralToken()->getSourceString();
+            return std::string(indentation * 2, ' ') + std::string(booleanLiteralNode->getBooleanLiteralToken()->getSourceString());
         }
         case NodeKind::EmptyLiteral: {
             return std::string(indentation * 2, ' ') + "empty";
@@ -522,7 +534,7 @@ void printFlowBuilderResult (std::unique_ptr<FlowBuilderResult> result) {
         for (auto flowNode : graph->getNodes()) {
             std::string kind = "<None>";
             if (flowNode->getAstNode()) {
-                kind = nodeKindToString(flowNode->getAstNode()->getNodeKind());
+                kind = std::string(nodeKindToString(flowNode->getAstNode()->getNodeKind()));
             }
             std::print("n{} [\n", flowNode->getId());
             std::print("    label = \"{}/{}\";\n", flowNodeKindToString(flowNode->getKind()), kind);
@@ -552,7 +564,13 @@ int main (int argc, char* argv[]) {
     std::string sourceString = buffer.str();
     std::unique_ptr<Source> source = std::make_unique<Source>(SourceKind::File, filename, sourceString);
     Diagnostics diagnostics = Diagnostics();
-    Lexer lexer = Lexer(source.get(), diagnostics);
+    Utf8Scanner utf8Scanner = Utf8Scanner(source.get(), diagnostics);
+    Lexer lexer = Lexer(utf8Scanner, source.get(), diagnostics);
+    /*std::unique_ptr<Token> token = nullptr;
+    while (!lexer.isDone()) {
+        token = lexer.getNextToken();
+        std::print("<{}> '{}'\n", tokenKindToString(token->getTokenKind()), token->getSourceString());
+    }*/
     Parser parser = Parser(source.get(), &lexer, diagnostics);
     auto parsed = parser.parse();
     for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
@@ -585,8 +603,8 @@ int main (int argc, char* argv[]) {
     } else {
         std::print("Bound successfully!\n");
     }
-    std::print("Print out of desugared parse tree:\n");
-    std::print("{}", getNodeSyntax(desugared.get(), -1)); // -1 for root node
+    //std::print("Print out of desugared parse tree:\n");
+    //std::print("{}", getNodeSyntax(desugared.get(), 0)); // 0 for root node
     FlowBuilder flowBuilder = FlowBuilder();
     std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
     for (auto graph : result->getGraphs()) {

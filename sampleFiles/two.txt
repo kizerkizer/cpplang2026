@@ -6,12 +6,13 @@ function myFunction (foo: Integer, bar: String): Integer {
     return 0;
 }
 
-function log (value) {
+function log (value: String) {
     //
 }
 
-var myFoo = 5; // inferred type
-var result = myFunction(myFoo, 'qux'); // inferred type
-var final: Integer = result * myFoo;
-
-log(final);
+function main (): Integer {
+    var myFoo = 5; // inferred type
+    var result = myFunction(myFoo, 'qux'); // inferred type
+    var final: Integer = result * myFoo;
+    return final;
+}

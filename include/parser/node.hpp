@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "checker/type.hpp"
@@ -13,7 +14,8 @@
 
 /*
 Rough Grammar:
-Program ::= (Declaration | Statement)*
+Program ::= ExecutionList
+ExecutionList ::= (Declaration | Statement)*
 Declaration ::= VariableDeclaration | FunctionDeclaration
 VariableDeclaration ::= 'var' Identifier (':' TypeExpression)? AssignmentExpression? ';'
 FunctionDeclaration ::= 'function' Identifier '(' ParameterList? ')' (':' TypeExpression)? BlockStatement
@@ -21,7 +23,7 @@ TypeExpression = PrimitiveType//PrimaryTypeExpression | BinaryOperatorTypeExpres
 //UnionTypeExpression = TypeExpression '|' TypeExpression
 ParameterList ::= Identifier (',' Identifier)*
 Statement ::= BlockStatement | IfStatement | WhileStatement | LoopStatement | BreakStatement | ContinueStatement | ReturnStatement | AssignmentStatement | FunctionCallStatement
-BlockStatement ::= '{' Program '}'
+BlockStatement ::= '{' ExecutionList '}'
 IfStatement ::= 'if' Expression 'then' BlockStatement ('else' BlockStatement)?
 WhileStatement ::= 'while' '(' Expression ')' Statement
 LoopStatement ::= 'loop' '(' Expression ')' Statement
@@ -49,6 +51,7 @@ class Symbol; // in binder/symbol.hpp
 
 enum class NodeKind {
     Program,
+    ExecutionList,
     Invalid,
     FunctionDeclaration,
     VariableDeclaration,
@@ -66,8 +69,9 @@ enum class NodeKind {
     StringLiteral,
     BooleanLiteral,
     EmptyLiteral,
-    //ObjectLiteral, // TODO later
-    //ArrayLiteral, // TODO later
+    //MapLiteralSyntax, // TODO later
+    //ArrayLiteralSyntax, // TODO later
+    //SetLiteralSyntax, // TODO later
     AssignmentExpression,
     FunctionCallExpression,
     BinaryOperatorExpression,
@@ -77,7 +81,63 @@ enum class NodeKind {
     IdentifierWithPossibleAnnotation,
 };
 
-std::string nodeKindToString(NodeKind nodeKind);
+constexpr std::string_view nodeKindToString(NodeKind nodeKind) {
+    switch (nodeKind) {
+        using enum NodeKind;
+        case AssignmentExpression:
+            return "AssignmentExpression";
+        case ExecutionList:
+            return "ExecutionList";
+        case FunctionCallExpression:
+            return "FunctionCallExpression";
+        case BinaryOperatorExpression:
+            return "BinaryOperatorExpression";
+        case UnaryOperatorExpression:
+            return "UnaryOperatorExpression";
+        case Program:
+            return "Program";
+        case Invalid:
+            return "Invalid";
+        case FunctionDeclaration:
+            return "FunctionDeclaration";
+        case VariableDeclaration:
+            return "VariableDeclaration";
+        case BlockStatement:
+            return "BlockStatement";
+        case IfStatement:
+            return "IfStatement";
+        case WhileStatement:
+            return "WhileStatement";
+        case LoopStatement:
+            return "LoopStatement";
+        case BreakStatement:
+            return "BreakStatement";
+        case ContinueStatement:
+            return "ContinueStatement";
+        case ReturnStatement:
+            return "ReturnStatement";
+        case AssignmentStatement:
+            return "AssignmentStatement";
+        case FunctionCallStatement:
+            return "FunctionCallStatement";
+        case Identifier:
+            return "Identifier";
+        case NumberLiteral:
+            return "NumberLiteral";
+        case StringLiteral:
+            return "StringLiteral";
+        case BooleanLiteral:
+            return "BooleanLiteral";
+        case EmptyLiteral:
+            return "EmptyLiteral";
+        case IfExpression:
+            return "IfExpression";
+        case TypeExpression:
+            return "TypeExpression";
+        case IdentifierWithPossibleAnnotation:
+            return "IdentifierWithPossibleAnnotation";
+    }
+}
 
 #define IS_NODEKIND_LITERAL(nodeKind) (nodeKind == NodeKind::NumberLiteral || nodeKind == NodeKind::StringLiteral || nodeKind == NodeKind::BooleanLiteral || nodeKind == NodeKind::EmptyLiteral)
 
@@ -130,19 +190,28 @@ private:
     std::unique_ptr<Token> token;
 };
 
-class ProgramNode : public Node {
+class ExecutionListNode : public Node {
 public:
-    ProgramNode(SourceCodeLocationSpan sourceCodeLocationSpan, bool isRoot = false) : Node(NodeKind::Program, sourceCodeLocationSpan), isRoot(isRoot) {};
+    ExecutionListNode(SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::ExecutionList, sourceCodeLocationSpan) {};
     void addNode(std::unique_ptr<Node> child);
     const std::vector<Node*> getChildren() const override;
     std::vector<std::unique_ptr<Node>> takeChildren();
     void setChildren(std::vector<std::unique_ptr<Node>> children);
-    bool isRootNode();
-    FlowGraph* getFlowGraph(); // only for the root node
-    void setFlowGraph(FlowGraph* flowGraph); // only for the root node
 private:
     std::vector<std::unique_ptr<Node>> nodes;
-    bool isRoot;
+};
+
+class ProgramNode : public Node {
+public:
+    ProgramNode(std::unique_ptr<ExecutionListNode> executionListNode, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::Program, sourceCodeLocationSpan), executionListNode(std::move(executionListNode)) {};
+    ExecutionListNode* getExecutionListNode() const;
+    const std::vector<Node*> getChildren() const override;
+    std::unique_ptr<ExecutionListNode> takeExecutionListNode();
+    void setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode);
+    FlowGraph* getFlowGraph();
+    void setFlowGraph(FlowGraph* flowGraph);
+private:
+    std::unique_ptr<ExecutionListNode> executionListNode;
     FlowGraph* flowGraph;
 };
 
@@ -159,7 +228,7 @@ public:
 class IdentifierNode : public PrimaryExpressionNode {
 public:
     IdentifierNode(std::unique_ptr<Token> identifierToken, SourceCodeLocationSpan sourceCodeLocationSpan, NodeKind kind = NodeKind::Identifier) : PrimaryExpressionNode(kind, sourceCodeLocationSpan), identifierToken(std::move(identifierToken)) {};
-    std::string getName() const;
+    std::string_view getName() const;
     Token* getIdentifierToken() const;
     const std::vector<Node*> getChildren() const override;
     Symbol* getSymbolReference() const;
@@ -172,7 +241,7 @@ private:
 class AssignmentExpressionNode : public ExpressionNode {
 public:
     AssignmentExpressionNode(std::unique_ptr<IdentifierNode> identifier, std::unique_ptr<ExpressionNode> expression, SourceCodeLocationSpan sourceCodeLocationSpan) : ExpressionNode(NodeKind::AssignmentExpression, sourceCodeLocationSpan), identifier(std::move(identifier)), expression(std::move(expression)) {};
-    std::string getIdentifierName() const;
+    std::string_view getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
     ExpressionNode* getExpression() const;
     std::unique_ptr<IdentifierNode> takeIdentifier();
@@ -204,13 +273,13 @@ private:
 
 class BlockStatementNode : public Node {
 public:
-    BlockStatementNode(std::unique_ptr<ProgramNode> programNode, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::BlockStatement, sourceCodeLocationSpan), programNode(std::move(programNode)) {};
-    ProgramNode* getProgramNode() const;
+    BlockStatementNode(std::unique_ptr<ExecutionListNode> executionListNode, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::BlockStatement, sourceCodeLocationSpan), executionListNode(std::move(executionListNode)) {};
+    ExecutionListNode* getExecutionListNode() const;
     const std::vector<Node*> getChildren() const override;
-    std::unique_ptr<ProgramNode> takeProgramNode();
-    void setProgramNode(std::unique_ptr<ProgramNode> programNode);
+    std::unique_ptr<ExecutionListNode> takeExecutionListNode();
+    void setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode);
 private:
-    std::unique_ptr<ProgramNode> programNode;
+    std::unique_ptr<ExecutionListNode> executionListNode;
 };
 
 class IdentifierWithPossibleAnnotationNode : public IdentifierNode {
