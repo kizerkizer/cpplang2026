@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(cpplang2026 LANGUAGES CXX)
+project(englishbreakfast LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(cpplang2026
+add_executable(englishbreakfast
     src/main.cpp
     src/lexer/token.cpp
     src/lexer/lexer.cpp
@@ -34,13 +34,13 @@ add_executable(cpplang2026
     src/utf8scanner/utf8scanner.cpp
 )
 
-target_include_directories(cpplang2026 PRIVATE include)
+target_include_directories(englishbreakfast PRIVATE include)
 
-target_compile_options(cpplang2026 PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-target_link_options(cpplang2026 PRIVATE -fsanitize=address)
+target_compile_options(englishbreakfast PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(englishbreakfast PRIVATE -fsanitize=address)
 
 if (MSVC)
-    target_compile_options(cpplang2026 PRIVATE /W4)
+    target_compile_options(englishbreakfast PRIVATE /W4)
 else()
-    target_compile_options(cpplang2026 PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(englishbreakfast PRIVATE -Wall -Wextra -Wpedantic)
 endif()

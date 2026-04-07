@@ -1,11 +1,11 @@
-# cpplang2026
-Why? Toy language, re-learning C++. If it gets big enough I'll rename it.
+# English Breakfast
+Toy language, re-learning C++.
 
 ## building
 `./build.sh`
 
 ## running
-`./out/cpplang2026 <filepath>`
+`./out/englishbreakfast <filepath>`
 
 ## todo
 - Make lexer/parser/etc error tolerant
