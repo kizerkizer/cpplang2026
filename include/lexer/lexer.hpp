@@ -27,4 +27,5 @@ public:
     std::unique_ptr<Token> getNextToken();
     std::unique_ptr<Token> getNextNonTrivialToken();
     bool isDone();
+    void reset();
 };

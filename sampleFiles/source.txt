@@ -2,7 +2,6 @@ function foo (myParam: Integer): String {
     var baz = 'baz';
     var qux = 1053; // Some comment :-)
     while (true && !(12 == qux)) { // Should all typecheck OK to Boolean
-        // Maybe this will be eventually detected as an unreachable area
         var b = 'Foo bar!';
         break;
         /*

@@ -22,6 +22,7 @@ public:
     void advance(size_t count = 1);
     std::string_view substr(size_t byteIndex, size_t byteLength);
     bool isDone() const;
+    void reset();
     size_t getByteIndex() const;
     size_t getCodepointIndex() const;
     size_t getLine() const;

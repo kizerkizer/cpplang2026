@@ -5,21 +5,16 @@
 #include <sstream>
 #include <set>
 
-#include "checker/checker.hpp"
 #include "common/sourcecodelocation.hpp"
 #include "flowbuilder/flowbuilder.hpp"
 #include "flowbuilder/flownode.hpp"
-#include "lexer/lexer.hpp"
 #include "parser/node.hpp"
-#include "parser/parser.hpp"
 #include "lexer/token.hpp"
-#include "desugarer/desugarer.hpp"
 #include "binder/binder.hpp"
 #include "binder/symbol.hpp"
 #include "checker/type.hpp"
-#include "treewalker/interpreter.hpp"
 #include "treewalker/outputstream.hpp"
-#include "utf8scanner/utf8scanner.hpp"
+#include "driver/driver.hpp"
 
 void printParseTree (const Node* node, int indentation) {
     auto sourceCodeLocationSpan = node->getSourceCodeLocationSpan();
@@ -561,75 +556,14 @@ int main (int argc, char* argv[]) {
     }
     std::stringstream buffer;
     buffer << file.rdbuf();
+    file.close();
+
     std::string sourceString = buffer.str();
     std::unique_ptr<Source> source = std::make_unique<Source>(SourceKind::File, filename, sourceString);
     Diagnostics diagnostics = Diagnostics();
-    Utf8Scanner utf8Scanner = Utf8Scanner(source.get(), diagnostics);
-    Lexer lexer = Lexer(utf8Scanner, source.get(), diagnostics);
-    /*std::unique_ptr<Token> token = nullptr;
-    while (!lexer.isDone()) {
-        token = lexer.getNextToken();
-        std::print("<{}> '{}'\n", tokenKindToString(token->getTokenKind()), token->getSourceString());
-    }*/
-    Parser parser = Parser(source.get(), &lexer, diagnostics);
-    auto parsed = parser.parse();
-    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
-        std::print("{}\n", diagnosticMessage.getFullMessage());
-    }
-    if (!diagnostics.getDiagnosticMessages().empty()) {
-        return 1;
-    } else {
-        std::print("Parsed successfully!\n");
-    }
-    Desugarer desugarer = Desugarer(std::move(parsed), diagnostics);
-    auto desugared = desugarer.desugar();
-    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
-        std::print("{}\n", diagnosticMessage.getFullMessage());
-    }
-    if (!diagnostics.getDiagnosticMessages().empty()) {
-        return 1;
-    } else {
-        std::print("Desugared successfully!\n");
-    }
-    //std::print("Desugared parse tree:\n");
-    //printParseTree(desugared.get(), 0);
-    Binder binder(source.get(), diagnostics);
-    auto binderResult = binder.bind(desugared.get());
-    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
-        std::print("{}\n", diagnosticMessage.getFullMessage());
-    }
-    if (!diagnostics.getDiagnosticMessages().empty()) {
-        return 1;
-    } else {
-        std::print("Bound successfully!\n");
-    }
-    //std::print("Print out of desugared parse tree:\n");
-    //std::print("{}", getNodeSyntax(desugared.get(), 0)); // 0 for root node
-    FlowBuilder flowBuilder = FlowBuilder();
-    std::unique_ptr<FlowBuilderResult> result = flowBuilder.buildGraph(binderResult->getNode());
-    for (auto graph : result->getGraphs()) {
-        graph->assignReachabilityToNodes();
-    }
-    // TODO print results of reachability analysis on flow graph
-    //std::print("Built Flow Graphs!\n");
-    //printFlowBuilderResult(std::move(result));
-
-    TypeChecker typeChecker = TypeChecker(source.get(), diagnostics);
-    typeChecker.typeCheck(binderResult->getNode());
-    for (const auto& diagnosticMessage : diagnostics.getDiagnosticMessages()) {
-        std::print("{}\n", diagnosticMessage.getFullMessage());
-    }
-    if (!diagnostics.getDiagnosticMessages().empty()) {
-        return 1;
-    } else {
-        std::print("Type checked successfully!\n");
-    }
     StdOutOutputStream outputStream = StdOutOutputStream();
-    Interpreter interpreter = Interpreter(&outputStream);
-    auto resultingValue = interpreter.interpret(binderResult->getNode());
-    if (resultingValue->getKind() == ValueKind::Integer) {
-        auto integerValue = static_cast<IntegerValue*>(resultingValue);
-        std::print("Program interpretation result: {}\n", integerValue->getValue());
-    }
+    Driver driver = Driver(diagnostics, &outputStream);
+    driver.compile(source.get());
+
     return 0;
 }

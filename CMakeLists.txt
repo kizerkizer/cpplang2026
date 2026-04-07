@@ -32,6 +32,7 @@ add_executable(englishbreakfast
     src/treewalker/interpreter.cpp
     src/treewalker/outputstream.cpp
     src/utf8scanner/utf8scanner.cpp
+    src/driver/driver.cpp
 )
 
 target_include_directories(englishbreakfast PRIVATE include)

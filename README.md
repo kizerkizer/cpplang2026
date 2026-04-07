@@ -12,6 +12,7 @@ Toy language, re-learning C++.
 - Union type expressions
 - Type definitions (`type Foo = ...`)
 - Extensional types (enums)
+- Intensional types (refinement types)
 - Classes
 - Interfaces
 - Modules/Packages/Namespaces

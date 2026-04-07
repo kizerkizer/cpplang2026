@@ -43,6 +43,13 @@ size_t Utf8Scanner::getColumn() const {
     return this->m_column;
 }
 
+void Utf8Scanner::reset() {
+    this->m_byteIndex = 0;
+    this->m_codepointIndex = 0;
+    this->m_line = 1;
+    this->m_column = 1;
+}
+
 void Utf8Scanner::advance(size_t count) {
     char nlChar0 = 0;
     char nlChar1 = 0;

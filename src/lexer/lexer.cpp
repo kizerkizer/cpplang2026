@@ -109,34 +109,38 @@ bool isStringLiteralQuote (char32_t c) {
 
 // Lexer
 bool Lexer::isDone() {
-    return this->m_scanner.isDone();
+    return m_scanner.isDone();
+}
+
+void Lexer::reset() {
+    m_scanner.reset();
 }
 
 std::unique_ptr<Token> Lexer::makeToken(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation, std::optional<SourceCodeLocation> endSourceCodeLocation) {
     if (tokenKind == TokenKind::OutOfRange) {
-        return std::make_unique<Token>(this->m_source, sourceString, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), tokenKind);
+        return std::make_unique<Token>(m_source, sourceString, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), tokenKind);
     }
     if (!startSourceCodeLocation.has_value()) {
-        startSourceCodeLocation = this->m_scanner.getCurrentSourceCodeLocation();
+        startSourceCodeLocation = m_scanner.getCurrentSourceCodeLocation();
     }
     auto [byteIndex, codepointIndex, line, column] = startSourceCodeLocation.value();
     auto endLocation = endSourceCodeLocation.has_value() ? endSourceCodeLocation.value() : SourceCodeLocation(byteIndex + sourceString.size() - 1, codepointIndex + sourceString.size() - 1, line, column + sourceString.size() - 1);
     SourceCodeLocationSpan sourceCodeLocationSpan(startSourceCodeLocation.value(), endLocation);
-    auto token = std::make_unique<Token>(this->m_source, sourceString, sourceCodeLocationSpan, tokenKind);
+    auto token = std::make_unique<Token>(m_source, sourceString, sourceCodeLocationSpan, tokenKind);
     return token;
 }
 
 std::unique_ptr<Token> Lexer::makeTokenAndAdvance(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation, std::optional<SourceCodeLocation> endSourceCodeLocation) {
     auto token = this->makeToken(tokenKind, sourceString, startSourceCodeLocation, endSourceCodeLocation);
-    this->m_scanner.advance(sourceString.size());
+    m_scanner.advance(sourceString.size());
     return token;
 }
 
 void Lexer::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocation> location) {
-    auto loc = location.has_value() ? location.value() : this->m_scanner.getCurrentSourceCodeLocation();
+    auto loc = location.has_value() ? location.value() : m_scanner.getCurrentSourceCodeLocation();
     auto locationSpan = SourceCodeLocationSpan(loc, loc);
-    auto diagnosticMessage = DiagnosticMessage(code, kind, DiagnosticMessageStage::Lexer, locationSpan, this->m_source, message);
-    this->m_diagnostics.addDiagnosticMessage(diagnosticMessage);
+    auto diagnosticMessage = DiagnosticMessage(code, kind, DiagnosticMessageStage::Lexer, locationSpan, m_source, message);
+    m_diagnostics.addDiagnosticMessage(diagnosticMessage);
 }
 
 void Lexer::addError(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
@@ -168,72 +172,72 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         // Windows-style newline
         auto token = this->makeToken(TokenKind::TriviaNewline, this->m_scanner.substr(this->m_scanner.getByteIndex(), 2));
         nextToken = std::move(token);
-        this->m_scanner.advance(2);
+        m_scanner.advance(2);
         return nextToken;
     }
-    if (this->m_scanner.peekCodepoint() == '\n') {
+    if (m_scanner.peekCodepoint() == '\n') {
         // Unix-style newline
-        auto token = this->makeToken(TokenKind::TriviaNewline, this->m_scanner.substr(this->m_scanner.getByteIndex(), 1));
+        auto token = this->makeToken(TokenKind::TriviaNewline, m_scanner.substr(m_scanner.getByteIndex(), 1));
         // LastSourceLocation automatically set to first in constructor
         nextToken = std::move(token);
-        this->m_scanner.advance();
+        m_scanner.advance();
         return nextToken;
     }
-    if (isWhitespace(this->m_scanner.peekCodepoint())) {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        while (isWhitespace(this->m_scanner.peekCodepoint()) && !isNewline(this->m_scanner.peekCodepoint())) {
-            this->m_scanner.advance();
+    if (isWhitespace(m_scanner.peekCodepoint())) {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        while (isWhitespace(m_scanner.peekCodepoint()) && !isNewline(m_scanner.peekCodepoint())) {
+            m_scanner.advance();
         }
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
-        auto token = this->makeToken(TokenKind::TriviaWhitespace, this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex), startLocation);
+        auto token = this->makeToken(TokenKind::TriviaWhitespace, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
     // Single line comment
-    if (this->m_scanner.peekCodepoint() == '/' && this->m_scanner.peekCodepoint(1) == '/') {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        while (!isNewline(this->m_scanner.peekCodepoint()) && !this->m_scanner.isDone()) {
-            this->m_scanner.advance();
+    if (m_scanner.peekCodepoint() == '/' && m_scanner.peekCodepoint(1) == '/') {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        while (!isNewline(m_scanner.peekCodepoint()) && !m_scanner.isDone()) {
+            m_scanner.advance();
         }
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
-        auto token = this->makeToken(TokenKind::TriviaCommentShort, this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex), startLocation);
+        auto token = this->makeToken(TokenKind::TriviaCommentShort, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
     // /*...*/ comment
-    if (this->m_scanner.peekCodepoint() == '/' && this->m_scanner.peekCodepoint(1) == '*') {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        this->m_scanner.advance(2);
-        while (!(this->m_scanner.peekCodepoint() == '*' && this->m_scanner.peekCodepoint(1) == '/') && !this->m_scanner.isDone()) {
-            if (this->m_scanner.peekCodepoint() == '\r' && this->m_scanner.peekCodepoint(1) == '\n') {
-                this->m_scanner.advance(2);
+    if (m_scanner.peekCodepoint() == '/' && m_scanner.peekCodepoint(1) == '*') {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        m_scanner.advance(2);
+        while (!(m_scanner.peekCodepoint() == '*' && m_scanner.peekCodepoint(1) == '/') && !m_scanner.isDone()) {
+            if (m_scanner.peekCodepoint() == '\r' && m_scanner.peekCodepoint(1) == '\n') {
+                m_scanner.advance(2);
                 continue;
             }
-            if (this->m_scanner.peekCodepoint() == '\n') {
-                this->m_scanner.advance();
+            if (m_scanner.peekCodepoint() == '\n') {
+                m_scanner.advance();
                 continue;
             }
-            this->m_scanner.advance();
+            m_scanner.advance();
         }
-        if (this->m_scanner.isDone()) {
+        if (m_scanner.isDone()) {
             this->addError(2, "Unterminated comment", SourceCodeLocation(startByteIndex - 1, startCodepointIndex - 1, startLine, startColumn - 1));
             return nextToken;
         }
-        this->m_scanner.advance(2);
+        m_scanner.advance(2);
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
-        auto endLocation = SourceCodeLocation(this->m_scanner.getByteIndex() - 1, this->m_scanner.getCodepointIndex() - 1, this->m_scanner.getLine(), this->m_scanner.getColumn() - 1);
-        auto token = this->makeToken(TokenKind::TriviaCommentLong, this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex), startLocation, endLocation);
+        auto endLocation = SourceCodeLocation(m_scanner.getByteIndex() - 1, m_scanner.getCodepointIndex() - 1, m_scanner.getLine(), m_scanner.getColumn() - 1);
+        auto token = this->makeToken(TokenKind::TriviaCommentLong, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation, endLocation);
         nextToken = std::move(token);
         return nextToken;
     }
     // Identifier
-    if (isIdentifierStart(this->m_scanner.peekCodepoint())) {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        this->m_scanner.advance();
-        while (isIdentifierPart(this->m_scanner.peekCodepoint())) {
-            this->m_scanner.advance();
+    if (isIdentifierStart(m_scanner.peekCodepoint())) {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        m_scanner.advance();
+        while (isIdentifierPart(m_scanner.peekCodepoint())) {
+            m_scanner.advance();
         }
-        auto sourceString = this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex);
+        auto sourceString = m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex);
 
         // check keywords
         auto keywordIt = keywords.find(std::string(sourceString));
@@ -259,43 +263,43 @@ std::unique_ptr<Token> Lexer::getNextToken() {
     }
 
     // String literal (Only on one line for now)
-    if (isStringLiteralQuote(this->m_scanner.peekCodepoint())) {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        this->m_scanner.advance();
-        while (!isStringLiteralQuote(this->m_scanner.peekCodepoint())) {
-            if (isNewline(this->m_scanner.peekCodepoint()) || this->m_scanner.isDone()) {
+    if (isStringLiteralQuote(m_scanner.peekCodepoint())) {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        m_scanner.advance();
+        while (!isStringLiteralQuote(m_scanner.peekCodepoint())) {
+            if (isNewline(m_scanner.peekCodepoint()) || m_scanner.isDone()) {
                 this->addError(3, "Unterminated string literal", SourceCodeLocation(startByteIndex - 1, startCodepointIndex - 1, startLine, startColumn - 1));
                 return nextToken;
             } 
-            if (this->m_scanner.peekCodepoint() == '\\' && isStringLiteralQuote(this->m_scanner.peekCodepoint(1))) {
-                this->m_scanner.advance(2);
+            if (m_scanner.peekCodepoint() == '\\' && isStringLiteralQuote(m_scanner.peekCodepoint(1))) {
+                m_scanner.advance(2);
                 continue;
             }
-            this->m_scanner.advance();
+            m_scanner.advance();
         }
-        this->m_scanner.advance();
+        m_scanner.advance();
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
-        auto token = this->makeToken(TokenKind::LiteralString, this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex), startLocation);
+        auto token = this->makeToken(TokenKind::LiteralString, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
 
     // Integer literal
-    if (isIntegerLiteral(this->m_scanner.peekCodepoint())) {
-        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = this->m_scanner.getCurrentSourceCodeLocation();
-        this->m_scanner.advance();
-        while (isIntegerLiteral(this->m_scanner.peekCodepoint())) {
-            this->m_scanner.advance();
+    if (isIntegerLiteral(m_scanner.peekCodepoint())) {
+        auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
+        m_scanner.advance();
+        while (isIntegerLiteral(m_scanner.peekCodepoint())) {
+            m_scanner.advance();
         }
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
-        auto token = this->makeToken(TokenKind::LiteralInteger, this->m_scanner.substr(startByteIndex, this->m_scanner.getByteIndex() - startByteIndex), startLocation);
+        auto token = this->makeToken(TokenKind::LiteralInteger, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);
         nextToken = std::move(token);
         return nextToken;
     }
 
     // Operators
     for (const auto& [op, tokenName] : operators) {
-        if (this->m_scanner.substr(this->m_scanner.getByteIndex(), op.size()).compare(0, op.size(), op) == 0) {
+        if (m_scanner.substr(m_scanner.getByteIndex(), op.size()).compare(0, op.size(), op) == 0) {
             auto token = this->makeTokenAndAdvance(tokenName, op);
             nextToken = std::move(token);
             return nextToken;
@@ -304,12 +308,12 @@ std::unique_ptr<Token> Lexer::getNextToken() {
 
     // Punctuators
     for (const auto& [punctuator, tokenName] : punctuators) {
-        if (this->m_scanner.peekCodepoint() == (char32_t)punctuator[0]) {
+        if (m_scanner.peekCodepoint() == (char32_t)punctuator[0]) {
             auto token = this->makeTokenAndAdvance(tokenName, punctuator);
             nextToken = std::move(token);
             return nextToken;
         }
     }
-    this->addError(4, std::string("Unexpected character '") + std::string(1, this->m_scanner.peekCodepoint()) + "'", this->m_scanner.getCurrentSourceCodeLocation());
+    this->addError(4, std::string("Unexpected character '") + std::string(1, m_scanner.peekCodepoint()) + "'", m_scanner.getCurrentSourceCodeLocation());
     return nextToken;
 }
