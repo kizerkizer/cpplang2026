@@ -195,14 +195,14 @@ constexpr const char* tokenKindToString(const TokenKind &tokenKind) {
 
 class Token {
 private:
-    Source* source;
-    TokenKind name;
-    std::string_view sourceString;
-    SourceCodeLocationSpan sourceCodeLocationSpan;
-    bool compilerCreated;
+    Source* m_source;
+    TokenKind m_name;
+    std::string_view m_sourceString;
+    SourceCodeLocationSpan m_sourceCodeLocationSpan;
+    bool m_compilerCreated;
 public:
     Token(Source* source, const std::string_view sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
-        : source(source), name(name), sourceString(sourceString), sourceCodeLocationSpan(sourceCodeLocationSpan), compilerCreated(compilerCreated) {};
+        : m_source(source), m_name(name), m_sourceString(sourceString), m_sourceCodeLocationSpan(sourceCodeLocationSpan), m_compilerCreated(compilerCreated) {};
     TokenKind getTokenKind() const;
     Source* getSource() const;
     std::string_view getSourceString() const;

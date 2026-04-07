@@ -6,7 +6,7 @@
 
 class Diagnostics {
 private:
-    std::vector<DiagnosticMessage> diagnosticMessages;
+    std::vector<DiagnosticMessage> m_diagnosticMessages;
 public:
     Diagnostics() {}
     void addDiagnosticMessage(DiagnosticMessage diagnosticMessage);

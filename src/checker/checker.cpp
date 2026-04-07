@@ -15,7 +15,7 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
 
 void TypeChecker::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
     auto span = sourceCodeSpan.has_value() ? sourceCodeSpan.value() : SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1, -1), SourceCodeLocation(-1, -1, -1, -1));
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(code, kind, DiagnosticMessageStage::TypeChecker, span, this->source, message));
+    this->m_diagnostics.addDiagnosticMessage(DiagnosticMessage(code, kind, DiagnosticMessageStage::TypeChecker, span, this->m_source, message));
 }
 
 void TypeChecker::addError(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan) {
@@ -66,12 +66,12 @@ std::vector<Symbol*> TypeChecker::checkFunctionDeclarationParameters(FunctionDec
         auto parameterAnnotation = parameter->getAnnotation();
         if (parameterAnnotation) {
             // TODO eventually properly parse type expression type annotations instead of just primitive types. For now, if there's a type annotation, it must be a primitive type.
-            auto parameterType = this->typeStore->createType<PrimitiveType>(parameterAnnotation->getPrimitiveTypeKind());
+            auto parameterType = this->m_typeStore->createType<PrimitiveType>(parameterAnnotation->getPrimitiveTypeKind());
             parameterSymbol->setType(parameterType);
         } else {
             // If there's no parameter type annotation, then the parameter type is Any.
             // TODO also should eventually infer this (will be harder since code assumes types set for symbols)
-            parameterSymbol->setType(this->typeStore->getAnyType());
+            parameterSymbol->setType(this->m_typeStore->getAnyType());
         }
         if (parameterSymbol) {
             parameterSymbols.push_back(parameterSymbol);
@@ -88,18 +88,18 @@ Type* TypeChecker::getFunctionDeclarationReturnType(FunctionDeclarationNode* fun
     auto returnTypeExpression = functionDeclarationNode->getReturnTypeExpression();
     if (returnTypeExpression) {
         // TODO eventually type expression won't just be primitive types
-        return this->typeStore->createType<PrimitiveType>(returnTypeExpression->getPrimitiveTypeKind());
+        return this->m_typeStore->createType<PrimitiveType>(returnTypeExpression->getPrimitiveTypeKind());
     } else {
         // If there's no return type annotation, then the return type is Void.
         // TODO infer return type here eventually instead
-        return this->typeStore->getVoidType();
+        return this->m_typeStore->getVoidType();
     }
 }
 
 FunctionType* TypeChecker::getFunctionDeclarationFunctionType(FunctionDeclarationNode* functionDeclarationNode) {
     auto parameterSymbols = this->checkFunctionDeclarationParameters(functionDeclarationNode);
     auto returnType = this->getFunctionDeclarationReturnType(functionDeclarationNode);
-    return this->typeStore->createType<FunctionType>(parameterSymbols, returnType);
+    return this->m_typeStore->createType<FunctionType>(parameterSymbols, returnType);
 }
 
 Type* TypeChecker::examineIdentifier(Node* node) {
@@ -129,7 +129,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
             auto leftPrimitiveType = static_cast<PrimitiveType*>(leftType);
             auto rightPrimitiveType = static_cast<PrimitiveType*>(rightType);
             if (leftPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::String && rightPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::String && operatorToken == TokenKind::Plus) {
-                binaryOperatorExpressionNode->setType(this->typeStore->getStringType());
+                binaryOperatorExpressionNode->setType(this->m_typeStore->getStringType());
                 return binaryOperatorExpressionNode->getType();
             }
         }
@@ -142,11 +142,11 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
             // TODO eventually support proper coercion (Integer -> Float). 
             // For now, if both sides are floats, the result is a float. If both sides are integers, the result is an integer.
             if (leftPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Integer && rightPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Integer) {
-                binaryOperatorExpressionNode->setType(this->typeStore->getIntegerType());
+                binaryOperatorExpressionNode->setType(this->m_typeStore->getIntegerType());
                 return binaryOperatorExpressionNode->getType();
             }
             if (leftPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Float && rightPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Float) {
-                binaryOperatorExpressionNode->setType(this->typeStore->getFloatType());
+                binaryOperatorExpressionNode->setType(this->m_typeStore->getFloatType());
                 return binaryOperatorExpressionNode->getType();
             }
             // Fall through --v
@@ -162,7 +162,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
             auto leftPrimitiveType = static_cast<PrimitiveType*>(leftType);
             auto rightPrimitiveType = static_cast<PrimitiveType*>(rightType);
             if (leftPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Boolean && rightPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Boolean) {
-                binaryOperatorExpressionNode->setType(this->typeStore->getBooleanType());
+                binaryOperatorExpressionNode->setType(this->m_typeStore->getBooleanType());
                 return binaryOperatorExpressionNode->getType();
             }
             // Fall through --v
@@ -179,7 +179,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
             auto leftPrimitiveType = static_cast<PrimitiveType*>(leftType);
             auto rightPrimitiveType = static_cast<PrimitiveType*>(rightType);
             if (isPrimitiveTypeNumeric(leftPrimitiveType->getPrimitiveTypeKind()) && isPrimitiveTypeNumeric(rightPrimitiveType->getPrimitiveTypeKind())) {
-                binaryOperatorExpressionNode->setType(this->typeStore->getBooleanType());
+                binaryOperatorExpressionNode->setType(this->m_typeStore->getBooleanType());
                 return binaryOperatorExpressionNode->getType();
             }
             // Fall through --v
@@ -192,7 +192,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
     }
     // TODO eventually handle == and !=? Or just let that be determined at runtime?
     if (operatorToken == TokenKind::EqualEqual || operatorToken == TokenKind::NotEqual) {
-        binaryOperatorExpressionNode->setType(this->typeStore->getBooleanType());
+        binaryOperatorExpressionNode->setType(this->m_typeStore->getBooleanType());
         return binaryOperatorExpressionNode->getType();
     }
     // TODO eventually support operator overloading, but for now only allow primitive types.
@@ -205,7 +205,7 @@ Type* TypeChecker::examineBinaryOperatorExpression(Node* node) {
 Type* TypeChecker::examineTypeExpression(Node* node) {
     auto typeExpressionNode = static_cast<TypeExpressionNode*>(node);
     // TODO eventually type expression won't just be primitive types
-    auto primitiveType = this->typeStore->createType<PrimitiveType>(typeExpressionNode->getPrimitiveTypeKind());
+    auto primitiveType = this->m_typeStore->createType<PrimitiveType>(typeExpressionNode->getPrimitiveTypeKind());
     typeExpressionNode->setType(primitiveType);
     return primitiveType;
 }
@@ -218,7 +218,7 @@ Type* TypeChecker::examineUnaryOperatorExpression(Node* node) {
         if (operandType->getTypeKind() == TypeKind::Primitive) {
             auto operandPrimitiveType = static_cast<PrimitiveType*>(operandType);
             if (isPrimitiveTypeNumeric(operandPrimitiveType->getPrimitiveTypeKind())) {
-                unaryOperatorExpressionNode->setType(this->typeStore->createType<PrimitiveType>(operandPrimitiveType->getPrimitiveTypeKind()));
+                unaryOperatorExpressionNode->setType(this->m_typeStore->createType<PrimitiveType>(operandPrimitiveType->getPrimitiveTypeKind()));
                 return unaryOperatorExpressionNode->getType();
             }
             // Fall through --v
@@ -232,7 +232,7 @@ Type* TypeChecker::examineUnaryOperatorExpression(Node* node) {
         if (operandType->getTypeKind() == TypeKind::Primitive) {
             auto operandPrimitiveType = static_cast<PrimitiveType*>(operandType);
             if (operandPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Boolean) {
-                unaryOperatorExpressionNode->setType(this->typeStore->getBooleanType());
+                unaryOperatorExpressionNode->setType(this->m_typeStore->getBooleanType());
                 return unaryOperatorExpressionNode->getType();
             }
             // Fall through --v
@@ -258,8 +258,8 @@ Type* TypeChecker::examineIfExpression(Node* node) {
         if (conditionPrimitiveType->getPrimitiveTypeKind() == PrimitiveTypeKind::Boolean) {
             auto thenBranchType = this->examine(ifExpressionNode->getThenBranch());
             auto elseBranchType = this->examine(ifExpressionNode->getElseBranch());
-            auto unionType = this->typeStore->createType<UnionType>(thenBranchType, elseBranchType);
-            auto type = this->typeStore->simplifyType(unionType);
+            auto unionType = this->m_typeStore->createType<UnionType>(thenBranchType, elseBranchType);
+            auto type = this->m_typeStore->simplifyType(unionType);
             ifExpressionNode->setType(type);
             return type;
         }
@@ -302,15 +302,15 @@ Type* TypeChecker::examineVariableDeclaration(Node* node) {
         expressionType = this->examine(expressionNode);
     } else {
         // if there's no initializer expression, then the type annotation is required, and Empty must be assignable to it.
-        expressionType = this->typeStore->getEmptyType();
+        expressionType = this->m_typeStore->getEmptyType();
     }
     if (!expressionType) {
         // if the expression type is null, then there was an error examining the expression, so just return void to avoid spamming errors about incompatible types
-        return this->typeStore->getVoidType();
+        return this->m_typeStore->getVoidType();
     }
     if (typeExpressionNode) {
         // Set type to what is annotated
-        auto typeExpressionType = this->typeStore->createType<PrimitiveType>(typeExpressionNode->getPrimitiveTypeKind());
+        auto typeExpressionType = this->m_typeStore->createType<PrimitiveType>(typeExpressionNode->getPrimitiveTypeKind());
         if (!expressionType->isSubtypeOf(typeExpressionType)) {
             this->addError(17, "Type annotation is not compatible with initializer expression type", identifierNode->getSourceCodeLocationSpan());
         }
@@ -331,7 +331,7 @@ Type* TypeChecker::examineVariableDeclaration(Node* node) {
         // Shouldn't happen since binder should have created a symbol for the variable declaration
         this->addError(20, "Variable declaration identifier has no symbol reference", identifierNode->getSourceCodeLocationSpan());
     }
-    return this->typeStore->getVoidType();
+    return this->m_typeStore->getVoidType();
 }
 
 Type* TypeChecker::examineFunctionDeclaration(Node* node) {
@@ -348,7 +348,7 @@ Type* TypeChecker::examineFunctionDeclaration(Node* node) {
     this->examine(functionDeclarationNode->getBody());
     // Check function returns after body:
     checkFunctionDeclarationReturns(functionType->getReturnType(), functionDeclarationNode);
-    return this->typeStore->getVoidType();
+    return this->m_typeStore->getVoidType();
 }
 
 Type* TypeChecker::examineIfStatement(Node* node) {
@@ -367,7 +367,7 @@ Type* TypeChecker::examineIfStatement(Node* node) {
     } else {
         this->addError(14, "Bad type for if condition. Expected Boolean.", ifStatementNode->getCondition()->getSourceCodeLocationSpan());
     }
-    return this->typeStore->getVoidType();
+    return this->m_typeStore->getVoidType();
 }
 
 Type* TypeChecker::examine(Node* node) {
@@ -380,19 +380,19 @@ Type* TypeChecker::examine(Node* node) {
         case NodeKind::TypeExpression: return this->examineTypeExpression(node);
         case NodeKind::NumberLiteral: {
             // TODO eventually distinguish between integers and floats. Probably get rid of Number primitive type.
-            node->setType(this->typeStore->getIntegerType());
+            node->setType(this->m_typeStore->getIntegerType());
             return node->getType();
         }
         case NodeKind::StringLiteral: {
-            node->setType(this->typeStore->getStringType());
+            node->setType(this->m_typeStore->getStringType());
             return node->getType();
         }
         case NodeKind::BooleanLiteral: {
-            node->setType(this->typeStore->getBooleanType());
+            node->setType(this->m_typeStore->getBooleanType());
             return node->getType();
         }
         case NodeKind::EmptyLiteral: {
-            node->setType(this->typeStore->getEmptyType());
+            node->setType(this->m_typeStore->getEmptyType());
             return node->getType();
         }
         case NodeKind::BinaryOperatorExpression: return this->examineBinaryOperatorExpression(node);
@@ -402,7 +402,7 @@ Type* TypeChecker::examine(Node* node) {
             auto functionCallStatementNode = static_cast<FunctionCallStatementNode*>(node);
             auto functionCallExpressionNode = functionCallStatementNode->getFunctionCallExpression();
             this->examine(functionCallExpressionNode);
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::FunctionCallExpression: return this->examineFunctionCallExpression(node);
         case NodeKind::VariableDeclaration: return this->examineVariableDeclaration(node);
@@ -413,22 +413,22 @@ Type* TypeChecker::examine(Node* node) {
             for (auto child : executionListNode->getChildren()) {
                 this->examine(child);
             }
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::Program: {
             auto programNode = static_cast<ProgramNode*>(node);
             this->examine(programNode->getExecutionListNode());
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::BlockStatement: {
             auto blockStatementNode = static_cast<BlockStatementNode*>(node);
             this->examine(blockStatementNode->getExecutionListNode());
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::LoopStatement: {
             auto loopStatementNode = static_cast<LoopStatementNode*>(node);
             this->examine(loopStatementNode->getBody());
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::ReturnStatement:
         case NodeKind::Invalid: // shouldn't exist
@@ -436,12 +436,12 @@ Type* TypeChecker::examine(Node* node) {
         case NodeKind::BreakStatement:
         case NodeKind::WhileStatement: // shouldn't exist
         {
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::AssignmentStatement: {
             auto assignmentStatementNode = static_cast<AssignmentStatementNode*>(node);
             this->examine(assignmentStatementNode->getAssignmentExpression());
-            return this->typeStore->getVoidType();
+            return this->m_typeStore->getVoidType();
         }
         case NodeKind::AssignmentExpression: {
             auto assignmentExpressionNode = static_cast<AssignmentExpressionNode*>(node);

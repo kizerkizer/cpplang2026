@@ -10,39 +10,23 @@
 
 class Parser {
 public:
-    Parser(Source* source, Lexer* lexer, Diagnostics& diagnostics) : source(source), lexer(lexer), diagnostics(diagnostics) {};
+    Parser(Source* source, Lexer* lexer, Diagnostics& diagnostics) : m_source(source), m_lexer(lexer), m_diagnostics(diagnostics) {};
     std::unique_ptr<Node> parse();
 private:
-    Source* source;
-    Lexer* lexer;
-    Diagnostics& diagnostics;
-    size_t index = 0;
-    std::deque<std::unique_ptr<Token>> tokenBuffer;
-
-    /**
-     * @brief Expects the next token to have the specified token name, and advances the index. If the next token does not have the expected token name, an error message is added to diagnostics and nullptr is returned.
-     * 
-     * @param expectedTokenName Name of the expected token
-     * @return std::unique_ptr<Token> 
-     */
+    Source* m_source;
+    Lexer* m_lexer;
+    Diagnostics& m_diagnostics;
+    size_t m_index = 0;
+    std::deque<std::unique_ptr<Token>> m_tokenBuffer;
+    int m_insideLoop = 0;
+    int m_insideFunction = 0;
+    int m_insideBlock = 0;
     std::unique_ptr<Token> expectAndAdvance(const TokenKind& expectedTokenName);
     Token peek(size_t offset = 0);
     std::unique_ptr<Token> consumeCurrentToken();
-
-    /**
-     * @brief Matches the next token with the specified token name and advances the index. If the next token does not have the expected token name, nothing happens.
-     * 
-     * @param expectedTokenName Name of the expected token
-     * @return std::unique_ptr<Token> 
-     */
     std::unique_ptr<Token> matchAndAdvance(const TokenKind& expectedTokenName);
-    /*SourceCodeLocation getCurrentSourceCodeLocationStart();
-    SourceCodeLocation getCurrentSourceCodeLocationEnd();*/
     SourceCodeLocationSpan getCurrentSourceCodeLocationSpan();
     bool isPastTokensEnd() const;
-    int insideLoop = 0;
-    int insideFunction = 0;
-    int insideBlock = 0;
     void enterLoop();
     void exitLoop();
     void enterFunction();

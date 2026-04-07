@@ -50,11 +50,11 @@ constexpr const char* flowNodeKindToString(FlowNodeKind kind) {
 
 class FlowNode {
 private:
-    FlowNodeKind kind;
-    int id = 0;
-    Node* astNode = nullptr;
-    std::vector<FlowNode*> successors;
-    std::vector<FlowNode*> predecessors;
+    FlowNodeKind m_kind;
+    int m_id = 0;
+    Node* m_astNode = nullptr;
+    std::vector<FlowNode*> m_successors;
+    std::vector<FlowNode*> m_predecessors;
 public:
     FlowNode(FlowNodeKind kind);
     FlowNodeKind getKind();

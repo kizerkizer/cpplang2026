@@ -2,13 +2,13 @@
 #include <string>
 
 std::string Source::getName() const {
-    return this->name;
+    return this->m_name;
 }
 
 SourceKind Source::getSourceKind() const {
-    return this->sourceKind;
+    return this->m_sourceKind;
 }
 
 std::string Source::getSourceString() const {
-    return this->sourceString;
+    return this->m_sourceString;
 }

@@ -173,6 +173,6 @@ std::unique_ptr<Node> Desugarer::_desugar (std::unique_ptr<Node> node) {
 
 // Desugarer
 std::unique_ptr<Node> Desugarer::desugar() {
-    this->root = _desugar(std::move(this->root));
-    return std::move(this->root);
+    this->m_root = _desugar(std::move(this->m_root));
+    return std::move(this->m_root);
 }

@@ -8,8 +8,9 @@
 
 class TypeChecker {
 private:
-    Source* source;
-    Diagnostics& diagnostics;
+    Source* m_source;
+    Diagnostics& m_diagnostics;
+    TypeStore* m_typeStore = new TypeStore();
     void addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
     void addError(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
     void addWarning(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
@@ -28,9 +29,8 @@ private:
     Type* examineFunctionDeclaration(Node* node);
     Type* examineIfStatement(Node* node);
     Type* examine(Node* node);
-    TypeStore* typeStore = new TypeStore();
 public:
-    TypeChecker (Source* source, Diagnostics& diagnostics) : source(source), diagnostics(diagnostics) {};
+    TypeChecker (Source* source, Diagnostics& diagnostics) : m_source(source), m_diagnostics(diagnostics) {};
     void typeCheck(Node* rootNode);
     TypeStore* getTypeStore();
 };

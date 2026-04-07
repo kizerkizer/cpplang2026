@@ -8,14 +8,14 @@
 
 class TypeStore {
 private:
-    std::vector<std::unique_ptr<Type>> types;
-    std::unique_ptr<PrimitiveType> stringType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::String);
-    std::unique_ptr<PrimitiveType> booleanType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Boolean);
-    std::unique_ptr<PrimitiveType> emptyType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Empty);
-    std::unique_ptr<PrimitiveType> floatType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Float);
-    std::unique_ptr<PrimitiveType> integerType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Integer);
-    std::unique_ptr<AnyType> anyType = std::make_unique<AnyType>();
-    std::unique_ptr<VoidType> voidType = std::make_unique<VoidType>();
+    std::vector<std::unique_ptr<Type>> m_types;
+    std::unique_ptr<PrimitiveType> m_stringType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::String);
+    std::unique_ptr<PrimitiveType> m_booleanType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Boolean);
+    std::unique_ptr<PrimitiveType> m_emptyType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Empty);
+    std::unique_ptr<PrimitiveType> m_floatType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Float);
+    std::unique_ptr<PrimitiveType> m_integerType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Integer);
+    std::unique_ptr<AnyType> m_anyType = std::make_unique<AnyType>();
+    std::unique_ptr<VoidType> m_voidType = std::make_unique<VoidType>();
     Type* simplifyUnionType(UnionType* unionType);
 public:
     TypeStore() = default;
@@ -41,29 +41,29 @@ public:
         }
         auto type = std::make_unique<T>(std::forward<Args>(args)...);
         T* typePointer = type.get();
-        this->types.push_back(std::move(type));
+        m_types.push_back(std::move(type));
         return typePointer;
     }
     Type* simplifyType(Type* type);
     PrimitiveType* getStringType() const {
-        return this->stringType.get();
+        return m_stringType.get();
     }
     PrimitiveType* getBooleanType() const {
-        return this->booleanType.get();
+        return m_booleanType.get();
     }
     PrimitiveType* getEmptyType() const {
-        return this->emptyType.get();
+        return m_emptyType.get();
     }
     PrimitiveType* getFloatType() const {
-        return this->floatType.get();
+        return m_floatType.get();
     }
     PrimitiveType* getIntegerType() const {
-        return this->integerType.get();
+        return m_integerType.get();
     }
     AnyType* getAnyType() const {
-        return this->anyType.get();
+        return m_anyType.get();
     }
     VoidType* getVoidType() const {
-        return this->voidType.get();
+        return m_voidType.get();
     }
 };

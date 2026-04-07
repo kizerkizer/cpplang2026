@@ -18,11 +18,11 @@ public:
 };
 
 class StringOutputStream : public OutputStream {
+private:
+    std::string m_string;
 public:
     void print(const std::string& str) override;
     void println(const std::string& str) override;
     StringOutputStream& operator<< (const std::string& str) override;
     std::string getString() const;
-private:
-    std::string string;
 };

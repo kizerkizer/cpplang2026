@@ -39,20 +39,14 @@
     (tokenKind == TokenKind::Or) ? (leftValue || rightValue) : \
     (false)
 
-/*class InterpreterContext {
-private:
-
-public:
-};*/
-
 class Interpreter {
+private:
+    std::unique_ptr<Environment> m_globalEnvironment;
+    std::unique_ptr<ValueStore> m_valueStore;
+    OutputStream* m_outputStream;
+    Value* _interpret(Node* node, Environment* environment);
+    Value* interpretIdentifier(IdentifierNode* identifierNode, Environment* environment);
 public:
     Interpreter(OutputStream* outputStream);
     Value* interpret(Node* rootNode);
-private:
-    std::unique_ptr<Environment> globalEnvironment;
-    std::unique_ptr<ValueStore> valueStore;
-    OutputStream* outputStream;
-    Value* _interpret(Node* node, Environment* environment);
-    Value* interpretIdentifier(IdentifierNode* identifierNode, Environment* environment);
 };

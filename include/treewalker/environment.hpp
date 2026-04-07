@@ -4,119 +4,16 @@
 #include <unordered_map>
 
 #include "parser/node.hpp"
-
-enum class ValueKind {
-    Integer,
-    Float,
-    String,
-    Boolean,
-    Empty,
-    Void,
-    Function,
-    Instance,
-    Return,
-    Break,
-    Continue,
-};
-
-#define valueKindToString(valueKind) \
-    (valueKind == ValueKind::Integer) ? "Integer" : \
-    (valueKind == ValueKind::Float) ? "Float" : \
-    (valueKind == ValueKind::String) ? "String" : \
-    (valueKind == ValueKind::Boolean) ? "Boolean" : \
-    (valueKind == ValueKind::Empty) ? "Empty" : \
-    (valueKind == ValueKind::Void) ? "Void" : \
-    (valueKind == ValueKind::Function) ? "Function" : \
-    (valueKind == ValueKind::Instance) ? "Instance" : \
-    (valueKind == ValueKind::Return) ? "Return" : \
-    (valueKind == ValueKind::Break) ? "Break" : \
-    (valueKind == ValueKind::Continue) ? "Continue" : \
-    "Unknown"
-
-class Value {
-public:
-    virtual ~Value() = default;
-    virtual ValueKind getKind() const = 0;
-};
-
-class ReturnValue : public Value {
-public:
-    ReturnValue(Value* value) : value(value) {};
-    ValueKind getKind() const override { return ValueKind::Return; };
-    Value* getValue() const { return value; };
-private:
-    Value* value;
-};
-
-class BreakValue : public Value {
-public:
-    BreakValue() {};
-    ValueKind getKind() const override { return ValueKind::Break; };
-};
-
-class ContinueValue : public Value {
-public:
-    ContinueValue() {};
-    ValueKind getKind() const override { return ValueKind::Continue; };
-};
-
-class IntegerValue : public Value {
-public:
-    IntegerValue(int value) { this->value = value; };
-    ValueKind getKind() const override { return ValueKind::Integer; };
-    int getValue() const { return value; };
-private:
-    int value;
-};
-
-class FloatValue : public Value {
-public:
-    FloatValue(double value) { this->value = value; };
-    ValueKind getKind() const override { return ValueKind::Float; };
-    double getValue() const { return value; };
-private:
-    double value;
-};
-
-class StringValue : public Value {
-public:
-    StringValue(const std::string& value) { this->value = value; };
-    ValueKind getKind() const override { return ValueKind::String; };
-    const std::string& getValue() const { return value; };
-private:
-    std::string value;
-};
-
-class BooleanValue : public Value {
-public:
-    BooleanValue(bool value) { this->value = value; };
-    ValueKind getKind() const override { return ValueKind::Boolean; };
-    bool getValue() const { return value; };
-private:
-    bool value;
-};
-
-class EmptyValue : public Value {
-public:
-    EmptyValue() { this->value = nullptr; };
-    ValueKind getKind() const override { return ValueKind::Empty; };
-    std::nullptr_t getValue() const { return value; };
-private:
-    std::nullptr_t value;
-};
-
-class VoidValue : public Value {
-public:
-    VoidValue() { this->value = nullptr; };
-    ValueKind getKind() const override { return ValueKind::Void; };
-    std::nullptr_t getValue() const { return value; };
-private:
-    std::nullptr_t value;
-};
+#include "treewalker/value.hpp"
 
 class Environment {
+private:
+    std::vector<std::unique_ptr<Environment>> m_childEnvironments;
+    Environment* m_parent = nullptr;
+    Node* m_owningNode = nullptr;
+    std::unordered_map<std::string, Value*> m_vars;
 public:
-    Environment(Environment* parent, Node* owningNode) : parent(parent), owningNode(owningNode) {};
+    Environment(Environment* parent, Node* owningNode) : m_parent(parent), m_owningNode(owningNode) {};
     Environment* getParent() const;
     void addChildEnvironment(std::unique_ptr<Environment> childEnvironment);
     std::vector<Environment*> getChildEnvironments() const;
@@ -124,27 +21,24 @@ public:
     void setVar(const std::string& name, Value* value);
     void defineVar(const std::string& name, Value* value);
     Value* getVar(const std::string& name) const;
-    Node* getOwningNode() const { return owningNode; };
-private:
-    std::vector<std::unique_ptr<Environment>> childEnvironments;
-    Environment* parent = nullptr;
-    Node* owningNode = nullptr;
-    std::unordered_map<std::string, Value*> vars;
+    Node* getOwningNode() const { return m_owningNode; };
 };
 
 class FunctionValue : public Value { // TODO
-public:
-    FunctionValue(Node* functionDeclarationNode, Environment* definingEnvironment) : functionDeclarationNode(functionDeclarationNode), definingEnvironment(definingEnvironment) {};
-    ValueKind getKind() const override { return ValueKind::Function; };
-    Node* getValue() const { return functionDeclarationNode; };
-    Node* getNode() const { return functionDeclarationNode; };
-    Environment* getDefiningEnvironment() const { return definingEnvironment; };
 private:
-    Node* functionDeclarationNode;
-    Environment* definingEnvironment;
+    Node* m_functionDeclarationNode;
+    Environment* m_definingEnvironment;
+public:
+    FunctionValue(Node* functionDeclarationNode, Environment* definingEnvironment) : m_functionDeclarationNode(functionDeclarationNode), m_definingEnvironment(definingEnvironment) {};
+    ValueKind getKind() const override { return ValueKind::Function; };
+    Node* getValue() const { return m_functionDeclarationNode; };
+    Node* getNode() const { return m_functionDeclarationNode; };
+    Environment* getDefiningEnvironment() const { return m_definingEnvironment; };
 };
 
 class ValueStore {
+private:
+    std::vector<std::unique_ptr<Value>> m_values;
 public:
     void addValue(std::unique_ptr<Value> value);
     IntegerValue* makeIntegerValue(int value);
@@ -157,6 +51,4 @@ public:
     ReturnValue* makeReturnValue(Value* value);
     BreakValue* makeBreakValue();
     ContinueValue* makeContinueValue();
-private:
-    std::vector<std::unique_ptr<Value>> values;
 };

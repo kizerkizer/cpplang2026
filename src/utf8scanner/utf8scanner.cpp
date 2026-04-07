@@ -3,43 +3,44 @@
 #include "diagnostics/diagnosticmessage.hpp"
 #include "diagnostics/diagnostics.hpp"
 
-Utf8Scanner::Utf8Scanner(Source* source, Diagnostics& diagnostics) : source(source), diagnostics(diagnostics) {
-    this->input = source->getSourceString();
+Utf8Scanner::Utf8Scanner(Source* source, Diagnostics& diagnostics) : m_source(source), m_diagnostics(diagnostics) {
+    this->m_input = source->getSourceString();
 }
 
 void Utf8Scanner::addError(std::string message, SourceCodeLocationSpan sourceCodeLocationSpan) {
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(50, DiagnosticMessageKind::Error, DiagnosticMessageStage::Scanner, sourceCodeLocationSpan, this->source, message));
+    this->m_diagnostics.addDiagnosticMessage(DiagnosticMessage(50, DiagnosticMessageKind::Error, DiagnosticMessageStage::Scanner, sourceCodeLocationSpan, this->m_source, message));
 }
 
 bool Utf8Scanner::isDone() const {
-    return this->byteIndex >= this->input.size();
+    return this->m_byteIndex >= this->m_input.size();
 }
 
 size_t Utf8Scanner::getByteIndex() const {
-    return this->byteIndex;
+    return this->m_byteIndex;
 }
 
 size_t Utf8Scanner::getCodepointIndex() const {
-    return this->codepointIndex;
+    return this->m_codepointIndex;
 }
 
 SourceCodeLocation Utf8Scanner::getCurrentSourceCodeLocation() const {
-    return SourceCodeLocation(this->byteIndex, this->codepointIndex, this->line, this->column);
+    return SourceCodeLocation(this->m_byteIndex, this->m_codepointIndex, this->m_line, this->m_column);
 }
 
 std::string_view Utf8Scanner::substr(size_t byteIndex, size_t byteLength) {
-    if (byteIndex + byteLength > this->input.size()) {
-        byteLength = this->input.size() - byteIndex;
+    // TODO probably should add some error handling here for out of bounds byteIndex and byteLength
+    if (byteIndex + byteLength > this->m_input.size()) {
+        byteLength = this->m_input.size() - byteIndex;
     }
-    return std::string_view(this->input.data() + byteIndex, byteLength);
+    return std::string_view(this->m_input.data() + byteIndex, byteLength);
 }
 
 size_t Utf8Scanner::getLine() const {
-    return this->line;
+    return this->m_line;
 }
 
 size_t Utf8Scanner::getColumn() const {
-    return this->column;
+    return this->m_column;
 }
 
 void Utf8Scanner::advance(size_t count) {
@@ -49,7 +50,7 @@ void Utf8Scanner::advance(size_t count) {
         if (this->isDone()) {
             return;
         }
-        unsigned char currentByte = this->input[this->byteIndex];
+        unsigned char currentByte = this->m_input[this->m_byteIndex];
         if (!nlChar0) {
             nlChar0 = currentByte;
         } else if (!nlChar1) {
@@ -60,18 +61,18 @@ void Utf8Scanner::advance(size_t count) {
         }
         if (nlChar0 && nlChar1 && nlChar0 == '\r' && nlChar1 == '\n') {
             // Windows newline
-            this->line++;
-            this->column = 1;
-            this->byteIndex += 2;
-            this->codepointIndex += 2;
+            this->m_line++;
+            this->m_column = 1;
+            this->m_byteIndex += 2;
+            this->m_codepointIndex += 2;
             i++; // We consumed an extra byte for the newline, so we need to increment i an extra time to account for that
             continue;
         } else if (nlChar0 && nlChar0 == '\n') {
             // Unix newline
-            this->line++;
-            this->column = 1;
-            this->byteIndex += 1;
-            this->codepointIndex += 1;
+            this->m_line++;
+            this->m_column = 1;
+            this->m_byteIndex += 1;
+            this->m_codepointIndex += 1;
                 // No need to increment i an extra time here since we only consumed one byte for the newline
             continue;
         }
@@ -86,14 +87,14 @@ void Utf8Scanner::advance(size_t count) {
             currentCodepointLength = 4;
         } else {
             // Invalid UTF-8 byte sequence, skip it
-            this->addError("Invalid UTF-8 byte sequence", SourceCodeLocationSpan(SourceCodeLocation(this->byteIndex, this->codepointIndex, this->line, this->column), SourceCodeLocation(this->byteIndex, this->codepointIndex, this->line, this->column + 1)));
-            this->byteIndex++;
-            this->column++;
+            this->addError("Invalid UTF-8 byte sequence", SourceCodeLocationSpan(SourceCodeLocation(this->m_byteIndex, this->m_codepointIndex, this->m_line, this->m_column), SourceCodeLocation(this->m_byteIndex, this->m_codepointIndex, this->m_line, this->m_column + 1)));
+            this->m_byteIndex++;
+            this->m_column++;
             continue;
         }
-        this->byteIndex += currentCodepointLength;
-        this->codepointIndex++;
-        this->column++;
+        this->m_byteIndex += currentCodepointLength;
+        this->m_codepointIndex++;
+        this->m_column++;
     }
 }
 
@@ -101,14 +102,14 @@ char32_t Utf8Scanner::peekCodepoint(size_t offset) {
     if (this->isDone()) {
         return 0;
     }
-    size_t tempByteIndex = this->byteIndex;
-    size_t tempCodepointIndex = this->codepointIndex;
-    size_t tempLine = this->line;
-    size_t tempColumn = this->column;
+    size_t tempByteIndex = this->m_byteIndex;
+    size_t tempCodepointIndex = this->m_codepointIndex;
+    size_t tempLine = this->m_line;
+    size_t tempColumn = this->m_column;
     char nlChar0 = 0;
     char nlChar1 = 0;
-    while (tempCodepointIndex < this->codepointIndex + offset) {
-        if (tempByteIndex >= this->input.size()) {
+    while (tempCodepointIndex < this->m_codepointIndex + offset) {
+        if (tempByteIndex >= this->m_input.size()) {
             return 0;
         }
         if (nlChar0 && nlChar1 && nlChar0 == '\r' && nlChar1 == '\n') {
@@ -120,7 +121,7 @@ char32_t Utf8Scanner::peekCodepoint(size_t offset) {
             tempLine++;
             tempColumn = 1;
         }
-        unsigned char currentByte = this->input[tempByteIndex];
+        unsigned char currentByte = this->m_input[tempByteIndex];
         if (!nlChar0) {
             nlChar0 = currentByte;
         } else if (!nlChar1) {
@@ -149,11 +150,11 @@ char32_t Utf8Scanner::peekCodepoint(size_t offset) {
         tempCodepointIndex++;
         tempColumn++;
     }
-    if (tempByteIndex >= this->input.size()) {
+    if (tempByteIndex >= this->m_input.size()) {
         return 0;
     }
     // Decode the UTF-8 code point at tempByteIndex
-    unsigned char firstByte = this->input[tempByteIndex];
+    unsigned char firstByte = this->m_input[tempByteIndex];
     size_t codepointLength;
     char32_t codepointValue;
     if ((firstByte & 0b10000000) == 0) {
@@ -173,12 +174,12 @@ char32_t Utf8Scanner::peekCodepoint(size_t offset) {
         return 0;
     }
     for (size_t i = 1; i < codepointLength; i++) {
-        if (tempByteIndex + i >= this->input.size()) {
+        if (tempByteIndex + i >= this->m_input.size()) {
             // Invalid UTF-8 byte sequence, return 0
             this->addError("Invalid UTF-8 byte sequence", SourceCodeLocationSpan(SourceCodeLocation(tempByteIndex, tempLine, tempColumn), SourceCodeLocation(tempByteIndex, tempLine, tempColumn + 1)));
             return 0;
         }
-        unsigned char nextByte = this->input[tempByteIndex + i];
+        unsigned char nextByte = this->m_input[tempByteIndex + i];
         if ((nextByte & 0b11000000) != 0b10000000) {
             // Invalid UTF-8 byte sequence, return 0
             this->addError("Invalid UTF-8 byte sequence", SourceCodeLocationSpan(SourceCodeLocation(tempByteIndex, tempLine, tempColumn), SourceCodeLocation(tempByteIndex, tempLine, tempColumn + 1)));
@@ -190,7 +191,7 @@ char32_t Utf8Scanner::peekCodepoint(size_t offset) {
     return codepointValue;
 }
 
-char32_t Utf8Scanner::nextCodepoint() {
+/*char32_t Utf8Scanner::nextCodepoint() {
     char32_t codepoint = this->peekCodepoint();
     if (codepoint == 0) {
         return 0;
@@ -224,4 +225,4 @@ char32_t Utf8Scanner::nextCodepoint() {
         this->column++;
     }
     return codepoint;
-}
+}*/

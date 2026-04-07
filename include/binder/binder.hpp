@@ -7,10 +7,10 @@
 
 class BinderResult {
 private:
-    Node* node;
-    std::unique_ptr<Scope> rootScope;
+    Node* m_node;
+    std::unique_ptr<Scope> m_rootScope;
 public:
-    BinderResult(Node* node, std::unique_ptr<Scope> rootScope) : node(node), rootScope(std::move(rootScope)) {};
+    BinderResult(Node* node, std::unique_ptr<Scope> rootScope) : m_node(node), m_rootScope(std::move(rootScope)) {};
     Node* getNode() const;
     Scope* getRootScope() const;
     std::unique_ptr<Scope> takeRootScope();
@@ -18,10 +18,10 @@ public:
 
 class Binder {
 private:
-    Source* source;
-    Diagnostics& diagnostics;
-    std::unique_ptr<Scope> rootScope;
-    Scope* currentScope = nullptr;
+    Source* m_source;
+    Diagnostics& m_diagnostics;
+    std::unique_ptr<Scope> m_rootScope;
+    Scope* m_currentScope = nullptr;
     Scope* createAndEnterScope(ScopeKind kind);
     void exitScope();
     void bindVariableDeclaration(Node* node);

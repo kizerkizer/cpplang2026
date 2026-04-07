@@ -45,15 +45,15 @@ constexpr const char* scopeKindToString(ScopeKind scopeKind) {
 
 class Scope {
 private:
-    Node* node;
-    ScopeKind kind;
-    Symbol* mySymbol = nullptr; // Set during binding
-    Scope* parent;
-    std::map<std::string, std::unique_ptr<Symbol>> symbols;
-    std::vector<std::unique_ptr<Scope>> children;
-    Scope* thisKeywordScope = nullptr; // TODO Set during binding
+    Node* m_node;
+    ScopeKind m_kind;
+    Symbol* m_mySymbol = nullptr; // Set during binding
+    Scope* m_parent;
+    std::map<std::string, std::unique_ptr<Symbol>> m_symbols;
+    std::vector<std::unique_ptr<Scope>> m_children;
+    Scope* m_thisKeywordScope = nullptr; // TODO Set during binding
 public:
-    Scope(ScopeKind kind, Scope* parent, Node* node) : node(node), kind(kind), parent(parent) {};
+    Scope(ScopeKind kind, Scope* parent, Node* node) : m_node(node), m_kind(kind), m_parent(parent) {};
     ScopeKind getKind() const;
     Scope* getParent() const;
     Node* getNode() const;

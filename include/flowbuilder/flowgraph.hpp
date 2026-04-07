@@ -7,10 +7,10 @@
 
 class FlowGraph {
 private:
-    std::vector<std::unique_ptr<FlowNode>> nodes;
-    std::unique_ptr<FlowNode> entry = nullptr;
-    std::unique_ptr<FlowNode> exit = nullptr;
-    Node* astNode = nullptr;
+    std::vector<std::unique_ptr<FlowNode>> m_nodes;
+    std::unique_ptr<FlowNode> m_entry = nullptr;
+    std::unique_ptr<FlowNode> m_exit = nullptr;
+    Node* m_astNode = nullptr;
 public:
     FlowGraph();
     FlowNode* getEntry();

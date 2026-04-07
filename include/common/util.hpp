@@ -20,3 +20,15 @@
             std::abort(); \
         } \
     } while (0)
+
+struct GlobalOptions {
+    bool verbose = false;
+    bool traceLexer = false;
+    bool traceParser = false;
+    bool traceBinder = false;
+    bool traceDesugarer = false;
+    bool traceTypeChecker = false;
+    bool traceInterpreter = false;
+};
+
+inline GlobalOptions g_options;

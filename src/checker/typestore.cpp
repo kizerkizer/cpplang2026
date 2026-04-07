@@ -18,7 +18,7 @@ Type* TypeStore::simplifyUnionType(UnionType* unionType) {
         simplifiedUnionType->addType(type);
     }
     auto simplifiedUnionTypePointer = simplifiedUnionType.get();
-    this->types.push_back(std::move(simplifiedUnionType));
+    this->m_types.push_back(std::move(simplifiedUnionType));
     return simplifiedUnionTypePointer;
 }
 

@@ -10,14 +10,14 @@
 // FlowBuilderResult
 std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
     std::vector<FlowGraph*> graphPointers;
-    for (auto& graph : this->graphs) {
+    for (auto& graph : this->m_graphs) {
         graphPointers.push_back(graph.get());
     }
     return graphPointers;
 }
 
 void FlowBuilderResult::addGraph(std::unique_ptr<FlowGraph> graph) {
-    this->graphs.push_back(std::move(graph));
+    this->m_graphs.push_back(std::move(graph));
 }
 
 // FlowGraph
@@ -29,46 +29,46 @@ FlowGraph::FlowGraph () {
 }
 
 void FlowGraph::setAstNode(Node* node) {
-    this->astNode = node;
+    this->m_astNode = node;
 }
 
 Node* FlowGraph::getAstNode() {
-    return this->astNode;
+    return this->m_astNode;
 }
 
 FlowNode* FlowGraph::getEntry() {
-    return this->entry.get();
+    return this->m_entry.get();
 }
 
 FlowNode* FlowGraph::getExit() {
-    return this->exit.get();
+    return this->m_exit.get();
 }
 
 FlowNode* FlowGraph::addNode(std::unique_ptr<FlowNode> node) {
     if (node->getKind() == FlowNodeKind::Entry) {
-        this->entry = std::move(node);
-        return this->entry.get();
+        this->m_entry = std::move(node);
+        return this->m_entry.get();
     }
     if (node->getKind() == FlowNodeKind::Exit) {
-        this->exit = std::move(node);
-        return this->exit.get();
+        this->m_exit = std::move(node);
+        return this->m_exit.get();
     }
 
     // If already added, return nullptr
-    if (std::count(this->nodes.begin(), this->nodes.end(), node)) {
+    if (std::count(this->m_nodes.begin(), this->m_nodes.end(), node)) {
         return nullptr;
     }
-    this->nodes.push_back(std::move(node));
-    return this->nodes.back().get();
+    this->m_nodes.push_back(std::move(node));
+    return this->m_nodes.back().get();
 }
 
 std::vector<FlowNode*> FlowGraph::getNodes() {
     std::vector<FlowNode*> nodePointers;
-    nodePointers.push_back(this->entry.get());
-    for (auto& node : this->nodes) {
+    nodePointers.push_back(this->m_entry.get());
+    for (auto& node : this->m_nodes) {
         nodePointers.push_back(node.get());
     }
-    nodePointers.push_back(this->exit.get());
+    nodePointers.push_back(this->m_exit.get());
     return nodePointers;
 }
 

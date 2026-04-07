@@ -84,10 +84,10 @@ inline TypeFlags operator|(TypeFlags a, TypeFlags b) {
 
 class Type {
 private:
-    TypeKind kind;
-    TypeFlags flags;
+    TypeKind m_kind;
+    TypeFlags m_flags;
 public:
-    Type(TypeKind kind, TypeFlags flags) : kind(kind), flags(flags) {};
+    Type(TypeKind kind, TypeFlags flags) : m_kind(kind), m_flags(flags) {};
     virtual ~Type() = default;
     TypeKind getTypeKind() const;
     TypeFlags getTypeFlags() const;
@@ -112,19 +112,19 @@ public:
 
 class PrimitiveType : public Type {
 private:
-    PrimitiveTypeKind primitiveTypeKind;
+    PrimitiveTypeKind m_primitiveTypeKind;
 public:
-    PrimitiveType(PrimitiveTypeKind primitiveTypeKind) : Type(TypeKind::Primitive, TypeFlags::Primitive), primitiveTypeKind(primitiveTypeKind) {};
+    PrimitiveType(PrimitiveTypeKind primitiveTypeKind) : Type(TypeKind::Primitive, TypeFlags::Primitive), m_primitiveTypeKind(primitiveTypeKind) {};
     PrimitiveTypeKind getPrimitiveTypeKind() const;
     bool isSubtypeOf(Type* other) const override;
 };
 
 class FunctionType : public Type {
 private:
-    std::vector<Symbol*> parameters;
-    Type* returnType;
+    std::vector<Symbol*> m_parameters;
+    Type* m_returnType;
 public:
-    FunctionType(std::vector<Symbol*> parameters, Type* returnType) : Type(TypeKind::Function, TypeFlags::None), parameters(parameters), returnType(std::move(returnType)) {};
+    FunctionType(std::vector<Symbol*> parameters, Type* returnType) : Type(TypeKind::Function, TypeFlags::None), m_parameters(parameters), m_returnType(std::move(returnType)) {};
     std::vector<Symbol*> getParameters();
     Type* getReturnType();
     bool isSubtypeOf(Type* other) const override;
@@ -132,12 +132,12 @@ public:
 
 class UnionType : public Type {
 private:
-    std::vector<Type*> types;
+    std::vector<Type*> m_types;
 public:
     template<typename... Args>
     UnionType(Args&& ...types) : Type(TypeKind::Union, TypeFlags::None) {
-        this->types.reserve(sizeof...(types));
-        (this->types.push_back(std::forward<Args>(types)), ...);
+        this->m_types.reserve(sizeof...(types));
+        (this->m_types.push_back(std::forward<Args>(types)), ...);
     };
     std::vector<Type*> getTypes();
     void addType(Type* type);

@@ -10,19 +10,19 @@
 
 // Node
 NodeKind Node::getNodeKind() const {
-    return this->nodeKind;
+    return this->m_nodeKind;
 }
 
 void Node::setReachable(bool reachable) {
-    this->reachable = reachable;
+    this->m_reachable = reachable;
 }
 
 bool Node::isReachable() const {
-    return this->reachable;
+    return this->m_reachable;
 }
 
 bool Node::operator==(const NodeKind& rhs) const {
-    return this->nodeKind == rhs;
+    return this->m_nodeKind == rhs;
 }
 
 bool Node::operator!=(const NodeKind& rhs) const {
@@ -30,39 +30,39 @@ bool Node::operator!=(const NodeKind& rhs) const {
 }
 
 bool Node::isCompilerCreated() const {
-    return this->compilerCreated;
+    return this->m_compilerCreated;
 }
 
 FlowNode* Node::getFlowNode() {
-    return this->flowNode;
+    return this->m_flowNode;
 }
 
 void Node::setFlowNode(FlowNode* flowNode) {
-    this->flowNode = flowNode;
+    this->m_flowNode = flowNode;
 }
 
 Type* Node::getType() const {
-    return this->type;
+    return this->m_type;
 }
 
 void Node::setType(Type* type) {
-    this->type = type;
+    this->m_type = type;
 }
 
 void Node::addToken(std::unique_ptr<Token> token) {
-    this->tokens.push_back(std::move(token));
+    this->m_tokens.push_back(std::move(token));
 }
 
 std::vector<Token*> Node::getTokens() {
     auto returnTokens = std::vector<Token*>();
-    for (auto& token : this->tokens) {
+    for (auto& token : this->m_tokens) {
         returnTokens.push_back(token.get());
     }
     return returnTokens;
 }
 
 SourceCodeLocationSpan Node::getSourceCodeLocationSpan() const {
-    return this->sourceCodeLocationSpan;
+    return this->m_sourceCodeLocationSpan;
 }
 
 // ProgramNode
@@ -71,77 +71,77 @@ SourceCodeLocationSpan Node::getSourceCodeLocationSpan() const {
 }*/
 
 FlowGraph* ProgramNode::getFlowGraph() {
-    return this->flowGraph;
+    return this->m_flowGraph;
 }
 
 void ProgramNode::setFlowGraph(FlowGraph* flowGraph) {
-    this->flowGraph = flowGraph;
+    this->m_flowGraph = flowGraph;
 }
 
 const std::vector<Node*> ProgramNode::getChildren() const {
-    return { this->executionListNode.get() };
+    return { this->m_executionListNode.get() };
 }
 
 ExecutionListNode* ProgramNode::getExecutionListNode() const {
-    return this->executionListNode.get();
+    return this->m_executionListNode.get();
 }
 
 std::unique_ptr<ExecutionListNode> ProgramNode::takeExecutionListNode() {
-    return std::move(this->executionListNode);
+    return std::move(this->m_executionListNode);
 }
 
 void ProgramNode::setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode) {
-    this->executionListNode = std::move(executionListNode);
+    this->m_executionListNode = std::move(executionListNode);
 }
 
 //VariableDeclarationNode
 IdentifierNode* VariableDeclarationNode::getIdentifier() const {
-    return this->identifierNode.get();
+    return this->m_identifierNode.get();
 }
 
 std::unique_ptr<IdentifierNode> VariableDeclarationNode::takeIdentifier() {
-    return std::move(this->identifierNode);
+    return std::move(this->m_identifierNode);
 }
 
 void VariableDeclarationNode::setIdentifier(std::unique_ptr<IdentifierNode> identifierNode) {
-    this->identifierNode = std::move(identifierNode);
+    this->m_identifierNode = std::move(identifierNode);
 }
 
 ExpressionNode* VariableDeclarationNode::getExpression() const {
-    return this->expressionNode.get();
+    return this->m_expressionNode.get();
 }
 
 std::unique_ptr<ExpressionNode> VariableDeclarationNode::takeExpression() {
-    return std::move(this->expressionNode);
+    return std::move(this->m_expressionNode);
 }
 
 void VariableDeclarationNode::setExpression(std::unique_ptr<ExpressionNode> expressionNode) {
-    this->expressionNode = std::move(expressionNode);
+    this->m_expressionNode = std::move(expressionNode);
 }
 
 TypeExpressionNode* VariableDeclarationNode::getTypeExpression() const {
-    return this->typeExpression.get();
+    return this->m_typeExpression.get();
 }
 
 const std::vector<Node*> VariableDeclarationNode::getChildren() const {
-    return {this->typeExpression.get(), this->expressionNode.get() };
+    return {this->m_typeExpression.get(), this->m_expressionNode.get() };
 }
 
 //FunctionDeclarationNode
 void FunctionDeclarationNode::setFlowGraph(FlowGraph* flowGraph) {
-    this->flowGraph = flowGraph;
+    this->m_flowGraph = flowGraph;
 }
 
 FlowGraph* FunctionDeclarationNode::getFlowGraph() {
-    return this->flowGraph;
+    return this->m_flowGraph;
 }
 
 IdentifierNode* FunctionDeclarationNode::getIdentifier() const {
-    return this->identifier.get();
+    return this->m_identifier.get();
 };
 
 TypeExpressionNode* FunctionDeclarationNode::getReturnTypeExpression() const {
-    return this->returnTypeExpression.get();
+    return this->m_returnTypeExpression.get();
 }
 
 std::string FunctionDeclarationNode::getIdentifierName() const {
@@ -150,311 +150,311 @@ std::string FunctionDeclarationNode::getIdentifierName() const {
 
 const std::vector<IdentifierWithPossibleAnnotationNode*> FunctionDeclarationNode::getParameters() const {
     std::vector<IdentifierWithPossibleAnnotationNode*> parameterPointers;
-    for (const auto& parameter : this->parameters) {
+    for (const auto& parameter : this->m_parameters) {
         parameterPointers.push_back(parameter.get());
     }
     return parameterPointers;
 }
 
 BlockStatementNode* FunctionDeclarationNode::getBody() const {
-    return this->bodyNode.get();
+    return this->m_bodyNode.get();
 };
 
 const std::vector<Node*> FunctionDeclarationNode::getChildren() const {
     std::vector<Node*> children;
-    children.push_back(this->identifier.get());
-    for (const auto& parameter : this->parameters) {
+    children.push_back(this->m_identifier.get());
+    for (const auto& parameter : this->m_parameters) {
         children.push_back(parameter.get());
     }
-    children.push_back(this->bodyNode.get());
+    children.push_back(this->m_bodyNode.get());
     return children;
 }
 
 std::unique_ptr<IdentifierNode> FunctionDeclarationNode::takeIdentifier() {
-    return std::move(this->identifier);
+    return std::move(this->m_identifier);
 }
 
 std::unique_ptr<TypeExpressionNode> FunctionDeclarationNode::takeReturnTypeExpression() {
-    return std::move(this->returnTypeExpression);
+    return std::move(this->m_returnTypeExpression);
 }
 
 std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> FunctionDeclarationNode::takeParameters() {
-    return std::move(this->parameters);
+    return std::move(this->m_parameters);
 }
 
 std::unique_ptr<BlockStatementNode> FunctionDeclarationNode::takeBodyNode() {
-    return std::move(this->bodyNode);
+    return std::move(this->m_bodyNode);
 }
 
 void FunctionDeclarationNode::setIdentifier(std::unique_ptr<IdentifierNode> identifier) {
-    this->identifier = std::move(identifier);
+    this->m_identifier = std::move(identifier);
 }
 
 void FunctionDeclarationNode::setReturnTypeExpression(std::unique_ptr<TypeExpressionNode> returnTypeExpression) {
-    this->returnTypeExpression = std::move(returnTypeExpression);
+    this->m_returnTypeExpression = std::move(returnTypeExpression);
 }
 
 void FunctionDeclarationNode::setParameters(std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters) {
-    this->parameters = std::move(parameters);
+    this->m_parameters = std::move(parameters);
 }
 
 void FunctionDeclarationNode::setBodyNode(std::unique_ptr<BlockStatementNode> bodyNode) {
-    this->bodyNode = std::move(bodyNode);
+    this->m_bodyNode = std::move(bodyNode);
 }
 
 //IdentifierWithPossibleAnnotationNode
 TypeExpressionNode* IdentifierWithPossibleAnnotationNode::getAnnotation() const {
-    return this->annotation.get();
+    return this->m_annotation.get();
 }
 
 std::unique_ptr<TypeExpressionNode> IdentifierWithPossibleAnnotationNode::takeAnnotation() {
-    return std::move(this->annotation);
+    return std::move(this->m_annotation);
 }
 
 void IdentifierWithPossibleAnnotationNode::setAnnotation(std::unique_ptr<TypeExpressionNode> annotation) {
-    this->annotation = std::move(annotation);
+    this->m_annotation = std::move(annotation);
 }
 
 //BlockStatementNode
 ExecutionListNode* BlockStatementNode::getExecutionListNode() const {
-    return this->executionListNode.get();
+    return this->m_executionListNode.get();
 }
 
 const std::vector<Node*> BlockStatementNode::getChildren() const {
-    return { this->executionListNode.get() };
+    return { this->m_executionListNode.get() };
 }
 
 std::unique_ptr<ExecutionListNode> BlockStatementNode::takeExecutionListNode() {
-    return std::move(this->executionListNode);
+    return std::move(this->m_executionListNode);
 }
 
 void BlockStatementNode::setExecutionListNode(std::unique_ptr<ExecutionListNode> executionListNode) {
-    this->executionListNode = std::move(executionListNode);
+    this->m_executionListNode = std::move(executionListNode);
 }
 
 //ExecutionListNode
 const std::vector<Node*> ExecutionListNode::getChildren() const {
     std::vector<Node*> children;
-    for (const auto& node : this->nodes) {
+    for (const auto& node : this->m_nodes) {
         children.push_back(node.get());
     }
     return children;
 }
 
 std::vector<std::unique_ptr<Node>> ExecutionListNode::takeChildren() {
-    return std::move(this->nodes);
+    return std::move(this->m_nodes);
 }
 
 void ExecutionListNode::setChildren(std::vector<std::unique_ptr<Node>> children) {
-    this->nodes = std::move(children);
+    this->m_nodes = std::move(children);
 }
 
 void ExecutionListNode::addNode(std::unique_ptr<Node> node) {
-    this->nodes.push_back(std::move(node));
+    this->m_nodes.push_back(std::move(node));
 }
 
 //IfStatementNode
 ExpressionNode* IfStatementNode::getCondition() const {
-    return this->condition.get();
+    return this->m_condition.get();
 }
 
 Node* IfStatementNode::getThenBranch() const {
-    return this->thenBranch.get();
+    return this->m_thenBranch.get();
 }
 
 Node* IfStatementNode::getElseBranch() const {
-    return this->elseBranch.get();
+    return this->m_elseBranch.get();
 }
 
 const std::vector<Node*> IfStatementNode::getChildren() const {
     std::vector<Node*> children;
-    children.push_back(this->condition.get());
-    if (this->thenBranch) {
-        children.push_back(this->thenBranch.get());
+    children.push_back(this->m_condition.get());
+    if (this->m_thenBranch) {
+        children.push_back(this->m_thenBranch.get());
     }
-    if (this->elseBranch) {
-        children.push_back(this->elseBranch.get());
+    if (this->m_elseBranch) {
+        children.push_back(this->m_elseBranch.get());
     }
     return children;
 }
 
 std::unique_ptr<ExpressionNode> IfStatementNode::takeCondition() {
-    return std::move(this->condition);
+    return std::move(this->m_condition);
 }
 
 std::unique_ptr<Node> IfStatementNode::takeThenBranch() {
-    return std::move(this->thenBranch);
+    return std::move(this->m_thenBranch);
 }
 
 std::unique_ptr<Node> IfStatementNode::takeElseBranch() {
-    return std::move(this->elseBranch);
+    return std::move(this->m_elseBranch);
 }
 
 void IfStatementNode::setCondition(std::unique_ptr<ExpressionNode> condition) {
-    this->condition = std::move(condition);
+    this->m_condition = std::move(condition);
 }
 
 void IfStatementNode::setThenBranch(std::unique_ptr<Node> thenBranch) {
-    this->thenBranch = std::move(thenBranch);
+    this->m_thenBranch = std::move(thenBranch);
 }
 
 void IfStatementNode::setElseBranch(std::unique_ptr<Node> elseBranch) {
-    this->elseBranch = std::move(elseBranch);
+    this->m_elseBranch = std::move(elseBranch);
 }
 
 //WhileStatementNode
 ExpressionNode* WhileStatementNode::getCondition() const {
-    return this->condition.get();
+    return this->m_condition.get();
 }
 
 BlockStatementNode* WhileStatementNode::getBody() const {
-    return this->body.get();
+    return this->m_body.get();
 }
 
 const std::vector<Node*> WhileStatementNode::getChildren() const {
-    return { this->condition.get(), this->body.get() };
+    return { this->m_condition.get(), this->m_body.get() };
 }
 
 std::unique_ptr<ExpressionNode> WhileStatementNode::takeCondition() {
-    return std::move(this->condition);
+    return std::move(this->m_condition);
 }
 
 std::unique_ptr<BlockStatementNode> WhileStatementNode::takeBody() {
-    return std::move(this->body);
+    return std::move(this->m_body);
 }
 
 void WhileStatementNode::setCondition(std::unique_ptr<ExpressionNode> condition) {
-    this->condition = std::move(condition);
+    this->m_condition = std::move(condition);
 }
 
 void WhileStatementNode::setBody(std::unique_ptr<BlockStatementNode> body) {
-    this->body = std::move(body);
+    this->m_body = std::move(body);
 }
 
 //LoopStatementNode
 BlockStatementNode* LoopStatementNode::getBody() const {
-    return this->body.get();
+    return this->m_body.get();
 }
 
 const std::vector<Node*> LoopStatementNode::getChildren() const {
-    return { this->body.get() };
+    return { this->m_body.get() };
 }
 
 std::unique_ptr<BlockStatementNode> LoopStatementNode::takeBody() {
-    return std::move(this->body);
+    return std::move(this->m_body);
 }
 
 void LoopStatementNode::setBody(std::unique_ptr<BlockStatementNode> body) {
-    this->body = std::move(body);
+    this->m_body = std::move(body);
 }
 
 //BreakStatementNode
 Symbol* BreakStatementNode::getLoopSymbolReference() const {
-    return this->loopSymbol;
+    return this->m_loopSymbol;
 }
 
 void BreakStatementNode::setLoopSymbolReference(Symbol* name) {
-    this->loopSymbol = name;
+    this->m_loopSymbol = name;
 }
 
 //ContinueStatementNode
 Symbol* ContinueStatementNode::getLoopSymbolReference() const {
-    return this->loopSymbol;
+    return this->m_loopSymbol;
 }
 
 void ContinueStatementNode::setLoopSymbolReference(Symbol* name) {
-    this->loopSymbol = name;
+    this->m_loopSymbol = name;
 }
 
 //ReturnStatementNode
 ExpressionNode* ReturnStatementNode::getExpression() const {
-    return this->expression.get();
+    return this->m_expression.get();
 }
 
 const std::vector<Node*> ReturnStatementNode::getChildren() const {
-    if (this->expression) {
-        return { this->expression.get() };
+    if (this->m_expression) {
+        return { this->m_expression.get() };
     }
     return {};
 }
 
 std::unique_ptr<ExpressionNode> ReturnStatementNode::takeExpression() {
-    return std::move(this->expression);
+    return std::move(this->m_expression);
 }
 
 void ReturnStatementNode::setExpression(std::unique_ptr<ExpressionNode> expression) {
-    this->expression = std::move(expression);
+    this->m_expression = std::move(expression);
 }
 
 Symbol* ReturnStatementNode::getFunctionNameReference() {
-    return this->functionName;
+    return this->m_functionName;
 }
 
 void ReturnStatementNode::setFunctionNameReference(Symbol* name) {
-    this->functionName = name;
+    this->m_functionName = name;
 }
 
 //AssignmentExpressionNode
 IdentifierNode* AssignmentExpressionNode::getIdentifier() const {
-    return this->identifier.get();
+    return this->m_identifier.get();
 }
 
 ExpressionNode* AssignmentExpressionNode::getExpression() const {
-    return this->expression.get();
+    return this->m_expression.get();
 }
 
 const std::vector<Node*> AssignmentExpressionNode::getChildren() const {
-    return { this->identifier.get(), this->expression.get() };
+    return { this->m_identifier.get(), this->m_expression.get() };
 }
 
 std::unique_ptr<IdentifierNode> AssignmentExpressionNode::takeIdentifier() {
-    return std::move(this->identifier);
+    return std::move(this->m_identifier);
 }
 
 std::unique_ptr<ExpressionNode> AssignmentExpressionNode::takeExpression() {
-    return std::move(this->expression);
+    return std::move(this->m_expression);
 }
 
 void AssignmentExpressionNode::setIdentifier(std::unique_ptr<IdentifierNode> identifier) {
-    this->identifier = std::move(identifier);
+    this->m_identifier = std::move(identifier);
 }
 
 void AssignmentExpressionNode::setExpression(std::unique_ptr<ExpressionNode> expression) {
-    this->expression = std::move(expression);
+    this->m_expression = std::move(expression);
 }
 
 //AssignmentStatementNode
 IdentifierNode* AssignmentStatementNode::getIdentifier() const {
-    return this->assignmentExpression->getIdentifier();
+    return this->m_assignmentExpression->getIdentifier();
 }
 
 AssignmentExpressionNode* AssignmentStatementNode::getAssignmentExpression() const {
-    return this->assignmentExpression.get();
+    return this->m_assignmentExpression.get();
 }
 
 const std::vector<Node*> AssignmentStatementNode::getChildren() const {
-    return { this->assignmentExpression.get() };
+    return { this->m_assignmentExpression.get() };
 }
 
 std::unique_ptr<IdentifierNode> AssignmentStatementNode::takeIdentifier() {
-    return this->assignmentExpression->takeIdentifier();
+    return this->m_assignmentExpression->takeIdentifier();
 }
 
 std::unique_ptr<AssignmentExpressionNode> AssignmentStatementNode::takeAssignmentExpression() {
-    return std::move(this->assignmentExpression);
+    return std::move(this->m_assignmentExpression);
 }
 
 void AssignmentStatementNode::setAssignmentExpression(std::unique_ptr<AssignmentExpressionNode> assignmentExpression) {
-    this->assignmentExpression = std::move(assignmentExpression);
+    this->m_assignmentExpression = std::move(assignmentExpression);
 }
 
 void AssignmentStatementNode::setIdentifier(std::unique_ptr<IdentifierNode> identifier) {
-    this->assignmentExpression->setIdentifier(std::move(identifier));
+    this->m_assignmentExpression->setIdentifier(std::move(identifier));
 }
 
 //IdentifierNode
 std::string_view IdentifierNode::getName() const {
-    return this->identifierToken->getSourceString();
+    return this->m_identifierToken->getSourceString();
 }
 
 const std::vector<Node*> IdentifierNode::getChildren() const {
@@ -462,25 +462,25 @@ const std::vector<Node*> IdentifierNode::getChildren() const {
 }
 
 Token* IdentifierNode::getIdentifierToken() const {
-    return this->identifierToken.get();
+    return this->m_identifierToken.get();
 }
 
 Symbol* IdentifierNode::getSymbolReference() const {
-    return this->symbol;
+    return this->m_symbol;
 }
 
 void IdentifierNode::setSymbolReference(Symbol* symbol) {
-    this->symbol = symbol;
+    this->m_symbol = symbol;
 }
 
 //FunctionCallExpressionNode
 IdentifierNode* FunctionCallExpressionNode::getIdentifier() const {
-    return this->identifier.get();
+    return this->m_identifier.get();
 }
 
 const std::vector<ExpressionNode*> FunctionCallExpressionNode::getArgumentNodes() const {
     std::vector<ExpressionNode*> argumentPointers;
-    for (const auto& argument : this->argumentNodes) {
+    for (const auto& argument : this->m_argumentNodes) {
         argumentPointers.push_back(argument.get());
     }
     return argumentPointers;
@@ -488,178 +488,178 @@ const std::vector<ExpressionNode*> FunctionCallExpressionNode::getArgumentNodes(
 
 const std::vector<Node*> FunctionCallExpressionNode::getChildren() const {
     std::vector<Node*> children;
-    children.push_back(this->identifier.get());
-    for (const auto& argument : this->argumentNodes) {
+    children.push_back(this->m_identifier.get());
+    for (const auto& argument : this->m_argumentNodes) {
         children.push_back(argument.get());
     }
     return children;
 }
 
 std::unique_ptr<IdentifierNode> FunctionCallExpressionNode::takeIdentifier() {
-    return std::move(this->identifier);
+    return std::move(this->m_identifier);
 }
 
 std::vector<std::unique_ptr<ExpressionNode>> FunctionCallExpressionNode::takeArgumentNodes() {
-    return std::move(this->argumentNodes);
+    return std::move(this->m_argumentNodes);
 }
 
 void FunctionCallExpressionNode::setIdentifier(std::unique_ptr<IdentifierNode> identifier) {
-    this->identifier = std::move(identifier);
+    this->m_identifier = std::move(identifier);
 }
 
 void FunctionCallExpressionNode::setArgumentNodes(std::vector<std::unique_ptr<ExpressionNode>> argumentNodes) {
-    this->argumentNodes = std::move(argumentNodes);
+    this->m_argumentNodes = std::move(argumentNodes);
 }
 
 //FunctionCallStatementNode
 FunctionCallExpressionNode* FunctionCallStatementNode::getFunctionCallExpression() const {
-    return this->functionCallExpression.get();
+    return this->m_functionCallExpression.get();
 }
 
 const std::vector<Node*> FunctionCallStatementNode::getChildren() const {
-    return { this->functionCallExpression.get() };
+    return { this->m_functionCallExpression.get() };
 }
 
 std::unique_ptr<FunctionCallExpressionNode> FunctionCallStatementNode::takeFunctionCallExpression() {
-    return std::move(this->functionCallExpression);
+    return std::move(this->m_functionCallExpression);
 }
 
 void FunctionCallStatementNode::setFunctionCallExpression(std::unique_ptr<FunctionCallExpressionNode> functionCallExpression) {
-    this->functionCallExpression = std::move(functionCallExpression);
+    this->m_functionCallExpression = std::move(functionCallExpression);
 }
 
 //NumberLiteralNode
 int NumberLiteralNode::getValue() const {
-    return std::stoi(std::string(this->numberLiteralToken->getSourceString()));
+    return std::stoi(std::string(this->m_numberLiteralToken->getSourceString()));
 }
 
 Token* NumberLiteralNode::getNumberLiteralToken() const {
-    return this->numberLiteralToken.get();
+    return this->m_numberLiteralToken.get();
 }
 
 //BooleanLiteralNode
 bool BooleanLiteralNode::getValue() const {
-    return std::string(this->booleanLiteralToken->getSourceString()) == "true";
+    return std::string(this->m_booleanLiteralToken->getSourceString()) == "true";
 }
 
 Token* BooleanLiteralNode::getBooleanLiteralToken() const {
-    return this->booleanLiteralToken.get();
+    return this->m_booleanLiteralToken.get();
 }
 
 //EmptyLiteralNode
 Token* EmptyLiteralNode::getEmptyLiteralToken() const {
-    return this->emptyLiteralToken.get();
+    return this->m_emptyLiteralToken.get();
 }
 
 //StringLiteralNode
 std::string StringLiteralNode::getValue() const {
-    return std::string(this->stringLiteralToken->getSourceString());
+    return std::string(this->m_stringLiteralToken->getSourceString());
 }
 
 //BinaryOperatorExpressionNode
 ExpressionNode* BinaryOperatorExpressionNode::getLeft() const {
-    return this->left.get();
+    return this->m_left.get();
 }
 
 ExpressionNode* BinaryOperatorExpressionNode::getRight() const {
-    return this->right.get();
+    return this->m_right.get();
 }
 
 Token* BinaryOperatorExpressionNode::getOperatorToken() const {
-    return this->operatorToken.get();
+    return this->m_operatorToken.get();
 }
 
 const std::vector<Node*> BinaryOperatorExpressionNode::getChildren() const {
-    return { this->left.get(), this->right.get() };
+    return { this->m_left.get(), this->m_right.get() };
 }
 
 std::unique_ptr<ExpressionNode> BinaryOperatorExpressionNode::takeLeft() {
-    return std::move(this->left);
+    return std::move(this->m_left);
 }
 
 std::unique_ptr<ExpressionNode> BinaryOperatorExpressionNode::takeRight() {
-    return std::move(this->right);
+    return std::move(this->m_right);
 }
 
 void BinaryOperatorExpressionNode::setLeft(std::unique_ptr<ExpressionNode> left) {
-    this->left = std::move(left);
+    this->m_left = std::move(left);
 }
 
 void BinaryOperatorExpressionNode::setRight(std::unique_ptr<ExpressionNode> right) {
-    this->right = std::move(right);
+    this->m_right = std::move(right);
 }
 
 //UnaryOperatorExpressionNode
 ExpressionNode* UnaryOperatorExpressionNode::getOperand() const {
-    return this->operand.get();
+    return this->m_operand.get();
 }
 
 Token* UnaryOperatorExpressionNode::getOperatorToken() const {
-    return this->operatorToken.get();
+    return this->m_operatorToken.get();
 }
 
 const std::vector<Node*> UnaryOperatorExpressionNode::getChildren() const {
-    return { this->operand.get() };
+    return { this->m_operand.get() };
 }
 
 std::unique_ptr<ExpressionNode> UnaryOperatorExpressionNode::takeOperand() {
-    return std::move(this->operand);
+    return std::move(this->m_operand);
 }
 
 void UnaryOperatorExpressionNode::setOperand(std::unique_ptr<ExpressionNode> operand) {
-    this->operand = std::move(operand);
+    this->m_operand = std::move(operand);
 }
 
 //IfExpressionNode
 ExpressionNode* IfExpressionNode::getCondition() const {
-    return this->condition.get();
+    return this->m_condition.get();
 }
 
 ExpressionNode* IfExpressionNode::getThenBranch() const {
-    return this->thenBranch.get();
+    return this->m_thenBranch.get();
 }
 
 ExpressionNode* IfExpressionNode::getElseBranch() const {
-    return this->elseBranch.get();
+    return this->m_elseBranch.get();
 }
 
 const std::vector<Node*> IfExpressionNode::getChildren() const {
     std::vector<Node*> children;
-    children.push_back(this->condition.get());
-    children.push_back(this->thenBranch.get());
-    if (this->elseBranch) {
-        children.push_back(this->elseBranch.get());
+    children.push_back(this->m_condition.get());
+    children.push_back(this->m_thenBranch.get());
+    if (this->m_elseBranch) {
+        children.push_back(this->m_elseBranch.get());
     }
     return children;
 }
 
 std::unique_ptr<ExpressionNode> IfExpressionNode::takeCondition() {
-    return std::move(this->condition);
+    return std::move(this->m_condition);
 }
 
 std::unique_ptr<ExpressionNode> IfExpressionNode::takeThenBranch() {
-    return std::move(this->thenBranch);
+    return std::move(this->m_thenBranch);
 }
 
 std::unique_ptr<ExpressionNode> IfExpressionNode::takeElseBranch() {
-    return std::move(this->elseBranch);
+    return std::move(this->m_elseBranch);
 }
 
 void IfExpressionNode::setCondition(std::unique_ptr<ExpressionNode> condition) {
-    this->condition = std::move(condition);
+    this->m_condition = std::move(condition);
 }
 
 void IfExpressionNode::setThenBranch(std::unique_ptr<ExpressionNode> thenBranch) {
-    this->thenBranch = std::move(thenBranch);
+    this->m_thenBranch = std::move(thenBranch);
 }
 
 void IfExpressionNode::setElseBranch(std::unique_ptr<ExpressionNode> elseBranch) {
-    this->elseBranch = std::move(elseBranch);
+    this->m_elseBranch = std::move(elseBranch);
 }
 
 //TypeExpressionNode
 PrimitiveTypeKind TypeExpressionNode::getPrimitiveTypeKind() const {
-    switch (this->token->getTokenKind()) {
+    switch (this->m_token->getTokenKind()) {
         case TokenKind::TypePrimitiveBoolean:
             return PrimitiveTypeKind::Boolean;
         case TokenKind::TypePrimitiveEmpty:

@@ -26,7 +26,7 @@ public:
 
 class FlowBuilderResult {
 private:
-    std::vector<std::unique_ptr<FlowGraph>> graphs;
+    std::vector<std::unique_ptr<FlowGraph>> m_graphs;
 public:
     std::vector<FlowGraph*> getGraphs();
     void addGraph(std::unique_ptr<FlowGraph> graph);

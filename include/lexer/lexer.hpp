@@ -13,9 +13,9 @@
 
 class Lexer {
 private:
-    Utf8Scanner& scanner;
-    Source* source;
-    Diagnostics& diagnostics;
+    Utf8Scanner& m_scanner;
+    Source* m_source;
+    Diagnostics& m_diagnostics;
     void addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocation> location = std::nullopt);
     void addError(int code, const std::string& message, std::optional<SourceCodeLocation> location = std::nullopt);
     void addWarning(int code, const std::string& message, std::optional<SourceCodeLocation> location = std::nullopt);
@@ -23,7 +23,7 @@ private:
     std::unique_ptr<Token> makeToken(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation = std::nullopt, std::optional<SourceCodeLocation> endSourceCodeLocation = std::nullopt);
     std::unique_ptr<Token> makeTokenAndAdvance(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation = std::nullopt, std::optional<SourceCodeLocation> endSourceCodeLocation = std::nullopt);
 public:
-    Lexer(Utf8Scanner& scanner, Source* source, Diagnostics& diagnostics) : scanner(scanner), source(source), diagnostics(diagnostics) {}
+    Lexer(Utf8Scanner& scanner, Source* source, Diagnostics& diagnostics) : m_scanner(scanner), m_source(source), m_diagnostics(diagnostics) {}
     std::unique_ptr<Token> getNextToken();
     std::unique_ptr<Token> getNextNonTrivialToken();
     bool isDone();

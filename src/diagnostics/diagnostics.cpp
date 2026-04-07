@@ -2,9 +2,9 @@
 
 // Diagnostics
 void Diagnostics::addDiagnosticMessage(DiagnosticMessage diagnosticMessage) {
-    this->diagnosticMessages.push_back(diagnosticMessage);
+    this->m_diagnosticMessages.push_back(diagnosticMessage);
 }
 
 std::vector<DiagnosticMessage> Diagnostics::getDiagnosticMessages() const {
-    return this->diagnosticMessages;
+    return this->m_diagnosticMessages;
 }

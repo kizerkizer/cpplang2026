@@ -67,8 +67,16 @@ inline SymbolModifierFlags operator|(SymbolModifierFlags a, SymbolModifierFlags 
 }
 
 class Symbol {
+private:
+    std::string m_nameString;
+    Scope* m_containingScope;
+    Node* m_node;
+    SymbolKind m_kind;
+    SymbolModifierFlags m_modifierFlags;
+    Type* m_type = nullptr; // set in type checking
+    FlowGraph* m_flowGraph = nullptr; // set in flowbuilder TODO ?
 public:
-    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : nameString(nameString), containingScope(containingScope), node(node), kind(kind), modifierFlags(modifierFlags) {};
+    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : m_nameString(nameString), m_containingScope(containingScope), m_node(node), m_kind(kind), m_modifierFlags(modifierFlags) {};
     const std::string& getNameString() const;
     const Scope* getContainingScope() const;
     SymbolKind getKind() const;
@@ -78,12 +86,4 @@ public:
     void setType(Type* type);
     FlowGraph* getFlowGraph();
     void setFlowGraph(FlowGraph* flowGraph);
-private:
-    std::string nameString;
-    Scope* containingScope;
-    Node* node;
-    SymbolKind kind;
-    SymbolModifierFlags modifierFlags;
-    Type* type = nullptr; // set in type checking
-    FlowGraph* flowGraph = nullptr; // set in flowbuilder TODO ?
 };

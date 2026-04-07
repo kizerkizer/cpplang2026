@@ -3,33 +3,33 @@
 
 // Symbol
 const std::string& Symbol::getNameString() const {
-    return this->nameString;
+    return this->m_nameString;
 }
 
 const Scope* Symbol::getContainingScope() const {
-    return this->containingScope;
+    return this->m_containingScope;
 }
 
 SymbolKind Symbol::getKind() const {
-    return this->kind;
+    return this->m_kind;
 }
 
 Node* Symbol::getDefiningNode() const {
-    return this->node;
+    return this->m_node;
 }
 
 FlowGraph* Symbol::getFlowGraph() {
-    return this->flowGraph;
+    return this->m_flowGraph;
 }
 
 void Symbol::setFlowGraph(FlowGraph* flowGraph) {
-    this->flowGraph = flowGraph;
+    this->m_flowGraph = flowGraph;
 }
 
 Type* Symbol::getType() {
-    return this->type;
+    return this->m_type;
 }
 
 void Symbol::setType(Type* type) {
-    this->type = type;
+    this->m_type = type;
 }

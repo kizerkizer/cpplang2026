@@ -4,42 +4,42 @@
 
 // FlowNode
 FlowNode::FlowNode(FlowNodeKind kind) {
-    this->kind = kind;
-    this->id = getNextId();
+    this->m_kind = kind;
+    this->m_id = getNextId();
 }
 
 int FlowNode::getId () {
-    return this->id;
+    return this->m_id;
 }
 
 void FlowNode::setId(int id) {
-    this->id = id;
+    this->m_id = id;
 }
 
 Node* FlowNode::getAstNode() {
-    return this->astNode;
+    return this->m_astNode;
 }
 
 void FlowNode::setAstNode(Node* node) {
-    this->astNode = node;
+    this->m_astNode = node;
 }
 
 FlowNodeKind FlowNode::getKind() {
-    return this->kind;
+    return this->m_kind;
 }
 
 std::vector<FlowNode*> FlowNode::getSuccessors() {
-    return this->successors;
+    return this->m_successors;
 }
 
 std::vector<FlowNode*> FlowNode::getPredecessors() {
-    return this->predecessors;
+    return this->m_predecessors;
 }
 
 void FlowNode::addSuccessor(FlowNode* successor) {
-    this->successors.push_back(successor);
+    this->m_successors.push_back(successor);
 }
 
 void FlowNode::addPredecessor(FlowNode* predecessor) {
-    this->predecessors.push_back(predecessor);
+    this->m_predecessors.push_back(predecessor);
 }

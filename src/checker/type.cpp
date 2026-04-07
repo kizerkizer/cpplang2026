@@ -4,19 +4,19 @@
 
 //Type
 TypeKind Type::getTypeKind() const {
-    return this->kind;
+    return this->m_kind;
 }
 
 TypeFlags Type::getTypeFlags() const {
-    return this->flags;
+    return this->m_flags;
 }
 
 void Type::setTypeFlags(TypeFlags flags) {
-    this->flags = flags;
+    this->m_flags = flags;
 }
 
 void Type::setTypeFlag(TypeFlags flag) {
-    this->flags = this->flags | flag;
+    this->m_flags = this->m_flags | flag;
 }
 
 bool Type::operator==(const Type& rhs) const {
@@ -29,7 +29,7 @@ bool Type::operator!=(const Type& rhs) const {
 
 //PrimitiveType
 PrimitiveTypeKind PrimitiveType::getPrimitiveTypeKind() const {
-    return this->primitiveTypeKind;
+    return this->m_primitiveTypeKind;
 }
 
 bool PrimitiveType::isSubtypeOf(Type* other) const {
@@ -52,16 +52,16 @@ bool PrimitiveType::isSubtypeOf(Type* other) const {
         return false;
     }
     auto otherPrimitiveType = static_cast<PrimitiveType*>(other);
-    return this->primitiveTypeKind == otherPrimitiveType->primitiveTypeKind;
+    return this->m_primitiveTypeKind == otherPrimitiveType->m_primitiveTypeKind;
 }
 
 //FunctionType
 std::vector<Symbol*> FunctionType::getParameters() {
-    return this->parameters;
+    return this->m_parameters;
 }
 
 Type* FunctionType::getReturnType() {
-    return this->returnType;
+    return this->m_returnType;
 }
 
 bool FunctionType::isSubtypeOf(Type* other) const {
@@ -86,7 +86,7 @@ bool FunctionType::isSubtypeOf(Type* other) const {
     auto otherFunctionType = static_cast<FunctionType*>(other);
     // TODO contravariance, check fully
     // For now, just check that the return type is a subtype, and ignore parameter types
-    return this->returnType->isSubtypeOf(otherFunctionType->returnType);
+    return this->m_returnType->isSubtypeOf(otherFunctionType->m_returnType);
 }
 
 //VoidType
@@ -101,15 +101,15 @@ bool AnyType::isSubtypeOf(Type* other) const {
 
 //UnionType
 std::vector<Type*> UnionType::getTypes() {
-    return this->types;
+    return this->m_types;
 }
 
 void UnionType::addType(Type* type) {
-    this->types.push_back(type);
+    this->m_types.push_back(type);
 }
 
 bool UnionType::isSubtypeOf(Type* other) const {
-    for (const auto& type : this->types) {
+    for (const auto& type : this->m_types) {
         if (!type->isSubtypeOf(other)) {
             return false;
         }

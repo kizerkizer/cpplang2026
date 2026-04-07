@@ -12,27 +12,27 @@ Token Parser::peek(size_t offset) {
     /*if (this->isPastTokensEnd()) {
         return Token(this->source, "", SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), TokenKind::OutOfRange);
     }*/
-    int needed = offset - this->tokenBuffer.size();
+    int needed = offset - this->m_tokenBuffer.size();
     while (needed >= 0) {
-        this->tokenBuffer.push_back(this->lexer->getNextNonTrivialToken());
+        this->m_tokenBuffer.push_back(this->m_lexer->getNextNonTrivialToken());
         needed--;
     }
-    return *this->tokenBuffer[offset]; // offset guaranteed to be < tokenBuffer.size()
+    return *this->m_tokenBuffer[offset]; // offset guaranteed to be < tokenBuffer.size()
 }
 
 bool Parser::isPastTokensEnd() const {
-    return this->lexer->isDone();
+    return this->m_lexer->isDone();
 }
 
 std::unique_ptr<Token> Parser::consumeCurrentToken() {
-    if (!this->tokenBuffer.empty()) {
-        std::unique_ptr<Token> token = std::move(this->tokenBuffer.front());
-        this->tokenBuffer.pop_front();
-        this->index++;
+    if (!this->m_tokenBuffer.empty()) {
+        std::unique_ptr<Token> token = std::move(this->m_tokenBuffer.front());
+        this->m_tokenBuffer.pop_front();
+        this->m_index++;
         return token;
     }
-    std::unique_ptr<Token> token = this->lexer->getNextNonTrivialToken();
-    this->index++;
+    std::unique_ptr<Token> token = this->m_lexer->getNextNonTrivialToken();
+    this->m_index++;
     return token;
 }
 
@@ -54,45 +54,45 @@ SourceCodeLocationSpan Parser::getCurrentSourceCodeLocationSpan() {
 }
 
 void Parser::enterLoop() {
-    this->insideLoop++;
+    this->m_insideLoop++;
 }
 
 void Parser::exitLoop() {
-    if (this->insideLoop > 0) {
-        this->insideLoop--;
+    if (this->m_insideLoop > 0) {
+        this->m_insideLoop--;
     }
 }
 
 void Parser::enterFunction() {
-    this->insideFunction++;
+    this->m_insideFunction++;
 }
 
 void Parser::exitFunction() {
-    if (this->insideFunction > 0) {
-        this->insideFunction--;
+    if (this->m_insideFunction > 0) {
+        this->m_insideFunction--;
     }
 }
 
 void Parser::enterBlock() {
-    this->insideBlock++;
+    this->m_insideBlock++;
 }
 
 void Parser::exitBlock() {
-    if (this->insideBlock > 0) {
-        this->insideBlock--;
+    if (this->m_insideBlock > 0) {
+        this->m_insideBlock--;
     }
 }
 
 void Parser::addErrorMessageParseFailure(const std::string& failedToParse) {
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(5, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Failed to parse " + failedToParse));
+    this->m_diagnostics.addDiagnosticMessage(DiagnosticMessage(5, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->m_source, "Failed to parse " + failedToParse));
 }
 
 void Parser::addErrorMessageExpected(const std::string& expected) {
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Expected '" + expected + "' but found '" + std::string(this->peek().getSourceString()) + "'"));
+    this->m_diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->m_source, "Expected '" + expected + "' but found '" + std::string(this->peek().getSourceString()) + "'"));
 }
 
 void Parser::addErrorMessageUnexpected(const std::string& unexpected) {
-    this->diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->source, "Unexpected '" + unexpected + "'"));
+    this->m_diagnostics.addDiagnosticMessage(DiagnosticMessage(6, DiagnosticMessageKind::Error, DiagnosticMessageStage::Parser, this->peek().getSourceCodeLocationSpan(), this->m_source, "Unexpected '" + unexpected + "'"));
 }
 
 std::unique_ptr<Node> Parser::parse() {
@@ -112,7 +112,7 @@ std::unique_ptr<ProgramNode> Parser::parseProgram() {
 std::unique_ptr<ExecutionListNode> Parser::parseExecutionList() {
     std::vector<std::unique_ptr<Node>> children;
     while (!this->isPastTokensEnd()) {
-        if (insideBlock && this->peek() == TokenKind::BraceClose) {
+        if (m_insideBlock && this->peek() == TokenKind::BraceClose) {
             goto makeExecutionList;
         }
         switch (this->peek().getTokenKind()) {
@@ -144,7 +144,7 @@ std::unique_ptr<ExecutionListNode> Parser::parseExecutionList() {
                 break;
             }
             case TokenKind::KeywordReturn: {
-                if (!this->insideFunction) {
+                if (!this->m_insideFunction) {
                     this->addErrorMessageUnexpected("'return' statement outside of function");
                     goto makeExecutionList;
                 }
@@ -157,7 +157,7 @@ std::unique_ptr<ExecutionListNode> Parser::parseExecutionList() {
                 break;
             }
             case TokenKind::KeywordBreak: {
-                if (!this->insideLoop) {
+                if (!this->m_insideLoop) {
                     this->addErrorMessageUnexpected("'break' statement outside of while loop");
                     goto makeExecutionList;
                 }
@@ -170,7 +170,7 @@ std::unique_ptr<ExecutionListNode> Parser::parseExecutionList() {
                 break;
             }
             case TokenKind::KeywordContinue: {
-                if (!this->insideLoop) {
+                if (!this->m_insideLoop) {
                     this->addErrorMessageUnexpected("'continue' statement outside of while loop");
                     goto makeExecutionList;
                 }
