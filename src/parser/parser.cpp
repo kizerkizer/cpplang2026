@@ -9,9 +9,6 @@
 #include <print>
 
 Token Parser::peek(size_t offset) {
-    /*if (this->isPastTokensEnd()) {
-        return Token(this->source, "", SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), TokenKind::OutOfRange);
-    }*/
     int needed = offset - this->m_tokenBuffer.size();
     while (needed >= 0) {
         this->m_tokenBuffer.push_back(this->m_lexer->getNextNonTrivialToken());
@@ -37,9 +34,6 @@ std::unique_ptr<Token> Parser::consumeCurrentToken() {
 }
 
 std::unique_ptr<Token> Parser::expectAndAdvance(const TokenKind& expectedTokenName) {
-    /*if (this->isPastTokensEnd()) {
-        return nullptr;
-    }*/
     auto token = this->peek();
     if (token != expectedTokenName) {
         return nullptr;
