@@ -3,15 +3,15 @@
 
 // Token
 TokenKind Token::getTokenKind() const {
-    return m_name;
+    return m_tokenKind;
 }
 
 bool Token::operator==(const TokenKind& rhs) const {
-    return m_name == rhs;
+    return m_tokenKind == rhs;
 }
 
 bool Token::operator!=(const TokenKind& rhs) const {
-    return m_name != rhs;
+    return m_tokenKind != rhs;
 }
 
 int Token::getId() const {
@@ -19,15 +19,15 @@ int Token::getId() const {
 }
 
 bool Token::isKeyword() const {
-    return IS_TOKENKIND_KEYWORD(m_name);
+    return IS_TOKENKIND_KEYWORD(m_tokenKind);
 }
 
 bool Token::isLiteral() const {
-    return IS_TOKENKIND_LITERAL(m_name);
+    return IS_TOKENKIND_LITERAL(m_tokenKind);
 }
 
 bool Token::isTypePrimitve() const {
-    return m_name == TokenKind::TypePrimitiveBoolean || m_name == TokenKind::TypePrimitiveEmpty || m_name == TokenKind::TypePrimitiveFloat || m_name == TokenKind::TypePrimitiveInteger || m_name == TokenKind::TypePrimitiveString || m_name == TokenKind::TypePrimitiveAny || m_name == TokenKind::TypePrimitiveVoid;
+    return m_tokenKind == TokenKind::TypePrimitiveBoolean || m_tokenKind == TokenKind::TypePrimitiveEmpty || m_tokenKind == TokenKind::TypePrimitiveFloat || m_tokenKind == TokenKind::TypePrimitiveInteger || m_tokenKind == TokenKind::TypePrimitiveString || m_tokenKind == TokenKind::TypePrimitiveAny || m_tokenKind == TokenKind::TypePrimitiveVoid;
 }
 
 SourceCodeLocationSpan Token::getSourceCodeLocationSpan() const {
@@ -39,7 +39,7 @@ std::string_view Token::getSourceString() const {
 }
 
 std::string Token::toString() const {
-    return "<" + std::string(tokenKindToString(m_name)) + "> ('" + std::string(m_sourceString) + "')";
+    return "<" + std::string(tokenKindToString(m_tokenKind)) + "> ('" + std::string(m_sourceString) + "')";
 }
 
 bool Token::isCompilerCreated() const {

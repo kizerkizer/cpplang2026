@@ -32,9 +32,9 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}VariableDeclarationNode\n", std::string(indentation * 2, ' '));
             std::print("{}* IdentifierNode\n", std::string(indentation * 2, ' '));
             printParseTree(nodeCast->getIdentifier(), indentation + 1);
-            std::print("{}* TypeExpressionNode\n", std::string(indentation * 2, ' '));
-            if (nodeCast->getTypeExpression()) {
-                printParseTree(nodeCast->getTypeExpression(), indentation + 1);
+            std::print("{}* TypeAnnotationNode\n", std::string(indentation * 2, ' '));
+            if (nodeCast->getTypeAnnotation()) {
+                printParseTree(nodeCast->getTypeAnnotation(), indentation + 1);
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
             }
@@ -47,8 +47,8 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}FunctionDeclarationNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Identifier: {}\n", std::string(indentation * 2, ' '), nodeCast->getIdentifier()->getName());
             std::print("{}* ReturnTypeExpression:\n", std::string(indentation * 2, ' '));
-            if (nodeCast->getReturnTypeExpression()) {
-                printParseTree(nodeCast->getReturnTypeExpression(), indentation + 1);
+            if (nodeCast->getReturnTypeAnnotation()) {
+                printParseTree(nodeCast->getReturnTypeAnnotation(), indentation + 1);
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
             }
@@ -322,9 +322,9 @@ std::string getNodeSyntax(Node* node, int indentation) {
             auto variableDeclarationNode = static_cast<VariableDeclarationNode*>(node);
             std::string ret = std::string(indentation * 2, ' ') + "var ";
             ret += variableDeclarationNode->getIdentifier()->getName();
-            if (variableDeclarationNode->getTypeExpression()) {
+            if (variableDeclarationNode->getTypeAnnotation()) {
                 ret += ": ";
-                ret += getNodeSyntax(variableDeclarationNode->getTypeExpression(), 0);
+                ret += getNodeSyntax(variableDeclarationNode->getTypeAnnotation(), 0);
             }
             if (variableDeclarationNode->getExpression()) {
                 ret += " = ";
@@ -358,9 +358,9 @@ std::string getNodeSyntax(Node* node, int indentation) {
                 }
             }
             ret += ")";
-            if (functionDeclarationNode->getReturnTypeExpression()) {
+            if (functionDeclarationNode->getReturnTypeAnnotation()) {
                 ret += ": ";
-                ret += getNodeSyntax(functionDeclarationNode->getReturnTypeExpression(), 0);
+                ret += getNodeSyntax(functionDeclarationNode->getReturnTypeAnnotation(), 0);
             }
             auto body = functionDeclarationNode->getBody();
             ret += " ";

@@ -8,8 +8,6 @@
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
 #include "common/programuniqueid.hpp"
-//#include "flowbuilder/flowgraph.hpp"
-//#include "flowbuilder/flownode.hpp"
 #include "lexer/token.hpp"
 
 /*
@@ -80,10 +78,10 @@ enum class NodeKind {
     BinaryOperatorExpression,
     UnaryOperatorExpression,
     IfExpression,
-    TypePrimitive, // like String, Integer, Float, Boolean, Empty, Number, Any, Void
-    TypeIdentifier, // identifier referring to elsewhere declared type
-    TypeDeclaration, // full type declaration eg type Foo = Integer | Baz;
-    BinaryOperatorTypeExpression, // type expression with binary operator eg Integer | String | Baz;
+    TypePrimitive,
+    TypeIdentifier,
+    TypeDeclaration,
+    BinaryOperatorTypeExpression,
     IdentifierWithPossibleAnnotation,
 };
 
@@ -271,6 +269,7 @@ public:
     Node* getLeft() const;
     Node* getRight() const;
     Token* getOperatorToken() const;
+    TokenKind getOperatorTokenKind() const;
     std::unique_ptr<Node> takeLeft();
     std::unique_ptr<Node> takeRight();
     void setLeft(std::unique_ptr<Node> left);
@@ -297,18 +296,18 @@ public:
 class VariableDeclarationNode : public Node {
 private:
     std::unique_ptr<IdentifierNode> m_identifierNode;
-    std::unique_ptr<Node> m_typeExpression;
+    std::unique_ptr<Node> m_typeAnnotation;
     std::unique_ptr<ExpressionNode> m_expressionNode;
 public:
-    VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifierNode, std::unique_ptr<Node> typeExpression, std::unique_ptr<ExpressionNode> expressionNode, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::VariableDeclaration, sourceCodeLocationSpan), m_identifierNode(std::move(identifierNode)), m_typeExpression(std::move(typeExpression)), m_expressionNode(std::move(expressionNode)) {};
+    VariableDeclarationNode(std::unique_ptr<IdentifierNode> identifierNode, std::unique_ptr<Node> typeAnnotation, std::unique_ptr<ExpressionNode> expressionNode, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::VariableDeclaration, sourceCodeLocationSpan), m_identifierNode(std::move(identifierNode)), m_typeAnnotation(std::move(typeAnnotation)), m_expressionNode(std::move(expressionNode)) {};
     IdentifierNode* getIdentifier() const;
-    Node* getTypeExpression() const;
+    Node* getTypeAnnotation() const;
     ExpressionNode* getExpression() const;
     std::unique_ptr<IdentifierNode> takeIdentifier();
-    std::unique_ptr<Node> takeTypeExpression();
+    std::unique_ptr<Node> takeTypeAnnotation();
     std::unique_ptr<ExpressionNode> takeExpression();
     void setIdentifier(std::unique_ptr<IdentifierNode> identifierNode);
-    void setTypeExpression(std::unique_ptr<Node> typeExpression);
+    void setTypeAnnotation(std::unique_ptr<Node> typeAnnotation);
     void setExpression(std::unique_ptr<ExpressionNode> expressionNode);
     const std::vector<Node*> getChildren() const override;
 };
@@ -338,22 +337,22 @@ class FunctionDeclarationNode : public Node {
 private:
     std::unique_ptr<IdentifierNode> m_identifier;
     std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> m_parameters;
-    std::unique_ptr<Node> m_returnTypeExpression;
+    std::unique_ptr<Node> m_returnTypeAnnotation;
     std::unique_ptr<BlockStatementNode> m_bodyNode;
 public:
-    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<Node> returnTypeExpression, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::FunctionDeclaration, sourceCodeLocationSpan), m_identifier(std::move(identifier)), m_parameters(std::move(parameters)), m_returnTypeExpression(std::move(returnTypeExpression)), m_bodyNode(std::move(bodyNode)) {};
+    FunctionDeclarationNode(std::unique_ptr<IdentifierNode> identifier, std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters, std::unique_ptr<BlockStatementNode> bodyNode, std::unique_ptr<Node> returnTypeAnnotation, SourceCodeLocationSpan sourceCodeLocationSpan) : Node(NodeKind::FunctionDeclaration, sourceCodeLocationSpan), m_identifier(std::move(identifier)), m_parameters(std::move(parameters)), m_returnTypeAnnotation(std::move(returnTypeAnnotation)), m_bodyNode(std::move(bodyNode)) {};
     std::string getIdentifierName() const;
     IdentifierNode* getIdentifier() const;
-    Node* getReturnTypeExpression() const;
+    Node* getReturnTypeAnnotation() const;
     const std::vector<IdentifierWithPossibleAnnotationNode*> getParameters() const;
     BlockStatementNode* getBody() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<IdentifierNode> takeIdentifier();
-    std::unique_ptr<Node> takeReturnTypeExpression();
+    std::unique_ptr<Node> takeReturnTypeAnnotation();
     std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> takeParameters();
     std::unique_ptr<BlockStatementNode> takeBodyNode();
     void setIdentifier(std::unique_ptr<IdentifierNode> identifier);
-    void setReturnTypeExpression(std::unique_ptr<Node> returnTypeExpression);
+    void setReturnTypeAnnotation(std::unique_ptr<Node> returnTypeAnnotation);
     void setParameters(std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters);
     void setBodyNode(std::unique_ptr<BlockStatementNode> bodyNode);
 };
@@ -543,6 +542,7 @@ public:
     ExpressionNode* getLeft() const;
     ExpressionNode* getRight() const;
     Token* getOperatorToken() const;
+    TokenKind getOperatorTokenKind() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<ExpressionNode> takeLeft();
     std::unique_ptr<ExpressionNode> takeRight();
@@ -558,6 +558,7 @@ public:
     UnaryOperatorExpressionNode(std::unique_ptr<ExpressionNode> operand, std::unique_ptr<Token> operatorToken, SourceCodeLocationSpan sourceCodeLocationSpan) : PrimaryExpressionNode(NodeKind::UnaryOperatorExpression, sourceCodeLocationSpan), m_operand(std::move(operand)), m_operatorToken(std::move(operatorToken)) {};
     ExpressionNode* getOperand() const;
     Token* getOperatorToken() const;
+    TokenKind getOperatorTokenKind() const;
     const std::vector<Node*> getChildren() const override;
     std::unique_ptr<ExpressionNode> takeOperand();
     void setOperand(std::unique_ptr<ExpressionNode> operand);

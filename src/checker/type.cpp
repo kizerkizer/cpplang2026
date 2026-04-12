@@ -127,8 +127,6 @@ std::string TypeType::toString() const {
     return "Type(" + m_underlyingType->toString() + ")";
 }
 
-
-
 // ErrorType
 ErrorType::ErrorType() : Type(TypeKind::Error, TypeFlags::None) {}
 
@@ -140,7 +138,7 @@ std::string ErrorType::toString() const {
     return "Error";
 }
 
-//PrimitiveType
+// PrimitiveType
 PrimitiveTypeKind PrimitiveType::getPrimitiveTypeKind() const {
     return m_primitiveTypeKind;
 }
@@ -185,7 +183,7 @@ std::string PrimitiveType::toString() const {
     }
 }
 
-//FunctionType
+// FunctionType
 std::vector<Symbol*> FunctionType::getParameters() {
     return m_parameters;
 }
@@ -231,7 +229,7 @@ std::string FunctionType::toString() const {
     return result;
 }
 
-//VoidType
+// VoidType
 bool VoidType::isSubtypeOf(Type* other) const {
     return true || other; // VoidType is a subtype of all types. || other is just to avoid "unused parameter" warning
 }
@@ -240,7 +238,7 @@ std::string VoidType::toString() const {
     return "Void";
 }
 
-//AnyType
+// AnyType
 bool AnyType::isSubtypeOf(Type* other) const {
     return other->isAny(); // AnyType is a subtype of only itself
 }
@@ -249,7 +247,7 @@ std::string AnyType::toString() const {
     return "Any";
 }
 
-//UnionType
+// UnionType
 std::vector<Type*> UnionType::getTypes() {
     return m_types;
 }

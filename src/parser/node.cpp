@@ -87,12 +87,20 @@ void VariableDeclarationNode::setExpression(std::unique_ptr<ExpressionNode> expr
     m_expressionNode = std::move(expressionNode);
 }
 
-Node* VariableDeclarationNode::getTypeExpression() const {
-    return m_typeExpression.get();
+Node* VariableDeclarationNode::getTypeAnnotation() const {
+    return m_typeAnnotation.get();
+}
+
+void VariableDeclarationNode::setTypeAnnotation(std::unique_ptr<Node> typeAnnotation) {
+    m_typeAnnotation = std::move(typeAnnotation);
+}
+
+std::unique_ptr<Node> VariableDeclarationNode::takeTypeAnnotation() {
+    return std::move(m_typeAnnotation);
 }
 
 const std::vector<Node*> VariableDeclarationNode::getChildren() const {
-    return {m_typeExpression.get(), m_expressionNode.get() };
+    return {m_typeAnnotation.get(), m_expressionNode.get() };
 }
 
 //FunctionDeclarationNode
@@ -100,8 +108,8 @@ IdentifierNode* FunctionDeclarationNode::getIdentifier() const {
     return m_identifier.get();
 };
 
-Node* FunctionDeclarationNode::getReturnTypeExpression() const {
-    return m_returnTypeExpression.get();
+Node* FunctionDeclarationNode::getReturnTypeAnnotation() const {
+    return m_returnTypeAnnotation.get();
 }
 
 std::string FunctionDeclarationNode::getIdentifierName() const {
@@ -134,8 +142,8 @@ std::unique_ptr<IdentifierNode> FunctionDeclarationNode::takeIdentifier() {
     return std::move(m_identifier);
 }
 
-std::unique_ptr<Node> FunctionDeclarationNode::takeReturnTypeExpression() {
-    return std::move(m_returnTypeExpression);
+std::unique_ptr<Node> FunctionDeclarationNode::takeReturnTypeAnnotation() {
+    return std::move(m_returnTypeAnnotation);
 }
 
 std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> FunctionDeclarationNode::takeParameters() {
@@ -150,8 +158,8 @@ void FunctionDeclarationNode::setIdentifier(std::unique_ptr<IdentifierNode> iden
     m_identifier = std::move(identifier);
 }
 
-void FunctionDeclarationNode::setReturnTypeExpression(std::unique_ptr<Node> returnTypeExpression) {
-    m_returnTypeExpression = std::move(returnTypeExpression);
+void FunctionDeclarationNode::setReturnTypeAnnotation(std::unique_ptr<Node> returnTypeExpression) {
+    m_returnTypeAnnotation = std::move(returnTypeExpression);
 }
 
 void FunctionDeclarationNode::setParameters(std::vector<std::unique_ptr<IdentifierWithPossibleAnnotationNode>> parameters) {
@@ -508,6 +516,10 @@ Token* BinaryOperatorTypeExpressionNode::getOperatorToken() const {
     return m_operatorToken.get();
 }
 
+TokenKind BinaryOperatorTypeExpressionNode::getOperatorTokenKind() const {
+    return m_operatorToken->getTokenKind();
+}
+
 std::unique_ptr<Node> BinaryOperatorTypeExpressionNode::takeLeft() {
     return std::move(m_left);
 }
@@ -541,6 +553,10 @@ Token* BinaryOperatorExpressionNode::getOperatorToken() const {
     return m_operatorToken.get();
 }
 
+TokenKind BinaryOperatorExpressionNode::getOperatorTokenKind() const {
+    return m_operatorToken->getTokenKind();
+}
+
 const std::vector<Node*> BinaryOperatorExpressionNode::getChildren() const {
     return { m_left.get(), m_right.get() };
 }
@@ -568,6 +584,10 @@ ExpressionNode* UnaryOperatorExpressionNode::getOperand() const {
 
 Token* UnaryOperatorExpressionNode::getOperatorToken() const {
     return m_operatorToken.get();
+}
+
+TokenKind UnaryOperatorExpressionNode::getOperatorTokenKind() const {
+    return m_operatorToken->getTokenKind();
 }
 
 const std::vector<Node*> UnaryOperatorExpressionNode::getChildren() const {

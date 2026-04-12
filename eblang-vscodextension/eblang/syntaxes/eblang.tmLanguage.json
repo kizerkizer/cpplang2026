@@ -12,7 +12,13 @@
 			"include": "#keywords"
 		},
 		{
+			"include": "#modifiers"
+		},
+		{
 			"include": "#strings"
+		},
+		{
+			"include": "#macros"
 		}
 	],
 	"repository": {
@@ -29,6 +35,18 @@
 				}
 			]
 		},
+		"macros": {
+			"patterns": [
+				{
+					"name": "entity.name.function.macro.eblang",
+					"match": "(\")([a-zA-Z_][a-zA-Z0-9_]*)",
+					"captures": {
+						"1": { "name": "punctuation.definition.macro.eblang" },
+						"2": { "name": "entity.name.function.macro.eblang" }
+					}
+				}
+			]
+		},
 		"numbers": {
 			"patterns": [
 				{
@@ -41,6 +59,14 @@
 				}
 			]
 		},
+		"modifiers": {
+			"patterns": [
+				{
+					"name": "storage.modifier.eblang",
+					"match": "\\b(public|private|protected|internal)\\b"
+				}
+			]
+		},
 		"keywords": {
 			"patterns": [
 				{
@@ -49,7 +75,7 @@
 				},
 				{
 					"name": "keyword.declaration.eblang",
-					"match": "\\b(var|type|function|class)\\b"
+					"match": "\\b(var|type|function|method|class|interface|macro|enumeration)\\b"
 				},
 				{
 					"match": "\\b(var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(:)\\s*([a-zA-Z_][a-zA-Z0-9_]*)",

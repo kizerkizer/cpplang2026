@@ -23,9 +23,14 @@ function main (): Integer {
     var myResult = foo(5 == 3);
     if (myResult is String) then {
         return 0;
+    } else if (myResult is Integer) then {
+        return 1;
+    } else {
+        return 2;
     }
     var q: Baz = qux();
     var r: Int = 18;
+    var z = if q is String then 's' else 'n';
     // myResult should then narrow to Integer here
     //return myResult + 15; // 32
     //var bar: Integer | Empty;

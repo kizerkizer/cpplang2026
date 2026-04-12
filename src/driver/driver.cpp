@@ -42,7 +42,7 @@ void Driver::compile(Source* source) {
     auto binderResult = binder.bind(desugared.get());
     displayResults(m_diagnostics.getDiagnosticMessages(), "bind");
 
-    FlowBuilder flowBuilder = FlowBuilder();
+    FlowBuilder flowBuilder = FlowBuilder(m_diagnostics);
     std::unique_ptr<FlowBuilderResult> flowBuilderResult = flowBuilder.buildGraph(binderResult->getNode());
     for (auto graph : flowBuilderResult->getGraphs()) {
         graph->assignReachabilityToNodes();

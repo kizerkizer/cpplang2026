@@ -72,6 +72,7 @@ enum class TokenKind {
     TypePrimitiveVoid,
 };
 
+// TODO Move macro logic into Token. Then remove these macros.
 #define IS_TOKENKIND_LITERAL(tokenKind) (tokenKind == TokenKind::LiteralInteger || tokenKind == TokenKind::LiteralFloat || tokenKind == TokenKind::LiteralString || tokenKind == TokenKind::LiteralBoolean)
 #define IS_TOKENKIND_KEYWORD(tokenKind) (tokenKind == TokenKind::KeywordIf || tokenKind == TokenKind::KeywordThen || tokenKind == TokenKind::KeywordElse || tokenKind == TokenKind::KeywordClass || tokenKind == TokenKind::KeywordWhile || tokenKind == TokenKind::KeywordLoop || tokenKind == TokenKind::KeywordFunction || tokenKind == TokenKind::KeywordReturn || tokenKind == TokenKind::KeywordVar || tokenKind == TokenKind::KeywordType)
 #define IS_TOKENKIND_TRIVIA(tokenKind) (tokenKind == TokenKind::TriviaWhitespace || tokenKind == TokenKind::TriviaCommentShort || tokenKind == TokenKind::TriviaCommentLong || tokenKind == TokenKind::TriviaNewline)
@@ -84,9 +85,6 @@ enum class TokenKind {
 
 constexpr int getPrecedence(const TokenKind &tokenName) {
     switch (tokenName) {
-        /*case TokenName::Not:
-            return 9;*/
-            // Unary operators are handled separately in the parser, so we don't assign them a precedence here
         case TokenKind::Dot:
             return 9;
         case TokenKind::AsteriskAsterisk:
@@ -132,7 +130,7 @@ constexpr bool getAssociativity(const TokenKind &tokenName) {
         case TokenKind::Not:
         case TokenKind::Equal:
         case TokenKind::AsteriskAsterisk:
-            return RIGHT_ASSOCIATIVE; // right associative
+            return RIGHT_ASSOCIATIVE;
         case TokenKind::Plus:
         case TokenKind::Dash:
         case TokenKind::Asterisk:
@@ -144,16 +142,16 @@ constexpr bool getAssociativity(const TokenKind &tokenName) {
         case TokenKind::LessThanEqual:
         case TokenKind::GreaterThanEqual:
         case TokenKind::Is:
-            return LEFT_ASSOCIATIVE; // left associative
-        default: return LEFT_ASSOCIATIVE; // default to left associative
+            return LEFT_ASSOCIATIVE;
+        default: return LEFT_ASSOCIATIVE; // Default to left associative
     }
 }
 
 constexpr bool getTypeAssociativity(const TokenKind &tokenName) {
     switch (tokenName) {
         case TokenKind::Pipe:
-            return LEFT_ASSOCIATIVE; // left associative
-        default: return LEFT_ASSOCIATIVE; // default to left associative
+            return LEFT_ASSOCIATIVE;
+        default: return LEFT_ASSOCIATIVE; // Default to left associative
     }
 }
 
@@ -230,13 +228,13 @@ class Token {
 private:
     int m_id;
     Source* m_source;
-    TokenKind m_name;
+    TokenKind m_tokenKind;
     std::string_view m_sourceString;
     SourceCodeLocationSpan m_sourceCodeLocationSpan;
     bool m_compilerCreated;
 public:
-    Token(Source* source, const std::string_view sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
-        : m_id(getNextId()), m_source(source), m_name(name), m_sourceString(sourceString), m_sourceCodeLocationSpan(sourceCodeLocationSpan), m_compilerCreated(compilerCreated) {};
+    Token(Source* source, const std::string_view sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind tokenKind, bool compilerCreated = false)
+        : m_id(getNextId()), m_source(source), m_tokenKind(tokenKind), m_sourceString(sourceString), m_sourceCodeLocationSpan(sourceCodeLocationSpan), m_compilerCreated(compilerCreated) {};
     TokenKind getTokenKind() const;
     Source* getSource() const;
     std::string_view getSourceString() const;

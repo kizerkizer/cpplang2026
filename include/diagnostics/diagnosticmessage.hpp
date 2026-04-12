@@ -45,6 +45,7 @@ enum class DiagnosticMessageStage {
     Binder,
     Desugarer,
     TypeChecker,
+    Interpreter,
 };
 
 constexpr const char* diagnosticMessageStageToString(DiagnosticMessageStage diagnosticMessageStage) {
@@ -61,6 +62,8 @@ constexpr const char* diagnosticMessageStageToString(DiagnosticMessageStage diag
             return "Desugarer";
         case DiagnosticMessageStage::TypeChecker:
             return "TypeChecker";
+        case DiagnosticMessageStage::Interpreter:
+            return "Interpreter";
     }
 }   
 
@@ -82,4 +85,5 @@ public:
     std::string getMessage() const;
     std::string getFullMessage() const;
     std::string getCurtMessage() const;
+    std::string getTestMessage() const;
 };

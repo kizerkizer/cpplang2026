@@ -51,6 +51,7 @@ private:
     void bindFunctionDeclaration(Node* node);
     void bindAssignmentExpression(Node* node);
     void bindIfStatement(Node* node);
+    void bindIdentifier(Node* node);
     void bindRecursive(Node* node, bool doNotCreateScope = false);
     void addErrorMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan = std::nullopt);
     void addWarningMessage(int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeLocationSpan = std::nullopt);

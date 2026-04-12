@@ -7,25 +7,23 @@
 #include "flowbuilder/flowgraph.hpp"
 #include "parser/node.hpp"
 #include "parser/nodemap.hpp"
+#include "diagnostics/diagnostics.hpp"
 
-class LoopContext {
-public:
+struct LoopContext {
     FlowNode* header;
     FlowNode* successor;
 };
 
-class FunctionContext {
-public:
+struct FunctionContext {
     FlowNode* successor;
 };
 
-class FlowContext {
-public:
+struct FlowContext {
     std::stack<LoopContext> loopContexts; // stack
     FunctionContext functionContext; // TODO no nested functions for now FIXME
 };
 
-using FlowInfo = struct FlowInfo {
+struct FlowInfo {
     FlowNode* flowNode;
     FlowGraph* flowGraph;
     bool reachable;
@@ -48,16 +46,15 @@ public:
 class FlowBuilder {
 private:
     std::unique_ptr<NodeMap<FlowInfo>> m_flowInfoMap;
+    Diagnostics& m_diagnostics;
     FlowGraph* buildGraphInternal(Node* node, FlowBuilderResult* result_out);
     FlowNode* buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowBuilderResult* result_out);
-    FlowNode* fNode(Node* node) const;
-    void fNode(Node* node, FlowNode* flowNode);
-    FlowGraph* fGraph(Node* node) const;
-    void fGraph(Node* node, FlowGraph* flowGraph);
-    /*bool reachable(Node* node) const;
-    void reachable(Node* node, bool reachable);*/
+    FlowNode* getFlowNode(Node* node) const;
+    void setFlowNode(Node* node, FlowNode* flowNode);
+    FlowGraph* getFlowGraph(Node* node) const;
+    void setFlowGraph(Node* node, FlowGraph* flowGraph);
 public:
-    FlowBuilder();
+    FlowBuilder(Diagnostics& diagnostics);
     std::unique_ptr<FlowBuilderResult> buildGraph(Node* rootNode);
     NodeMap<FlowInfo>* getFlowInfoMap() const;
     std::unique_ptr<NodeMap<FlowInfo>> takeFlowInfoMap();

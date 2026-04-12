@@ -55,6 +55,14 @@ private:
     Type* examineVariableDeclaration(Node* node);
     Type* examineFunctionDeclaration(Node* node);
     Type* examineIfStatement(Node* node);
+    Type* examineFunctionCallStatement(Node* node);
+    Type* examineExecutionList(Node* node);
+    Type* examineAssignmentExpression(Node* node);
+    Type* examineAssignmentStatement(Node* node);
+    Type* examineLoopStatement(Node* node);
+    Type* examineProgram(Node* node);
+    Type* examineBlockStatement(Node* node);
+
     Type* examine(Node* node);
 
     FlowGraph* getFlowGraph(Node* node);

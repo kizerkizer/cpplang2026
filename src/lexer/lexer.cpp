@@ -10,6 +10,7 @@
 #include "diagnostics/diagnosticmessage.hpp"
 #include "lexer/token.hpp"
 
+// Used to make sure longer keywords/operators are checked before shorter ones (e.g. 'is' before 'i')
 struct LongestToShortestComparer {
     bool operator()(const std::string& left, const std::string& right) const {
         if (left.length() != right.length()) {
@@ -86,7 +87,6 @@ std::map<std::string, TokenKind, LongestToShortestComparer> punctuators = {
     {"]", TokenKind::BracketClose},
 };
 
-
 bool isIdentifierStart (char32_t c) {
     return std::isalpha(c) || c == '_';
 }
@@ -122,7 +122,7 @@ void Lexer::reset() {
 
 std::unique_ptr<Token> Lexer::makeToken(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation, std::optional<SourceCodeLocation> endSourceCodeLocation) {
     if (tokenKind == TokenKind::OutOfRange) {
-        return std::make_unique<Token>(m_source, sourceString, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), tokenKind);
+        return std::make_unique<Token>(m_source, sourceString, SourceCodeLocationSpan(SourceCodeLocation(-1, -1, -1), SourceCodeLocation(-1, -1, -1)), tokenKind, true);
     }
     if (!startSourceCodeLocation.has_value()) {
         startSourceCodeLocation = m_scanner.getCurrentSourceCodeLocation();
@@ -140,6 +140,7 @@ std::unique_ptr<Token> Lexer::makeTokenAndAdvance(TokenKind tokenKind, std::stri
     return token;
 }
 
+// TODO Refactor addDiagnostic and addError, addWarning, addInfo to use SourceCodeLocationSpan instead of SourceCodeLocation, and remove the logic to create a SourceCodeLocationSpan from a SourceCodeLocation in makeToken.
 void Lexer::addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocation> location) {
     auto loc = location.has_value() ? location.value() : m_scanner.getCurrentSourceCodeLocation();
     auto locationSpan = SourceCodeLocationSpan(loc, loc);
@@ -174,7 +175,10 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         return this->makeToken(TokenKind::OutOfRange, "");
     }
     std::unique_ptr<Token> nextToken = nullptr;
+
+    // Newlines
     if (this->m_scanner.peekCodepoint() == '\r' && this->m_scanner.peekCodepoint(1) == '\n') {
+
         // Windows-style newline
         auto token = this->makeToken(TokenKind::TriviaNewline, this->m_scanner.substr(this->m_scanner.getByteIndex(), 2));
         nextToken = std::move(token);
@@ -182,13 +186,17 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         return nextToken;
     }
     if (m_scanner.peekCodepoint() == '\n') {
+
         // Unix-style newline
         auto token = this->makeToken(TokenKind::TriviaNewline, m_scanner.substr(m_scanner.getByteIndex(), 1));
-        // LastSourceLocation automatically set to first in constructor
+
+        // LastSourceLocation automatically set to first in constructor TODO
         nextToken = std::move(token);
         m_scanner.advance();
         return nextToken;
     }
+
+    // Whitespace
     if (isWhitespace(m_scanner.peekCodepoint())) {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
         while (isWhitespace(m_scanner.peekCodepoint()) && !isNewline(m_scanner.peekCodepoint())) {
@@ -199,6 +207,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         nextToken = std::move(token);
         return nextToken;
     }
+
     // Single line comment
     if (m_scanner.peekCodepoint() == '/' && m_scanner.peekCodepoint(1) == '/') {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
@@ -210,6 +219,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         nextToken = std::move(token);
         return nextToken;
     }
+
     // /*...*/ comment
     if (m_scanner.peekCodepoint() == '/' && m_scanner.peekCodepoint(1) == '*') {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
@@ -236,6 +246,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         nextToken = std::move(token);
         return nextToken;
     }
+
     // Identifier
     if (isIdentifierStart(m_scanner.peekCodepoint())) {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
@@ -245,7 +256,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         }
         auto sourceString = m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex);
 
-        // check keywords
+        // Check keywords
         auto keywordIt = keywords.find(std::string(sourceString));
         if (keywordIt != keywords.end()) {
             auto token = this->makeToken(keywordIt->second, sourceString, SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn));
@@ -253,7 +264,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             return nextToken;
         }
 
-        // check special values
+        // Check special values
         auto specialIt = specialValues.find(std::string(sourceString));
         if (specialIt != specialValues.end()) {
             auto token = this->makeToken(specialIt->second, sourceString, SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn));
@@ -261,7 +272,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             return nextToken;
         }
 
-        // check operators (for operators like 'is')
+        // Check operators (for operators like 'is')
         auto operatorIt = operators.find(std::string(sourceString));
         if (operatorIt != operators.end()) {
             auto token = this->makeToken(operatorIt->second, sourceString, SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn));
@@ -269,7 +280,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             return nextToken;
         }
 
-        // otherwise, it's an identifier
+        // Otherwise, it's an identifier
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
         auto token = this->makeToken(TokenKind::Identifier, sourceString, startLocation);
         nextToken = std::move(token);
@@ -298,7 +309,7 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         return nextToken;
     }
 
-    // Integer/float literal
+    // Integer/Float literal
     if (isDigit(m_scanner.peekCodepoint())) {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
         m_scanner.advance();
@@ -354,6 +365,8 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             return nextToken;
         }
     }
+
+    // If we reach here, it's an unexpected character
     this->addError(4, std::string("Unexpected character '") + std::string(1, m_scanner.peekCodepoint()) + "'", m_scanner.getCurrentSourceCodeLocation());
     return nextToken;
 }

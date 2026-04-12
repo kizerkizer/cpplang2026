@@ -1,56 +1,19 @@
 #include <algorithm>
 #include <memory>
+#include <map>
 #include <vector>
 
 #include "flowbuilder/flowgraph.hpp"
-#include "flowbuilder/flowbuilder.hpp"
 #include "flowbuilder/flownode.hpp"
 #include "parser/node.hpp"
-
-// FlowBuilderResult
-std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
-    std::vector<FlowGraph*> graphPointers;
-    for (auto& graph : this->m_graphs) {
-        graphPointers.push_back(graph.get());
-    }
-    return graphPointers;
-}
-
-void FlowBuilderResult::addGraph(std::unique_ptr<FlowGraph> graph) {
-    this->m_graphs.push_back(std::move(graph));
-}
-
-NodeMap<FlowInfo>* FlowBuilderResult::getFlowInfoMap() const {
-    return this->m_flowInfoMap.get();
-}
-
-void FlowBuilderResult::setFlowInfoMap(std::unique_ptr<NodeMap<FlowInfo>> flowInfoMap) {
-    this->m_flowInfoMap = std::move(flowInfoMap);
-}
-
-FlowNode* FlowBuilderResult::getFlowNode(Node* node) const {
-    auto flowInfo = this->m_flowInfoMap->getValue(node);
-    if (flowInfo) {
-        return flowInfo->flowNode;
-    }
-    return nullptr;
-}
-
-FlowGraph* FlowBuilderResult::getFlowGraph(Node* node) const {
-    auto flowInfo = this->m_flowInfoMap->getValue(node);
-    if (flowInfo) {
-        return flowInfo->flowGraph;
-    }
-    return nullptr;
-}
 
 // FlowGraph
 FlowGraph::FlowGraph () {
     m_flowGraphNodeMap = std::make_unique<NodeMap<FlowGraphInfo>>();
     auto entry = std::make_unique<FlowNode>(FlowNodeKind::Entry);
     auto exit = std::make_unique<FlowNode>(FlowNodeKind::Exit);
-    this->addNode(std::move(entry));
-    this->addNode(std::move(exit));
+    m_entry = std::move(entry);
+    m_exit = std::move(exit);
 }
 
 void FlowGraph::setReachable(Node* node, bool reachable) {
@@ -69,7 +32,7 @@ bool FlowGraph::getReachable(Node* node) {
     if (flowInfo) {
         return flowInfo->reachable;
     }
-    return false; // default to false if not set
+    return false; // Default to false if not set
 }
 
 NodeMap<FlowGraphInfo>* FlowGraph::getFlowGraphNodeMap() const {
@@ -106,10 +69,11 @@ FlowNode* FlowGraph::addNode(std::unique_ptr<FlowNode> node) {
         return this->m_exit.get();
     }
 
-    // If already added, return nullptr TODO ??
+    // If already added, return nullptr
     if (std::count(this->m_nodes.begin(), this->m_nodes.end(), node)) {
         return nullptr;
     }
+
     this->m_nodes.push_back(std::move(node));
     return this->m_nodes.back().get();
 }
@@ -162,7 +126,7 @@ bool FlowGraph::isASTNodeReachable(Node* node) {
     if (flowInfo) {
         return flowInfo->reachable;
     }
-    return false; // default to false if not set
+    return false; // Default to false if not set
 }
 
 void FlowGraph::assignReachabilityToNodes() {

@@ -1,0 +1,52 @@
+class MyClass {
+    private var b: String | Empty;
+
+    public function foo(): String {
+        return 'hello world';
+    }
+
+    private function get Bar (): Integer {
+        return 42;
+    }
+}
+
+interface Buzz {
+    public function hoo (param: String, otherParam: Integer): String;
+}
+
+class Foo < MyClass : Buzz {
+    function qux(): Boolean {
+        return true;
+    }
+}
+
+function main (): Integer {
+    return 0;
+}
+
+class Baz {
+    private var q: String;
+    public static function staticMethod (): String {
+        return 'I am static';
+    }
+
+    function instance (name: String) {
+        this.q = name;
+    }
+
+    public var x: Integer;
+    public var y: Integer;
+
+    public function add (): Integer {
+        return this.x + this.y;
+    }
+}
+
+Integer -> Intger -> Integer
+doSomething x y = x + y
+
+macro "my_macro {
+    
+}
+
+var foobar = "my_macro (5, 10, 15);

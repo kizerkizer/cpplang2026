@@ -6,7 +6,7 @@
 #include "flowbuilder/flownode.hpp"
 #include "parser/nodemap.hpp"
 
-using FlowGraphInfo = struct FlowGraphInfo {
+struct FlowGraphInfo {
     bool reachable;
 };
 
