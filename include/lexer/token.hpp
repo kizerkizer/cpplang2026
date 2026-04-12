@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "common/programuniqueid.hpp"
 #include "common/sourcecodelocation.hpp"
 #include "common/source.hpp"
 
@@ -13,11 +14,13 @@ enum class TokenKind {
     TriviaCommentLong,
     Identifier,
     LiteralInteger,
+    LiteralFloat,
     LiteralString,
     LiteralBoolean,
     LiteralEmpty,
     Dot,
     Comma,
+    Is,
     Colon,
     Semicolon,
     ParenthesisOpen,
@@ -40,8 +43,10 @@ enum class TokenKind {
     GreaterThanEqual,
     RightArrow,
     LeftArrow,
-    And,
-    Or,
+    Pipe,
+    PipePipe,
+    Ampersand,
+    AmpersandAmpersand,
     Not,
     KeywordIf,
     KeywordThen,
@@ -59,18 +64,23 @@ enum class TokenKind {
     KeywordExtensional,
     KeywordIntensional,
     TypePrimitiveBoolean,
-    TypePrimitiveNumber,
     TypePrimitiveInteger,
     TypePrimitiveFloat,
     TypePrimitiveString,
     TypePrimitiveEmpty,
+    TypePrimitiveAny,
+    TypePrimitiveVoid,
 };
 
-#define IS_TOKENKIND_LITERAL(tokenKind) (tokenKind == TokenKind::LiteralInteger || tokenKind == TokenKind::LiteralString || tokenKind == TokenKind::LiteralBoolean)
+#define IS_TOKENKIND_LITERAL(tokenKind) (tokenKind == TokenKind::LiteralInteger || tokenKind == TokenKind::LiteralFloat || tokenKind == TokenKind::LiteralString || tokenKind == TokenKind::LiteralBoolean)
 #define IS_TOKENKIND_KEYWORD(tokenKind) (tokenKind == TokenKind::KeywordIf || tokenKind == TokenKind::KeywordThen || tokenKind == TokenKind::KeywordElse || tokenKind == TokenKind::KeywordClass || tokenKind == TokenKind::KeywordWhile || tokenKind == TokenKind::KeywordLoop || tokenKind == TokenKind::KeywordFunction || tokenKind == TokenKind::KeywordReturn || tokenKind == TokenKind::KeywordVar || tokenKind == TokenKind::KeywordType)
 #define IS_TOKENKIND_TRIVIA(tokenKind) (tokenKind == TokenKind::TriviaWhitespace || tokenKind == TokenKind::TriviaCommentShort || tokenKind == TokenKind::TriviaCommentLong || tokenKind == TokenKind::TriviaNewline)
-#define IS_TOKENKIND_OPERATOR(tokenKind) (tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::And || tokenKind == TokenKind::Or || tokenKind == TokenKind::Not || tokenKind == TokenKind::AsteriskAsterisk)
-#define IS_TOKENKIND_BINARY_OPERATOR(tokenKind) (tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::And || tokenKind == TokenKind::Or || tokenKind == TokenKind::AsteriskAsterisk)
+
+#define IS_TOKENKIND_OPERATOR(tokenKind) (tokenKind == TokenKind::Is || tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::AmpersandAmpersand || tokenKind == TokenKind::PipePipe || tokenKind == TokenKind::Not || tokenKind == TokenKind::AsteriskAsterisk)
+#define IS_TOKENKIND_BINARY_OPERATOR(tokenKind) (tokenKind == TokenKind::Is || tokenKind == TokenKind::Dot || tokenKind == TokenKind::Plus || tokenKind == TokenKind::Dash || tokenKind == TokenKind::Asterisk || tokenKind == TokenKind::Slash || tokenKind == TokenKind::Equal || tokenKind == TokenKind::LessThan || tokenKind == TokenKind::GreaterThan || tokenKind == TokenKind::EqualEqual || tokenKind == TokenKind::NotEqual || tokenKind == TokenKind::LessThanEqual || tokenKind == TokenKind::GreaterThanEqual || tokenKind == TokenKind::AmpersandAmpersand || tokenKind == TokenKind::PipePipe || tokenKind == TokenKind::AsteriskAsterisk)
+
+#define IS_TOKENKIND_TYPE_BINARY_OPERATOR(tokenKind) (tokenKind == TokenKind::Pipe)
+#define IS_TOKENKIND_TYPE_PRIMITIVE(tokenKind) (tokenKind == TokenKind::TypePrimitiveBoolean || tokenKind == TokenKind::TypePrimitiveInteger || tokenKind == TokenKind::TypePrimitiveFloat || tokenKind == TokenKind::TypePrimitiveString || tokenKind == TokenKind::TypePrimitiveEmpty || tokenKind == TokenKind::TypePrimitiveAny || tokenKind == TokenKind::TypePrimitiveVoid)
 
 constexpr int getPrecedence(const TokenKind &tokenName) {
     switch (tokenName) {
@@ -91,15 +101,24 @@ constexpr int getPrecedence(const TokenKind &tokenName) {
         case TokenKind::GreaterThan:
         case TokenKind::LessThanEqual:
         case TokenKind::GreaterThanEqual:
+        case TokenKind::Is:
             return 5;
         case TokenKind::EqualEqual:
         case TokenKind::NotEqual:
             return 4;
-        case TokenKind::And:
+        case TokenKind::AmpersandAmpersand:
             return 3;
-        case TokenKind::Or:
+        case TokenKind::PipePipe:
             return 2;
         case TokenKind::Equal:
+            return 1;
+        default: return -1;
+    }
+}
+
+constexpr int getTypePrecedence(const TokenKind &tokenName) {
+    switch (tokenName) {
+        case TokenKind::Pipe:
             return 1;
         default: return -1;
     }
@@ -124,6 +143,15 @@ constexpr bool getAssociativity(const TokenKind &tokenName) {
         case TokenKind::GreaterThan:
         case TokenKind::LessThanEqual:
         case TokenKind::GreaterThanEqual:
+        case TokenKind::Is:
+            return LEFT_ASSOCIATIVE; // left associative
+        default: return LEFT_ASSOCIATIVE; // default to left associative
+    }
+}
+
+constexpr bool getTypeAssociativity(const TokenKind &tokenName) {
+    switch (tokenName) {
+        case TokenKind::Pipe:
             return LEFT_ASSOCIATIVE; // left associative
         default: return LEFT_ASSOCIATIVE; // default to left associative
     }
@@ -140,11 +168,13 @@ constexpr const char* tokenKindToString(const TokenKind &tokenKind) {
         case Identifier: return "Identifier";
         case LiteralBoolean: return "BooleanLiteral";
         case LiteralInteger: return "IntegerLiteral";
+        case LiteralFloat: return "FloatLiteral";
         case LiteralString: return "StringLiteral";
         case LiteralEmpty: return "EmptyLiteral";
         case Dot: return "Dot";
         case Comma: return "Comma";
         case Colon: return "Colon";
+        case Is: return "Is";
         case Semicolon: return "Semicolon";
         case ParenthesisOpen: return "ParenthesisOpen";
         case ParenthesisClose: return "ParenthesisClose";
@@ -166,8 +196,10 @@ constexpr const char* tokenKindToString(const TokenKind &tokenKind) {
         case NotEqual: return "NotEqual";
         case LessThanEqual: return "LessThanEqual";
         case GreaterThanEqual: return "GreaterThanEqual";
-        case And: return "And";
-        case Or: return "Or";
+        case Ampersand: return "Ampersand";
+        case AmpersandAmpersand: return "AmpersandAmpersand";
+        case Pipe: return "Pipe";
+        case PipePipe: return "PipePipe";
         case Not: return "Not";
         case KeywordIf: return "KeywordIf";
         case KeywordThen: return "KeywordThen";
@@ -185,16 +217,18 @@ constexpr const char* tokenKindToString(const TokenKind &tokenKind) {
         case KeywordExtensional: return "KeywordExtensional";
         case KeywordIntensional: return "KeywordIntensional";
         case TypePrimitiveBoolean: return "TypePrimitiveBoolean";
-        case TypePrimitiveEmpty: return "TypePrimitveEmpty";
-        case TypePrimitiveFloat: return "TypePrimitveFloat";
+        case TypePrimitiveEmpty: return "TypePrimitiveEmpty";
+        case TypePrimitiveFloat: return "TypePrimitiveFloat";
         case TypePrimitiveInteger: return "TypePrimitiveInteger";
-        case TypePrimitiveNumber: return "TypePrimitiveNumber";
         case TypePrimitiveString: return "TypePrimitiveString";
+        case TypePrimitiveAny: return "TypePrimitiveAny";
+        case TypePrimitiveVoid: return "TypePrimitiveVoid";
     }
 }
 
 class Token {
 private:
+    int m_id;
     Source* m_source;
     TokenKind m_name;
     std::string_view m_sourceString;
@@ -202,13 +236,18 @@ private:
     bool m_compilerCreated;
 public:
     Token(Source* source, const std::string_view sourceString, SourceCodeLocationSpan sourceCodeLocationSpan, TokenKind name, bool compilerCreated = false)
-        : m_source(source), m_name(name), m_sourceString(sourceString), m_sourceCodeLocationSpan(sourceCodeLocationSpan), m_compilerCreated(compilerCreated) {};
+        : m_id(getNextId()), m_source(source), m_name(name), m_sourceString(sourceString), m_sourceCodeLocationSpan(sourceCodeLocationSpan), m_compilerCreated(compilerCreated) {};
     TokenKind getTokenKind() const;
     Source* getSource() const;
     std::string_view getSourceString() const;
     std::string toString() const;
+    int getId() const;
     bool operator==(const TokenKind& rhs) const;
     bool operator!=(const TokenKind& rhs) const;
     bool isCompilerCreated() const;
+    bool isKeyword() const;
+    bool isLiteral() const;
+    bool isTypePrimitve() const;
+    bool isTrivia() const;
     SourceCodeLocationSpan getSourceCodeLocationSpan() const;
 };

@@ -1,0 +1,33 @@
+// Testing type parsing
+
+// Declare a type
+type Foo = String | Integer | Empty;
+
+type Baz = Foo | Boolean;
+
+type Int = Integer;
+
+function foo (condition: Boolean): String | Integer {
+    if (condition) then {
+        return 'hello world';
+    } else {
+        return 17;
+    }
+}
+
+function qux (): Baz {
+    return 'testing 123';
+}
+
+function main (): Integer {
+    var myResult = foo(5 == 3);
+    if (myResult is String) then {
+        return 0;
+    }
+    var q: Baz = qux();
+    var r: Int = 18;
+    // myResult should then narrow to Integer here
+    //return myResult + 15; // 32
+    //var bar: Integer | Empty;
+    return r + 5;
+}

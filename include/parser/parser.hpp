@@ -51,10 +51,13 @@ private:
     std::unique_ptr<AssignmentStatementNode> parseAssignmentStatement();
     std::unique_ptr<ExpressionNode> parseExpression();
     std::unique_ptr<ExpressionNode> parsePrimaryExpression();
-    std::unique_ptr<TypeExpressionNode> parseTypeExpression();
+    std::unique_ptr<Node> parseTypeExpression();
+    std::unique_ptr<Node> parsePrimaryTypeExpression();
+    std::unique_ptr<TypeDeclarationNode> parseTypeDeclaration();
     std::unique_ptr<IdentifierWithPossibleAnnotationNode> parseIdentifierWithPossibleAnnotation();
     std::unique_ptr<AssignmentExpressionNode> parseAssignmentExpression();
     std::unique_ptr<FunctionCallExpressionNode> parseFunctionCallExpression();
     std::unique_ptr<IfExpressionNode> parseIfExpression();
+    std::unique_ptr<Node> parseTypeExpressionClimbing(std::unique_ptr<Node> lhs, int minPrecedence);
     std::unique_ptr<ExpressionNode> parseExpressionClimbing(std::unique_ptr<ExpressionNode> lhs, int minPrecedence);
 };

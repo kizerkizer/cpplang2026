@@ -9,6 +9,10 @@ std::unique_ptr<To> unique_ptr_static_cast(std::unique_ptr<From> from) {
 }
 
 std::unique_ptr<Node> Desugarer::_desugar (std::unique_ptr<Node> node) {
+    if (node == nullptr) {
+        return nullptr;
+    }
+    // TODO add helper methods
     switch (node->getNodeKind()) {
         case NodeKind::WhileStatement: {
             auto* whileStatementNode = static_cast<WhileStatementNode*>(node.get());
@@ -22,27 +26,27 @@ std::unique_ptr<Node> Desugarer::_desugar (std::unique_ptr<Node> node) {
             //     body
             // }
             // TODO should we reference original source code locations? Or just keep using -1,-1,-1 for compiler-created nodes?
-            auto ifThenBlockExecutionListNode = std::make_unique<ExecutionListNode>(emptySourceCodeLocationSpan);
-            ifThenBlockExecutionListNode->addNode(std::make_unique<BreakStatementNode>(emptySourceCodeLocationSpan));
-            auto ifThenBlockStatementNode = std::make_unique<BlockStatementNode>(std::move(ifThenBlockExecutionListNode), emptySourceCodeLocationSpan);
+            auto ifThenBlockExecutionListNode = std::make_unique<ExecutionListNode>(englishbreakfast::emptySourceCodeLocationSpan);
+            ifThenBlockExecutionListNode->addNode(std::make_unique<BreakStatementNode>(englishbreakfast::emptySourceCodeLocationSpan));
+            auto ifThenBlockStatementNode = std::make_unique<BlockStatementNode>(std::move(ifThenBlockExecutionListNode), englishbreakfast::emptySourceCodeLocationSpan);
             auto newIfStatement = std::make_unique<IfStatementNode>(
                 std::make_unique<UnaryOperatorExpressionNode>(
                     whileStatementNode->takeCondition(),
-                    std::make_unique<Token>(nullptr, "!", emptySourceCodeLocationSpan, TokenKind::Not, true),
-                    emptySourceCodeLocationSpan
+                    std::make_unique<Token>(nullptr, "!", englishbreakfast::emptySourceCodeLocationSpan, TokenKind::Not, true),
+                    englishbreakfast::emptySourceCodeLocationSpan
                 ),
                 std::move(ifThenBlockStatementNode),
                 nullptr,
-                emptySourceCodeLocationSpan
+                englishbreakfast::emptySourceCodeLocationSpan
             );
-            auto newExecutionListNode = std::make_unique<ExecutionListNode>(emptySourceCodeLocationSpan);
+            auto newExecutionListNode = std::make_unique<ExecutionListNode>(englishbreakfast::emptySourceCodeLocationSpan);
             newExecutionListNode->addNode(std::move(newIfStatement));
             auto children = whileStatementNode->takeBody()->takeExecutionListNode()->takeChildren();
             for (auto& child : children) {
                 newExecutionListNode->addNode(std::move(child));
             }
-            auto newBody = std::make_unique<BlockStatementNode>(std::move(newExecutionListNode), emptySourceCodeLocationSpan);
-            auto loopStatement = std::make_unique<LoopStatementNode>(std::move(newBody), emptySourceCodeLocationSpan);
+            auto newBody = std::make_unique<BlockStatementNode>(std::move(newExecutionListNode), englishbreakfast::emptySourceCodeLocationSpan);
+            auto loopStatement = std::make_unique<LoopStatementNode>(std::move(newBody), englishbreakfast::emptySourceCodeLocationSpan);
             return loopStatement;
         }
         case NodeKind::ExecutionList: {
@@ -159,8 +163,14 @@ std::unique_ptr<Node> Desugarer::_desugar (std::unique_ptr<Node> node) {
         }
         case NodeKind::Identifier:
         case NodeKind::IdentifierWithPossibleAnnotation:
-        case NodeKind::TypeExpression:
-        case NodeKind::NumberLiteral:
+        // Eventually desugar type things?
+        case NodeKind::TypePrimitive:
+        case NodeKind::BinaryOperatorTypeExpression:
+        case NodeKind::TypeIdentifier:
+        case NodeKind::TypeDeclaration:
+        //
+        case NodeKind::IntegerLiteral:
+        case NodeKind::FloatLiteral:
         case NodeKind::StringLiteral:
         case NodeKind::BooleanLiteral:
         case NodeKind::EmptyLiteral:

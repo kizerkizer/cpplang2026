@@ -36,10 +36,21 @@ std::vector<FlowNode*> FlowNode::getPredecessors() {
     return this->m_predecessors;
 }
 
-void FlowNode::addSuccessor(FlowNode* successor) {
+void FlowNode::addSuccessor(FlowNode* successor, std::optional<std::string> edgeName) {
     this->m_successors.push_back(successor);
+    if (edgeName.has_value()) {
+        this->m_successorsByEdgeName[edgeName.value()] = successor;
+    }
 }
 
 void FlowNode::addPredecessor(FlowNode* predecessor) {
     this->m_predecessors.push_back(predecessor);
+}
+
+FlowNode* FlowNode::getSuccessorByEdgeName(const std::string& edgeName) {
+    auto it = this->m_successorsByEdgeName.find(edgeName);
+    if (it != this->m_successorsByEdgeName.end()) {
+        return it->second;
+    }
+    return nullptr;
 }

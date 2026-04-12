@@ -18,7 +18,7 @@
 
 void printParseTree (const Node* node, int indentation) {
     auto sourceCodeLocationSpan = node->getSourceCodeLocationSpan();
-    std::print("{}{}\n", std::string(indentation * 2, ' '), sourceCodeLocationSpanToString(sourceCodeLocationSpan));
+    std::print("{}{}\n", std::string(indentation * 2, ' '), englishbreakfast::sourceCodeLocationSpanToString(sourceCodeLocationSpan));
     switch (node->getNodeKind()) {
         case NodeKind::Program: {
             const auto nodeCast = static_cast<const ProgramNode*>(node);
@@ -85,11 +85,6 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}IdentifierNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Name:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getName());
-            if (nodeCast->getSymbolReference()) {
-                std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
-                auto name = nodeCast->getSymbolReference();
-                std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
-            }
             break;
         }
         case NodeKind::IdentifierWithPossibleAnnotation: {
@@ -100,14 +95,9 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}* Annotation:\n", std::string(indentation * 2, ' '));
             auto annotation = nodeCast->getAnnotation();
             if (annotation) {
-                std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(annotation->getPrimitiveTypeKind()));
+                printParseTree(annotation, indentation + 1);
             } else {
                 std::print("{}None\n", std::string((indentation + 1) * 2, ' '));
-            }
-            if (nodeCast->getSymbolReference()) {
-                std::print("{}☝️ NameReference:\n", std::string(indentation * 2, ' '));
-                auto name = nodeCast->getSymbolReference();
-                std::print("{}'{}'\n", std::string((indentation + 1) * 2, ' '), name->getNameString());
             }
             break;
         }
@@ -166,9 +156,16 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}EmptyLiteralNode\n", std::string(indentation * 2, ' '));
             break;
         }
-        case NodeKind::NumberLiteral: {
-            const auto nodeCast = static_cast<const NumberLiteralNode*>(node);
-            std::print("{}NumberLiteralNode\n", std::string(indentation * 2, ' '));
+        case NodeKind::IntegerLiteral: {
+            const auto nodeCast = static_cast<const IntegerLiteralNode*>(node);
+            std::print("{}IntegerLiteralNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Value:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue());
+            break;
+        }
+        case NodeKind::FloatLiteral: {
+            const auto nodeCast = static_cast<const FloatLiteralNode*>(node);
+            std::print("{}FloatLiteralNode\n", std::string(indentation * 2, ' '));
             std::print("{}* Value:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue());
             break;
@@ -248,11 +245,38 @@ void printParseTree (const Node* node, int indentation) {
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getValue() ? "true" : "false");
             break;
         }
-        case NodeKind::TypeExpression: {
-            const auto nodeCast = static_cast<const TypeExpressionNode*>(node);
-            std::print("{}TypeExpressionNode\n", std::string(indentation * 2, ' '));
-            std::print("{}* Type:\n", std::string(indentation * 2, ' '));
+        case NodeKind::TypeDeclaration: {
+            const auto nodeCast = static_cast<const TypeDeclarationNode*>(node);
+            std::print("{}TypeDeclarationNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Identifier:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getIdentifier(), indentation + 1);
+            std::print("{}* TypeExpression:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getTypeExpression(), indentation + 1);
+            break;
+        }
+        case NodeKind::TypeIdentifier: {
+            const auto nodeCast = static_cast<const TypeIdentifierNode*>(node);
+            std::print("{}TypeIdentifierNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* IdentifierToken:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getIdentifierToken()->getSourceString());
+            break;
+        }
+        case NodeKind::TypePrimitive: {
+            const auto nodeCast = static_cast<const TypePrimitiveNode*>(node);
+            std::print("{}TypePrimitiveNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* PrimitiveTypeKind:\n", std::string(indentation * 2, ' '));
             std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), primitiveTypeToString(nodeCast->getPrimitiveTypeKind()));
+            break;
+        }
+        case NodeKind::BinaryOperatorTypeExpression: {
+            const auto nodeCast = static_cast<const BinaryOperatorTypeExpressionNode*>(node);
+            std::print("{}BinaryOperatorTypeExpressionNode\n", std::string(indentation * 2, ' '));
+            std::print("{}* Operator:\n", std::string(indentation * 2, ' '));
+            std::print("{}{}\n", std::string((indentation + 1) * 2, ' '), nodeCast->getOperatorToken()->getSourceString());
+            std::print("{}* Left:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getLeft(), indentation + 1);
+            std::print("{}* Right:\n", std::string(indentation * 2, ' '));
+            printParseTree(nodeCast->getRight(), indentation + 1);
             break;
         }
     }
@@ -344,9 +368,36 @@ std::string getNodeSyntax(Node* node, int indentation) {
             ret += "\n";
             return ret;
         }
-        case NodeKind::TypeExpression: {
-            auto typeExpressionNode = static_cast<TypeExpressionNode*>(node);
-            return primitiveTypeToString(typeExpressionNode->getPrimitiveTypeKind());
+        case NodeKind::TypeDeclaration: {
+            auto typeDeclarationNode = static_cast<TypeDeclarationNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ') + "type ";
+            ret += typeDeclarationNode->getIdentifier()->getName();
+            ret += " = ";
+            ret += getNodeSyntax(typeDeclarationNode->getTypeExpression(), 0);
+            ret += ";\n";
+            return ret;
+        }
+        case NodeKind::TypeIdentifier: {
+            auto typeIdentifierNode = static_cast<TypeIdentifierNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += typeIdentifierNode->getIdentifierToken()->getSourceString();
+            return ret;
+        }
+        case NodeKind::TypePrimitive: {
+            auto typePrimitiveNode = static_cast<TypePrimitiveNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += primitiveTypeToString(typePrimitiveNode->getPrimitiveTypeKind());
+            return ret;
+        }
+        case NodeKind::BinaryOperatorTypeExpression: {
+            auto binaryOperatorTypeExpressionNode = static_cast<BinaryOperatorTypeExpressionNode*>(node);
+            std::string ret = std::string(indentation * 2, ' ');
+            ret += getNodeSyntax(binaryOperatorTypeExpressionNode->getLeft(), 0);
+            ret += " ";
+            ret += binaryOperatorTypeExpressionNode->getOperatorToken()->getSourceString();
+            ret += " ";
+            ret += getNodeSyntax(binaryOperatorTypeExpressionNode->getRight(), 0);
+            return ret;
         }
         case NodeKind::IdentifierWithPossibleAnnotation: {
             auto identifierWithPossibleAnnotationNode = static_cast<IdentifierWithPossibleAnnotationNode*>(node);
@@ -431,9 +482,13 @@ std::string getNodeSyntax(Node* node, int indentation) {
             ret += stringLiteralNode->getValue(); // double check; should include quotes
             return ret;
         }
-        case NodeKind::NumberLiteral: {
-            auto numberLiteralNode = static_cast<NumberLiteralNode*>(node);
-            return std::string(indentation * 2, ' ') + std::string(numberLiteralNode->getNumberLiteralToken()->getSourceString());
+        case NodeKind::IntegerLiteral: {
+            auto integerLiteralNode = static_cast<IntegerLiteralNode*>(node);
+            return std::string(indentation * 2, ' ') + std::string(integerLiteralNode->getIntegerLiteralToken()->getSourceString());
+        }
+        case NodeKind::FloatLiteral: {
+            auto floatLiteralNode = static_cast<FloatLiteralNode*>(node);
+            return std::string(indentation * 2, ' ') + std::string(floatLiteralNode->getFloatLiteralToken()->getSourceString());
         }
         case NodeKind::BooleanLiteral: {
             auto booleanLiteralNode = static_cast<BooleanLiteralNode*>(node);

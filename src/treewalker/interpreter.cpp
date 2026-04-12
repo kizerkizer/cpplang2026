@@ -1,14 +1,18 @@
 #include <print>
 
 #include "treewalker/interpreter.hpp"
+#include "checker/checker.hpp"
+#include "checker/type.hpp"
+#include "common/util.hpp"
 #include "lexer/token.hpp"
 #include "parser/node.hpp"
 #include "treewalker/environment.hpp"
 #include "treewalker/value.hpp"
+#include "treewalker/valuestore.hpp"
 
 // Interpreter
-Interpreter::Interpreter(OutputStream* outputStream) : m_outputStream(outputStream) {
-    this->m_valueStore = std::make_unique<ValueStore>();
+Interpreter::Interpreter(TypeCheckerResult* typeCheckerResult, BinderResult* binderResult, FlowBuilderResult* flowBuilderResult, OutputStream* outputStream) : m_typeCheckerResult(typeCheckerResult), m_binderResult(binderResult), m_flowBuilderResult(flowBuilderResult), m_outputStream(outputStream) {
+    this->m_valueStore = std::make_unique<ValueStore>(typeCheckerResult->getTypeStore());
 }
 
 Value* Interpreter::interpretIdentifier(IdentifierNode* identifierNode, Environment* environment) {
@@ -22,6 +26,11 @@ Value* Interpreter::interpret(Node* rootNode) {
     return _interpret(rootNode, globalEnvironmentPtr);
 }
 
+Type* Interpreter::getTypeOfASTNode(Node* node) {
+    return this->m_typeCheckerResult->getASTNodeType(node);
+}
+
+// TODO add helper functions for each kind of node
 Value* Interpreter::_interpret(Node* node, Environment* environment) {
     switch (node->getNodeKind()) {
         case NodeKind::ExecutionList: {
@@ -37,7 +46,7 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
                 }
                 if (value->getKind() == ValueKind::Function && this->m_globalEnvironment.get() == environment) {
                     auto functionValue = static_cast<FunctionValue*>(value);
-                    auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(functionValue->getNode());
+                    auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(functionValue->getFunctionDeclarationNode());
                     if (functionDeclarationNode->getIdentifier()->getName() == "main") {
                         // Call main function immediately
                         this->_interpret(functionDeclarationNode, environment);
@@ -81,7 +90,8 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
                 return this->m_valueStore->makeVoidValue();
             }
             auto functionValue = static_cast<FunctionValue*>(value);
-            auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(functionValue->getNode());
+            //auto functionType = static_cast<FunctionType*>(functionValue->getType());
+            auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(functionValue->getFunctionDeclarationNode());
             auto functionDefiningEnvironment = functionValue->getDefiningEnvironment();
             // TODO delete these --v
             if (functionDeclarationNode->getIdentifier()->getName() == "log") {
@@ -123,7 +133,7 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
         case NodeKind::VariableDeclaration: {
             auto variableDeclarationNode = static_cast<VariableDeclarationNode*>(node);
             // TODO handle type annotation [?] or not?
-            auto value = _interpret(variableDeclarationNode->getExpression(), environment);
+            auto value = variableDeclarationNode->getExpression() ? _interpret(variableDeclarationNode->getExpression(), environment) : this->m_valueStore->makeEmptyValue();
             environment->defineVar(std::string(variableDeclarationNode->getIdentifier()->getName()), value);
             break;
         }
@@ -135,9 +145,12 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
             std::print("Error: Invalid node encountered during interpretation\n");
             return this->m_valueStore->makeVoidValue();
         }
-        case NodeKind::TypeExpression: {
-            // irrelevant? only used by type checker?
-            // TODO ?
+        case NodeKind::TypePrimitive:
+        case NodeKind::BinaryOperatorTypeExpression:
+        case NodeKind::TypeIdentifier: {
+            return m_valueStore->makeTypeValue(this->getTypeOfASTNode(node));
+        }
+        case NodeKind::TypeDeclaration: {
             return this->m_valueStore->makeVoidValue();
         }
         case NodeKind::BlockStatement: {
@@ -149,7 +162,9 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
         }
         case NodeKind::FunctionDeclaration: {
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
-            auto value = this->m_valueStore->makeFunctionValue(functionDeclarationNode, environment);
+            // TODO Double check functionType ?
+            auto functionType = static_cast<FunctionType*>(m_binderResult->getSymbol(functionDeclarationNode->getIdentifier())->getType());
+            auto value = this->m_valueStore->makeFunctionValue(functionDeclarationNode, functionType, environment);
             environment->defineVar(std::string(functionDeclarationNode->getIdentifier()->getName()), value);
             return value;
         }
@@ -169,10 +184,14 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
             auto identifierNode = static_cast<IdentifierNode*>(node);
             return interpretIdentifier(identifierNode, environment);
         }
-        case NodeKind::NumberLiteral: {
-            auto numberLiteralNode = static_cast<NumberLiteralNode*>(node);
+        case NodeKind::IntegerLiteral: {
+            auto numberLiteralNode = static_cast<IntegerLiteralNode*>(node);
             auto value = this->m_valueStore->makeIntegerValue(numberLiteralNode->getValue());
-            // TODO floats
+            return value;
+        }
+        case NodeKind::FloatLiteral: {
+            auto floatLiteralNode = static_cast<FloatLiteralNode*>(node);
+            auto value = this->m_valueStore->makeFloatValue(floatLiteralNode->getValue());
             return value;
         }
         case NodeKind::StringLiteral: {
@@ -261,7 +280,7 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
                     auto rightFunctionValue = static_cast<FunctionValue*>(rightValue);
                     // For now, consider functions equal if they point to same AST node
                     // TODO check if pointer equality works here
-                    return this->m_valueStore->makeBooleanValue(leftFunctionValue->getNode() == rightFunctionValue->getNode());
+                    return this->m_valueStore->makeBooleanValue(leftFunctionValue->getFunctionDeclarationNode() == rightFunctionValue->getFunctionDeclarationNode());
                 } else {
                     // unreachable
                     std::print("[BUG] Error: Binary operator '==' applied to incompatible types\n");
@@ -280,6 +299,17 @@ Value* Interpreter::_interpret(Node* node, Environment* environment) {
                     std::print("Left value kind: {}, Right value kind: {}\n", valueKindToString(leftValue->getKind()), valueKindToString(rightValue->getKind()));
                     return this->m_valueStore->makeVoidValue();
                 }
+            }
+            if (tokenKind == TokenKind::Is) {
+                if (rightValue->getKind() != ValueKind::Type) {
+                    // Should be checked in type checking
+                    unreachable("[BUG] Error: Right operand of 'is' operator is not a type");
+                    return this->m_valueStore->makeBooleanValue(false);
+                }
+                auto rightTypeValue = static_cast<TypeValue*>(rightValue);
+                auto rightType = rightTypeValue->getType();
+                auto result = leftValue->isOfType(rightType);
+                return this->m_valueStore->makeBooleanValue(result);
             }
             return leftValue;
         }

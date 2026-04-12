@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <utility>
 #include <vector>
 #include <memory>
 
@@ -16,6 +17,7 @@ private:
     std::unique_ptr<PrimitiveType> m_integerType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::Integer);
     std::unique_ptr<AnyType> m_anyType = std::make_unique<AnyType>();
     std::unique_ptr<VoidType> m_voidType = std::make_unique<VoidType>();
+    std::unique_ptr<ErrorType> m_errorType = std::make_unique<ErrorType>();
     Type* simplifyUnionType(UnionType* unionType);
 public:
     TypeStore() = default;
@@ -38,6 +40,18 @@ public:
                 case PrimitiveTypeKind::Invalid:
                     return nullptr;
             }
+        }
+        if constexpr (std::is_same_v<T, VoidType>) {
+            return this->getVoidType();
+        }
+        if constexpr (std::is_same_v<T, AnyType>) {
+            return this->getAnyType();
+        }
+        if constexpr (std::is_same_v<T, ErrorType>) {
+            return this->getErrorType();
+        }
+        if constexpr (std::is_same_v<T, TypeType>) {
+            return this->makeTypeType(std::forward<Args>(args)...);
         }
         auto type = std::make_unique<T>(std::forward<Args>(args)...);
         T* typePointer = type.get();
@@ -65,5 +79,14 @@ public:
     }
     VoidType* getVoidType() const {
         return m_voidType.get();
+    }
+    ErrorType* getErrorType() const {
+        return m_errorType.get();
+    }
+    TypeType* makeTypeType(Type* underlyingType) {
+        auto typeType = std::make_unique<TypeType>(underlyingType);
+        TypeType* typeTypePtr = typeType.get();
+        m_types.push_back(std::move(typeType));
+        return typeTypePtr;
     }
 };

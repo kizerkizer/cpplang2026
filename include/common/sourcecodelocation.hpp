@@ -21,8 +21,12 @@ using FullSourceCodeLocation = struct {
     SourceCodeLocationSpan sourceCodeLocationSpan;
 };
 
+namespace englishbreakfast {
+
 extern SourceCodeLocationSpan emptySourceCodeLocationSpan;
 
 std::string sourceCodeLocationToString(const SourceCodeLocation& sourceCodeLocation);
 
 std::string sourceCodeLocationSpanToString(const SourceCodeLocationSpan& sourceCodeLocationSpan);
+
+} // namespace englishbreakfast

@@ -29,6 +29,8 @@ add_executable(englishbreakfast
     src/flowbuilder/flownode.cpp
     src/flowbuilder/flowbuilder.cpp
     src/treewalker/environment.cpp
+    src/treewalker/value.cpp
+    src/treewalker/valuestore.cpp
     src/treewalker/interpreter.cpp
     src/treewalker/outputstream.cpp
     src/utf8scanner/utf8scanner.cpp

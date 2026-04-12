@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 class Node; // defined in parser/node.hpp
@@ -55,6 +57,7 @@ private:
     Node* m_astNode = nullptr;
     std::vector<FlowNode*> m_successors;
     std::vector<FlowNode*> m_predecessors;
+    std::unordered_map<std::string, FlowNode*> m_successorsByEdgeName;
 public:
     FlowNode(FlowNodeKind kind);
     FlowNodeKind getKind();
@@ -64,6 +67,7 @@ public:
     void setAstNode(Node* node);
     std::vector<FlowNode*> getSuccessors();
     std::vector<FlowNode*> getPredecessors();
-    void addSuccessor(FlowNode* successor);
+    void addSuccessor(FlowNode* successor, std::optional<std::string> edgeName = std::nullopt);
     void addPredecessor(FlowNode* predecessor);
+    FlowNode* getSuccessorByEdgeName(const std::string& edgeName);
 };

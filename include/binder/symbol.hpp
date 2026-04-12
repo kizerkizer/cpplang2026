@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/programuniqueid.hpp"
 #include "flowbuilder/flowgraph.hpp"
 #include "parser/node.hpp"
 #include <string>
@@ -11,15 +12,13 @@ enum class SymbolKind {
     Function,
     Parameter,
     Loop,
-    Type,
-    TypeParameter,
-    Class,
-    ClassMember,
-    Interface,
-    InterfaceMember,
-    ExtensionalMember,
-    NamespaceMember,
-    Builtin,
+    Type, // TODO
+    TypeParameter, // TODO
+    Class, // TODO
+    ClassMember, // TODO
+    Interface, // TODO
+    InterfaceMember, // TODO
+    ExtensionalMember, // TODO
 };
 
 constexpr const char* symbolKindToString(SymbolKind symbolKind) {
@@ -46,10 +45,6 @@ constexpr const char* symbolKindToString(SymbolKind symbolKind) {
             return "InterfaceMember";
         case SymbolKind::ExtensionalMember:
             return "ExtensionalMember";
-        case SymbolKind::NamespaceMember:
-            return "NamespaceMember";
-        case SymbolKind::Builtin:
-            return "Builtin";
     }
 }
 
@@ -68,6 +63,7 @@ inline SymbolModifierFlags operator|(SymbolModifierFlags a, SymbolModifierFlags 
 
 class Symbol {
 private:
+    int m_id;
     std::string m_nameString;
     Scope* m_containingScope;
     Node* m_node;
@@ -76,7 +72,7 @@ private:
     Type* m_type = nullptr; // set in type checking
     FlowGraph* m_flowGraph = nullptr; // set in flowbuilder TODO ?
 public:
-    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : m_nameString(nameString), m_containingScope(containingScope), m_node(node), m_kind(kind), m_modifierFlags(modifierFlags) {};
+    Symbol(Scope* containingScope, Node* node, SymbolKind kind, SymbolModifierFlags modifierFlags, const std::string& nameString) : m_id(getNextId()), m_nameString(nameString), m_containingScope(containingScope), m_node(node), m_kind(kind), m_modifierFlags(modifierFlags) {};
     const std::string& getNameString() const;
     const Scope* getContainingScope() const;
     SymbolKind getKind() const;

@@ -33,11 +33,13 @@ std::string DiagnosticMessage::getFullMessage() const {
     std::string fullMessage = std::string("[") 
         + diagnosticMessageKindToColoredString(this->m_kind) + std::string("] (")
         + diagnosticMessageStageToString(this->m_stage) 
-        + std::string(") E") + std::format("{:06d}", this->m_code) + std::string("\n");
+        + std::string(") eb") + std::format("{:03d}", this->m_code) + std::string("\n");
     auto [startByteOffset, startCodepointOffset, startLine, startColumn] = this->m_sourceCodeLocationSpan.start;
-    auto [endByteOffset, endCodepointOffset, endLine, endColumn] = this->m_sourceCodeLocationSpan.end;
-    fullMessage += this->m_source->getName() + ":" + std::to_string(startLine) + ":" + std::to_string(startColumn) + " - " + std::to_string(endLine) + ":" + std::to_string(endColumn) + "\n";
-    fullMessage += this->m_message;
+    //auto [endByteOffset, endCodepointOffset, endLine, endColumn] = this->m_sourceCodeLocationSpan.end;
+    fullMessage += "    ";
+    fullMessage += this->m_message + "\n";
+    fullMessage += "    ";
+    fullMessage += this->m_source->getName() + ":" + std::to_string(startLine) + ":" + std::to_string(startColumn) + "\n";
     return fullMessage;
 }
 

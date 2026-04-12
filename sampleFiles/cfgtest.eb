@@ -11,6 +11,7 @@ function testCfg (): Empty {
         if (foo <= 0) then { break; } else { continue; }
         foo = foo - 1; // unreachable
     }
+    var bux = 'asdf';
     someFunction(12);
     if (foo == 0) then {
         foo = -1;

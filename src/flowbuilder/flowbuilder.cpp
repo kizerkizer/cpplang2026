@@ -8,13 +8,75 @@
 #include "parser/node.hpp"
 
 FlowBuilder::FlowBuilder() {
-
+    m_flowInfoMap = std::make_unique<NodeMap<FlowInfo>>();
 }
+
+FlowNode* FlowBuilder::fNode(Node* node) const {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        return flowInfo->flowNode;
+    }
+    return nullptr;
+}
+
+void FlowBuilder::fNode(Node* node, FlowNode* flowNode) {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        flowInfo->flowNode = flowNode;
+    } else {
+        auto newFlowInfo = std::make_unique<FlowInfo>();
+        newFlowInfo->flowNode = flowNode;
+        this->m_flowInfoMap->setValue(node, std::move(newFlowInfo));
+    }
+}
+
+FlowGraph* FlowBuilder::fGraph(Node* node) const {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        return flowInfo->flowGraph;
+    }
+    return nullptr;
+}
+
+void FlowBuilder::fGraph(Node* node, FlowGraph* flowGraph) {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        flowInfo->flowGraph = flowGraph;
+    } else {
+        auto newFlowInfo = std::make_unique<FlowInfo>();
+        newFlowInfo->flowGraph = flowGraph;
+        this->m_flowInfoMap->setValue(node, std::move(newFlowInfo));
+    }
+}
+
+/*void FlowBuilder::reachable(Node* node, bool reachable) {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        flowInfo->reachable = reachable;
+    } else {
+        auto newFlowInfo = std::make_unique<FlowInfo>();
+        newFlowInfo->reachable = reachable;
+        this->m_flowInfoMap->setValue(node, std::move(newFlowInfo));
+    }
+}
+
+bool FlowBuilder::reachable(Node* node) const {
+    auto flowInfo = this->m_flowInfoMap->getValue(node);
+    if (flowInfo) {
+        return flowInfo->reachable;
+    }
+    return false; // default to false if not set
+}*/
 
 std::unique_ptr<FlowBuilderResult> FlowBuilder::buildGraph(Node* rootNode) {
     auto result = std::make_unique<FlowBuilderResult>();
     this->buildGraphInternal(rootNode, result.get());
+    result->setFlowInfoMap(this->takeFlowInfoMap());
     return result;
+}
+
+std::unique_ptr<NodeMap<FlowInfo>> FlowBuilder::takeFlowInfoMap() {
+    return std::move(this->m_flowInfoMap);
 }
 
 FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowBuilderResult* result) {
@@ -23,11 +85,13 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Function);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             graph->addEdge(flowNodePointer, successor);
             auto builtFlowGraph = buildGraphInternal(node, result);
-            functionDeclarationNode->setFlowGraph(builtFlowGraph);
+            //functionDeclarationNode->setFlowGraph(builtFlowGraph);
+            fGraph(functionDeclarationNode, builtFlowGraph);
             //builtFlowGraph->setAstNode(node); // TODO uncomment once other memories errors fixed
             return flowNodePointer;
         }
@@ -35,22 +99,24 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             auto ifStatementNode = static_cast<IfStatementNode*>(node);
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::If);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             auto thenFlowNode = buildFlowNode(graph, ifStatementNode->getThenBranch(), successor, context, result);
             auto elseFlowNode = successor;
             if (ifStatementNode->getElseBranch()) {
                 elseFlowNode = buildFlowNode(graph, ifStatementNode->getElseBranch(), successor, context, result);
             }
-            graph->addEdge(flowNodePointer, thenFlowNode);
-            graph->addEdge(flowNodePointer, elseFlowNode);
+            graph->addEdge(flowNodePointer, thenFlowNode, "then");
+            graph->addEdge(flowNodePointer, elseFlowNode, "else");
             return flowNodePointer;
         }
         case NodeKind::LoopStatement: {
             auto loopStatementNode = static_cast<LoopStatementNode*>(node);
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Loop);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             auto loopContext = LoopContext();
             loopContext.header = flowNodePointer;
@@ -65,7 +131,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             // link to loop successor
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Break);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             LoopContext loopContext = context.loopContexts.top();
             auto loopSuccessor = loopContext.successor;
@@ -76,7 +143,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             // link to loop header
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Continue);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             LoopContext loopContext = context.loopContexts.top();
             auto loopHeader = loopContext.header;
@@ -87,7 +155,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             // link to function successor
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Return);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             auto functionSuccessor = context.functionContext.successor;
             graph->addEdge(flowNodePointer, functionSuccessor);
@@ -97,7 +166,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             BlockStatementNode* blockStatementNode = static_cast<BlockStatementNode*>(node);
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Block);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             FlowNode* blockStatementNodePointer = graph->addNode(std::move(flowNode));
             auto executionListNode = blockStatementNode->getExecutionListNode();
             auto next = successor;
@@ -127,7 +197,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
         default: {
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Statement);
             flowNode->setAstNode(node);
-            node->setFlowNode(flowNode.get());
+            //node->setFlowNode(flowNode.get());
+            fNode(node, flowNode.get());
             auto flowNodePointer = graph->addNode(std::move(flowNode));
             graph->addEdge(flowNodePointer, successor);
             return flowNodePointer;
@@ -135,7 +206,7 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
     }
 }
 
-FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result) {
+FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result_out) {
     Node* nodeToBuild = nullptr;
     std::unique_ptr<FlowNode> flowNode = nullptr;
     auto graph = std::make_unique<FlowGraph>();
@@ -145,13 +216,13 @@ FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result
     // Either the global scope, or a function:
     if (node->getNodeKind() == NodeKind::Program) {
         auto programNode = static_cast<ProgramNode*>(node);
-        programNode->setFlowGraph(graph.get());
+        fGraph(programNode, graph.get());
         graph->setAstNode(node);
         flowNode = std::make_unique<FlowNode>(FlowNodeKind::Global);
         nodeToBuild = programNode;
     } else if (node->getNodeKind() == NodeKind::FunctionDeclaration) {
         auto functionNode = static_cast<FunctionDeclarationNode*>(node);
-        functionNode->setFlowGraph(graph.get());
+        fGraph(functionNode, graph.get());
         flowNode = std::make_unique<FlowNode>(FlowNodeKind::Function);
         flowContext.functionContext.successor = exit;
         graph->setAstNode(node);
@@ -161,9 +232,9 @@ FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result
         return nullptr;
     }
     flowNode->setAstNode(node);
-    FlowNode* programFlowNode = buildFlowNode(graph.get(), nodeToBuild, exit, flowContext, result);
+    FlowNode* programFlowNode = buildFlowNode(graph.get(), nodeToBuild, exit, flowContext, result_out);
     graph->addEdge(entry, programFlowNode);
     auto graphPointer = graph.get();
-    result->addGraph(std::move(graph));
+    result_out->addGraph(std::move(graph));
     return graphPointer;
 }

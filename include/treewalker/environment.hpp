@@ -23,32 +23,3 @@ public:
     Value* getVar(const std::string& name) const;
     Node* getOwningNode() const { return m_owningNode; };
 };
-
-class FunctionValue : public Value { // TODO
-private:
-    Node* m_functionDeclarationNode;
-    Environment* m_definingEnvironment;
-public:
-    FunctionValue(Node* functionDeclarationNode, Environment* definingEnvironment) : m_functionDeclarationNode(functionDeclarationNode), m_definingEnvironment(definingEnvironment) {};
-    ValueKind getKind() const override { return ValueKind::Function; };
-    Node* getValue() const { return m_functionDeclarationNode; };
-    Node* getNode() const { return m_functionDeclarationNode; };
-    Environment* getDefiningEnvironment() const { return m_definingEnvironment; };
-};
-
-class ValueStore {
-private:
-    std::vector<std::unique_ptr<Value>> m_values;
-public:
-    void addValue(std::unique_ptr<Value> value);
-    IntegerValue* makeIntegerValue(int value);
-    FloatValue* makeFloatValue(double value);
-    StringValue* makeStringValue(const std::string& value);
-    BooleanValue* makeBooleanValue(bool value);
-    EmptyValue* makeEmptyValue();
-    VoidValue* makeVoidValue();
-    FunctionValue* makeFunctionValue(Node* functionDeclarationNode, Environment* definingEnvironment);
-    ReturnValue* makeReturnValue(Value* value);
-    BreakValue* makeBreakValue();
-    ContinueValue* makeContinueValue();
-};

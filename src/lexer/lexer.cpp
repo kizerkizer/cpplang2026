@@ -46,7 +46,8 @@ std::map<std::string, TokenKind, LongestToShortestComparer> specialValues = {
     {"Float", TokenKind::TypePrimitiveFloat},
     {"String", TokenKind::TypePrimitiveString},
     {"Empty", TokenKind::TypePrimitiveEmpty},
-    {"Number", TokenKind::TypePrimitiveNumber},
+    {"Any", TokenKind::TypePrimitiveAny},
+    {"Void", TokenKind::TypePrimitiveVoid},
 };
 
 std::map<std::string, TokenKind, LongestToShortestComparer> operators = {
@@ -56,8 +57,11 @@ std::map<std::string, TokenKind, LongestToShortestComparer> operators = {
     {">=", TokenKind::GreaterThanEqual},
     {"->", TokenKind::RightArrow},
     {"<-", TokenKind::LeftArrow},
-    {"&&", TokenKind::And},
-    {"||", TokenKind::Or},
+    {"&&", TokenKind::AmpersandAmpersand},
+    {"||", TokenKind::PipePipe},
+    {"&", TokenKind::Ampersand},
+    {"|", TokenKind::Pipe},
+    {"is", TokenKind::Is},
     {"**", TokenKind::AsteriskAsterisk},
     {"+", TokenKind::Plus},
     {"-", TokenKind::Dash},
@@ -91,7 +95,7 @@ bool isIdentifierPart (char32_t c) {
     return std::isalnum(c) || c == '_' || c == '-';
 }
 
-bool isIntegerLiteral (char32_t c) {
+bool isDigit (char32_t c) {
     return std::isdigit(c);
 }
 
@@ -145,6 +149,8 @@ void Lexer::addDiagnostic(DiagnosticMessageKind kind, int code, const std::strin
 
 void Lexer::addError(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
     this->addDiagnostic(DiagnosticMessageKind::Error, code, message, location);
+    std::print("Error: {}\n", message);
+    std::abort();
 }
 
 void Lexer::addWarning(int code, const std::string& message, std::optional<SourceCodeLocation> location) {
@@ -255,6 +261,14 @@ std::unique_ptr<Token> Lexer::getNextToken() {
             return nextToken;
         }
 
+        // check operators (for operators like 'is')
+        auto operatorIt = operators.find(std::string(sourceString));
+        if (operatorIt != operators.end()) {
+            auto token = this->makeToken(operatorIt->second, sourceString, SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn));
+            nextToken = std::move(token);
+            return nextToken;
+        }
+
         // otherwise, it's an identifier
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
         auto token = this->makeToken(TokenKind::Identifier, sourceString, startLocation);
@@ -284,12 +298,38 @@ std::unique_ptr<Token> Lexer::getNextToken() {
         return nextToken;
     }
 
-    // Integer literal
-    if (isIntegerLiteral(m_scanner.peekCodepoint())) {
+    // Integer/float literal
+    if (isDigit(m_scanner.peekCodepoint())) {
         auto [startByteIndex, startCodepointIndex, startLine, startColumn] = m_scanner.getCurrentSourceCodeLocation();
         m_scanner.advance();
-        while (isIntegerLiteral(m_scanner.peekCodepoint())) {
+        while (isDigit(m_scanner.peekCodepoint())) {
             m_scanner.advance();
+        }
+        if (m_scanner.peekCodepoint() == '.' && isDigit(m_scanner.peekCodepoint(1))) {
+            m_scanner.advance();
+            while (isDigit(m_scanner.peekCodepoint())) {
+                m_scanner.advance();
+            }
+            if (m_scanner.peekCodepoint() == 'e' || m_scanner.peekCodepoint() == 'E') {
+                m_scanner.advance();
+                if (m_scanner.peekCodepoint() == '+' || m_scanner.peekCodepoint() == '-') {
+                    m_scanner.advance();
+                }
+                if (!isDigit(m_scanner.peekCodepoint())) {
+                    this->addError(6, "Expected digit after exponent indicator in float literal", m_scanner.getCurrentSourceCodeLocation());
+                    return nextToken;
+                }
+                while (isDigit(m_scanner.peekCodepoint())) {
+                    m_scanner.advance();
+                }
+            }
+            auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
+            auto token = this->makeToken(TokenKind::LiteralFloat, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);
+            nextToken = std::move(token);
+            return nextToken;
+        } else if (m_scanner.peekCodepoint() == '.') {
+            this->addError(5, "Unexpected '.' after integer literal", SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn));
+            return nextToken;
         }
         auto startLocation = SourceCodeLocation(startByteIndex, startCodepointIndex, startLine, startColumn);
         auto token = this->makeToken(TokenKind::LiteralInteger, m_scanner.substr(startByteIndex, m_scanner.getByteIndex() - startByteIndex), startLocation);

@@ -1,0 +1,29 @@
+{
+  "name": "eblang",
+  "displayName": "eblang",
+  "description": "Syntax highlighting for English Breakfast language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.115.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "eblang",
+      "aliases": ["English Breakfast", "eblang"],
+      "extensions": [".eb"],
+      "configuration": "./language-configuration.json",
+      "icon": {
+        "light": "./icons/eb-icon.svg",
+        "dark": "./icons/eb-icon.svg"
+      }
+    }],
+    "grammars": [{
+      "language": "eblang",
+      "scopeName": "source.eblang",
+      "path": "./syntaxes/eblang.tmLanguage.json"
+    }]
+  }
+}

@@ -23,7 +23,7 @@ private:
     std::unique_ptr<Token> makeToken(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation = std::nullopt, std::optional<SourceCodeLocation> endSourceCodeLocation = std::nullopt);
     std::unique_ptr<Token> makeTokenAndAdvance(TokenKind tokenKind, std::string_view sourceString, std::optional<SourceCodeLocation> startSourceCodeLocation = std::nullopt, std::optional<SourceCodeLocation> endSourceCodeLocation = std::nullopt);
 public:
-    Lexer(Utf8Scanner& scanner, Source* source, Diagnostics& diagnostics) : m_scanner(scanner), m_source(source), m_diagnostics(diagnostics) {}
+    Lexer(Utf8Scanner& scanner, Source* source, Diagnostics& diagnostics) :  m_scanner(scanner), m_source(source), m_diagnostics(diagnostics) {}
     std::unique_ptr<Token> getNextToken();
     std::unique_ptr<Token> getNextNonTrivialToken();
     bool isDone();
