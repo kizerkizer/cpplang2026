@@ -4,7 +4,7 @@
 #include <stack>
 
 #include "binder/scope.hpp"
-#include "flowbuilder/flowgraph.hpp"
+#include "flow/flowgraph.hpp"
 #include "parser/node.hpp"
 #include "parser/nodemap.hpp"
 #include "diagnostics/diagnostics.hpp"
@@ -29,7 +29,7 @@ struct FlowInfo {
     bool reachable;
 };
 
-class FlowBuilderResult {
+class FlowAnalyzerResult {
 private:
     std::vector<std::unique_ptr<FlowGraph>> m_graphs;
     std::unique_ptr<NodeMap<FlowInfo>> m_flowInfoMap;
@@ -47,15 +47,15 @@ class FlowBuilder {
 private:
     std::unique_ptr<NodeMap<FlowInfo>> m_flowInfoMap;
     Diagnostics& m_diagnostics;
-    FlowGraph* buildGraphInternal(Node* node, FlowBuilderResult* result_out);
-    FlowNode* buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowBuilderResult* result_out);
+    FlowGraph* buildGraphInternal(Node* node, FlowAnalyzerResult* result_out);
+    FlowNode* buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowAnalyzerResult* result_out);
     FlowNode* getFlowNode(Node* node) const;
     void setFlowNode(Node* node, FlowNode* flowNode);
     FlowGraph* getFlowGraph(Node* node) const;
     void setFlowGraph(Node* node, FlowGraph* flowGraph);
 public:
     FlowBuilder(Diagnostics& diagnostics);
-    std::unique_ptr<FlowBuilderResult> buildGraph(Node* rootNode);
+    std::unique_ptr<FlowAnalyzerResult> buildGraph(Node* rootNode);
     NodeMap<FlowInfo>* getFlowInfoMap() const;
     std::unique_ptr<NodeMap<FlowInfo>> takeFlowInfoMap();
 };

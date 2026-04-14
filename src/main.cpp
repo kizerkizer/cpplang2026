@@ -6,8 +6,8 @@
 #include <set>
 
 #include "common/sourcecodelocation.hpp"
-#include "flowbuilder/flowbuilder.hpp"
-#include "flowbuilder/flownode.hpp"
+#include "flow/flowbuilder.hpp"
+#include "flow/flownode.hpp"
 #include "parser/node.hpp"
 #include "lexer/token.hpp"
 #include "binder/binder.hpp"
@@ -577,7 +577,7 @@ void printFlowGraph (FlowGraph* graph) {
     visited.clear();
 }
 
-void printFlowBuilderResult (std::unique_ptr<FlowBuilderResult> result) {
+void printFlowBuilderResult (std::unique_ptr<FlowAnalyzerResult> result) {
     int i = 0;
     for (auto graph : result->getGraphs()) {
         std::print("digraph G{} {{\n", i);

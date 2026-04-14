@@ -44,6 +44,7 @@ enum class DiagnosticMessageStage {
     Parser,
     Binder,
     Desugarer,
+    ControlFlowAnalyzer,
     TypeChecker,
     Interpreter,
 };
@@ -60,6 +61,8 @@ constexpr const char* diagnosticMessageStageToString(DiagnosticMessageStage diag
             return "Binder";
         case DiagnosticMessageStage::Desugarer:
             return "Desugarer";
+        case DiagnosticMessageStage::ControlFlowAnalyzer:
+            return "ControlFlowAnalyzer";
         case DiagnosticMessageStage::TypeChecker:
             return "TypeChecker";
         case DiagnosticMessageStage::Interpreter:

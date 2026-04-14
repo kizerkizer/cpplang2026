@@ -3,14 +3,14 @@
 #include <print>
 #include <cassert>
 
-#include "flowbuilder/flowbuilder.hpp"
+#include "flow/flowbuilder.hpp"
 #include "diagnostics/diagnostics.hpp"
-#include "flowbuilder/flownode.hpp"
+#include "flow/flownode.hpp"
 #include "parser/node.hpp"
 #include "common/util.hpp"
 
 // FlowBuilderResult
-std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
+std::vector<FlowGraph*> FlowAnalyzerResult::getGraphs() {
     std::vector<FlowGraph*> graphPointers;
     for (auto& graph : this->m_graphs) {
         graphPointers.push_back(graph.get());
@@ -18,19 +18,19 @@ std::vector<FlowGraph*> FlowBuilderResult::getGraphs() {
     return graphPointers;
 }
 
-void FlowBuilderResult::addGraph(std::unique_ptr<FlowGraph> graph) {
+void FlowAnalyzerResult::addGraph(std::unique_ptr<FlowGraph> graph) {
     this->m_graphs.push_back(std::move(graph));
 }
 
-NodeMap<FlowInfo>* FlowBuilderResult::getFlowInfoMap() const {
+NodeMap<FlowInfo>* FlowAnalyzerResult::getFlowInfoMap() const {
     return this->m_flowInfoMap.get();
 }
 
-void FlowBuilderResult::setFlowInfoMap(std::unique_ptr<NodeMap<FlowInfo>> flowInfoMap) {
+void FlowAnalyzerResult::setFlowInfoMap(std::unique_ptr<NodeMap<FlowInfo>> flowInfoMap) {
     this->m_flowInfoMap = std::move(flowInfoMap);
 }
 
-FlowNode* FlowBuilderResult::getFlowNode(Node* node) const {
+FlowNode* FlowAnalyzerResult::getFlowNode(Node* node) const {
     auto flowInfo = this->m_flowInfoMap->getValue(node);
     if (flowInfo) {
         return flowInfo->flowNode;
@@ -38,7 +38,7 @@ FlowNode* FlowBuilderResult::getFlowNode(Node* node) const {
     return nullptr;
 }
 
-FlowGraph* FlowBuilderResult::getFlowGraph(Node* node) const {
+FlowGraph* FlowAnalyzerResult::getFlowGraph(Node* node) const {
     auto flowInfo = this->m_flowInfoMap->getValue(node);
     if (flowInfo) {
         return flowInfo->flowGraph;
@@ -89,8 +89,8 @@ void FlowBuilder::setFlowGraph(Node* node, FlowGraph* flowGraph) {
     }
 }
 
-std::unique_ptr<FlowBuilderResult> FlowBuilder::buildGraph(Node* rootNode) {
-    auto result = std::make_unique<FlowBuilderResult>();
+std::unique_ptr<FlowAnalyzerResult> FlowBuilder::buildGraph(Node* rootNode) {
+    auto result = std::make_unique<FlowAnalyzerResult>();
     this->buildGraphInternal(rootNode, result.get());
     result->setFlowInfoMap(this->takeFlowInfoMap());
     return result;
@@ -100,7 +100,7 @@ std::unique_ptr<NodeMap<FlowInfo>> FlowBuilder::takeFlowInfoMap() {
     return std::move(this->m_flowInfoMap);
 }
 
-FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowBuilderResult* result) {
+FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* successor, FlowContext& context, FlowAnalyzerResult* result) {
     switch (node->getNodeKind()) {
         case NodeKind::FunctionDeclaration: {
             auto functionDeclarationNode = static_cast<FunctionDeclarationNode*>(node);
@@ -145,7 +145,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             return flowNodePointer;
         }
         case NodeKind::BreakStatement: {
-            // link to loop successor
+
+            // Link to loop successor
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Break);
             flowNode->setAstNode(node);
             setFlowNode(node, flowNode.get());
@@ -156,7 +157,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             return flowNodePointer;
         }
         case NodeKind::ContinueStatement: {
-            // link to loop header
+
+            // Link to loop header
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Continue);
             flowNode->setAstNode(node);
             setFlowNode(node, flowNode.get());
@@ -167,7 +169,8 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
             return flowNodePointer;
         }
         case NodeKind::ReturnStatement: {
-            // link to function successor
+
+            // Link to function successor
             std::unique_ptr<FlowNode> flowNode = std::make_unique<FlowNode>(FlowNodeKind::Return);
             flowNode->setAstNode(node);
             setFlowNode(node, flowNode.get());
@@ -212,7 +215,7 @@ FlowNode* FlowBuilder::buildFlowNode(FlowGraph* graph, Node* node, FlowNode* suc
     }
 }
 
-FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result_out) {
+FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowAnalyzerResult* result_out) {
     Node* nodeToBuild = nullptr;
     std::unique_ptr<FlowNode> flowNode = nullptr;
     auto graph = std::make_unique<FlowGraph>();
@@ -220,7 +223,7 @@ FlowGraph* FlowBuilder::buildGraphInternal(Node* node, FlowBuilderResult* result
     auto exit = graph->getExit();
     auto flowContext = FlowContext();
 
-    // Either the global scope, or a function:
+    // Either the global scope, or a function
     if (node->getNodeKind() == NodeKind::Program) {
         auto programNode = static_cast<ProgramNode*>(node);
         setFlowGraph(programNode, graph.get());

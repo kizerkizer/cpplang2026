@@ -1,9 +1,8 @@
 #pragma once
 
 #include "common/programuniqueid.hpp"
-#include "flowbuilder/flowgraph.hpp"
+#include "flow/flowgraph.hpp"
 #include "parser/node.hpp"
-#include <string>
 
 class Scope; // In scope.hpp
 

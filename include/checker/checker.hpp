@@ -8,7 +8,7 @@
 #include "parser/node.hpp"
 #include "parser/nodemap.hpp"
 #include "binder/binder.hpp"
-#include "flowbuilder/flowbuilder.hpp"
+#include "flow/flowbuilder.hpp"
 
 using TypeInfo = struct TypeInfo {
     Type* type;
@@ -34,7 +34,7 @@ private:
     std::unique_ptr<NodeMap<TypeInfo>> m_nodeMap = std::make_unique<NodeMap<TypeInfo>>();
     Source* m_source;
     BinderResult& m_binderResult;
-    FlowBuilderResult& m_flowBuilderResult;
+    FlowAnalyzerResult& m_flowBuilderResult;
     Diagnostics& m_diagnostics;
     std::unique_ptr<TypeStore> m_typeStore;
     void addDiagnostic(DiagnosticMessageKind kind, int code, const std::string& message, std::optional<SourceCodeLocationSpan> sourceCodeSpan = std::nullopt);
@@ -73,7 +73,7 @@ private:
     Type* setASTNodeType(Node* node, Type* type);
     Type* getASTNodeType(Node* node);
 public:
-    TypeChecker (Source* source, BinderResult& binderResult, FlowBuilderResult& flowBuilderResult, Diagnostics& diagnostics) : m_source(source), m_binderResult(binderResult), m_flowBuilderResult(flowBuilderResult), m_diagnostics(diagnostics), m_typeStore(std::make_unique<TypeStore>()) {};
+    TypeChecker (Source* source, BinderResult& binderResult, FlowAnalyzerResult& flowBuilderResult, Diagnostics& diagnostics) : m_source(source), m_binderResult(binderResult), m_flowBuilderResult(flowBuilderResult), m_diagnostics(diagnostics), m_typeStore(std::make_unique<TypeStore>()) {};
     std::unique_ptr<TypeCheckerResult> typeCheck(Node* rootNode);
     TypeStore* getTypeStore();
     std::unique_ptr<TypeStore> takeTypeStore();

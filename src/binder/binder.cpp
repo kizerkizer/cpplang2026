@@ -232,6 +232,7 @@ void Binder::bindFunctionDeclaration(Node* node) {
         auto parameterSymbol = std::make_unique<Symbol>(m_currentScope, parameter, SymbolKind::Parameter, SymbolModifierFlags::None, std::string(parameter->getName()));
         auto parameterSymbolPtr = parameterSymbol.get();
         if (m_currentScope->hasSymbolShallow(parameterSymbol->getNameString())) {
+
             // Can happen if parameter has duplicate name
             this->addErrorMessage(6, "Parameter name '" + parameterSymbol->getNameString() + "' already in scope", parameter->getSourceCodeLocationSpan());
         } else {
@@ -239,7 +240,8 @@ void Binder::bindFunctionDeclaration(Node* node) {
         }
         setNodeSymbol(parameter, parameterSymbolPtr);
     }
-    this->bindRecursive(functionDeclarationNode->getBody(), true); // do not create another scope for the function body block
+    // Do not create another scope for the function body block
+    this->bindRecursive(functionDeclarationNode->getBody(), true); 
     this->exitScope();
 }
 

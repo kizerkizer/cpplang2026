@@ -9,15 +9,19 @@ class Node; // defined in parser/node.hpp
 enum class FlowNodeKind {
     Entry,
     Exit,
-    Global,
-    Block,
-    Program,
+
+    Global, // needed?
+    Program, // needed?
+
     If,
+    Function,
+    Block,
     Loop,
+
     Break,
     Continue,
-    Function,
     Return,
+
     Statement,
 };
 

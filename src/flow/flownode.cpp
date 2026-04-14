@@ -1,4 +1,4 @@
-#include "flowbuilder/flownode.hpp"
+#include "flow/flownode.hpp"
 #include "parser/node.hpp"
 #include "common/programuniqueid.hpp"
 

@@ -25,9 +25,10 @@ add_executable(englishbreakfast
     src/checker/checker.cpp
     src/checker/type.cpp
     src/checker/typestore.cpp
-    src/flowbuilder/flowgraph.cpp
-    src/flowbuilder/flownode.cpp
-    src/flowbuilder/flowbuilder.cpp
+    src/flow/flowgraph.cpp
+    src/flow/flownode.cpp
+    src/flow/flowbuilder.cpp
+    src/flow/flowanalyzer.cpp
     src/treewalker/environment.cpp
     src/treewalker/value.cpp
     src/treewalker/valuestore.cpp

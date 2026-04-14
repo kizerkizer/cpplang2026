@@ -2,7 +2,7 @@
 
 #include "binder/binder.hpp"
 #include "checker/checker.hpp"
-#include "flowbuilder/flowbuilder.hpp"
+#include "flow/flowbuilder.hpp"
 #include "parser/node.hpp"
 #include "treewalker/environment.hpp"
 #include "treewalker/outputstream.hpp"
@@ -46,13 +46,13 @@ private:
     std::unique_ptr<Environment> m_globalEnvironment;
     TypeCheckerResult* m_typeCheckerResult;
     BinderResult* m_binderResult;
-    FlowBuilderResult* m_flowBuilderResult;
+    FlowAnalyzerResult* m_flowBuilderResult;
     std::unique_ptr<ValueStore> m_valueStore;
     OutputStream* m_outputStream;
     Value* _interpret(Node* node, Environment* environment);
     Value* interpretIdentifier(IdentifierNode* identifierNode, Environment* environment);
     Type* getTypeOfASTNode(Node* node);
 public:
-    Interpreter(TypeCheckerResult* typeCheckerResult, BinderResult* binderResult, FlowBuilderResult* flowBuilderResult, OutputStream* outputStream);
+    Interpreter(TypeCheckerResult* typeCheckerResult, BinderResult* binderResult, FlowAnalyzerResult* flowBuilderResult, OutputStream* outputStream);
     Value* interpret(Node* rootNode);
 };

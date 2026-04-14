@@ -11,7 +11,7 @@
 #include "treewalker/valuestore.hpp"
 
 // Interpreter
-Interpreter::Interpreter(TypeCheckerResult* typeCheckerResult, BinderResult* binderResult, FlowBuilderResult* flowBuilderResult, OutputStream* outputStream) : m_typeCheckerResult(typeCheckerResult), m_binderResult(binderResult), m_flowBuilderResult(flowBuilderResult), m_outputStream(outputStream) {
+Interpreter::Interpreter(TypeCheckerResult* typeCheckerResult, BinderResult* binderResult, FlowAnalyzerResult* flowBuilderResult, OutputStream* outputStream) : m_typeCheckerResult(typeCheckerResult), m_binderResult(binderResult), m_flowBuilderResult(flowBuilderResult), m_outputStream(outputStream) {
     this->m_valueStore = std::make_unique<ValueStore>(typeCheckerResult->getTypeStore());
 }
 

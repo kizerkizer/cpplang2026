@@ -3,8 +3,8 @@
 #include <map>
 #include <vector>
 
-#include "flowbuilder/flowgraph.hpp"
-#include "flowbuilder/flownode.hpp"
+#include "flow/flowgraph.hpp"
+#include "flow/flownode.hpp"
 #include "parser/node.hpp"
 
 // FlowGraph
@@ -129,7 +129,7 @@ bool FlowGraph::isASTNodeReachable(Node* node) {
     return false; // Default to false if not set
 }
 
-void FlowGraph::assignReachabilityToNodes() {
+void FlowGraph::computeReachability() {
     std::vector<FlowNode*> unreachableNodes = this->getUnreachable();
     std::vector<FlowNode*> nodes = this->getNodes();
     for (auto& node : nodes) {

@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "flowbuilder/flownode.hpp"
+#include "flow/flownode.hpp"
 #include "parser/nodemap.hpp"
 
 struct FlowGraphInfo {
@@ -26,12 +26,12 @@ public:
     std::vector<FlowNode*> getNodes();
     FlowNode* addNode(std::unique_ptr<FlowNode> node);
     void addEdge(FlowNode* from, FlowNode* to, std::optional<std::string> edgeName = std::nullopt);
-    bool isReachable(FlowNode* start, FlowNode* to);
-    bool isASTNodeReachable(Node* node);
-    std::vector<FlowNode*> getUnreachable();
-    Node* getAstNode();
-    void setAstNode(Node* node);
-    void assignReachabilityToNodes();
+    bool isReachable(FlowNode* start, FlowNode* to); // needed?
+    bool isASTNodeReachable(Node* node); // needed?
+    std::vector<FlowNode*> getUnreachable(); // call after computeReachability()
+    Node* getAstNode(); // needed?
+    void setAstNode(Node* node); // needed?
+    void computeReachability();
     NodeMap<FlowGraphInfo>* getFlowGraphNodeMap() const;
     std::unique_ptr<NodeMap<FlowGraphInfo>> takeFlowGraphNodeMap();
 };

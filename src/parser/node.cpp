@@ -5,7 +5,7 @@
 #include "parser/node.hpp"
 #include "checker/type.hpp"
 #include "common/sourcecodelocation.hpp"
-#include "flowbuilder/flownode.hpp"
+#include "flow/flownode.hpp"
 #include "lexer/token.hpp"
 
 // Node
